@@ -1,0 +1,12 @@
+# Gets rid of a folder icon (https://softorino.com/foldercolorizer2/)
+*.ico
+
+
+# maven stuff
+target/
+bin/
+bootstrap/
+pom.xml.releaseBackup
+release.properties
+pom.xml.versionsBackup
+rascal-DEPENDENCIES.txt

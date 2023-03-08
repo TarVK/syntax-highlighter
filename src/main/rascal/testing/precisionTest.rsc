@@ -1,6 +1,5 @@
 module testing::precisionTest
 
-import ParseTree;
 import IO;
 import measures::Precision;
 
@@ -10,7 +9,7 @@ syntax B = @category="B" 'b'
 syntax C = @category="C" A C B
         | ;
 
-syntax C2 = @category="C" @category="D" A C B
+syntax C2 = @category="C" @category="D" A C2 B
         | ;
 
 

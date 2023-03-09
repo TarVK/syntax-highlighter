@@ -18,48 +18,39 @@ import measures::util::TokenComparison;
 public data ModificationSection = Insertion(str text) | Deletion(str text) | Unchanged(str text);
 public alias ModifiedText = list[ModificationSection];
 
-public str getAfterText([]) = "";
-public str getAfterText([Insertion(text), *rest]) = text + getAfterText(rest);
-public str getAfterText([Deletion(text), *rest]) = getAfterText(rest);
-public str getAfterText([Unchanged(text), *rest]) = text + getAfterText(rest);
-
-public str getBeforeText([]) = "";
-public str getBeforeText([Insertion(text), *rest]) = getBeforeText(rest);
-public str getBeforeText([Deletion(text), *rest]) = text + getBeforeText(rest);
-public str getBeforeText([Unchanged(text), *rest]) = text + getBeforeText(rest);
+public str getBeforeText(ModifiedText text) =  ("" | it + section.text | section <- text, !(Insertion(_) := section));
+public str getAfterText(ModifiedText text) = ("" | it + section.text | section <- text, !(Deletion(_) := section));
 
 // Tokenization extraction utils
 public data ModificationType = Insert() | Delete() | Keep();
-public alias ModificationList = list[ModificationType];
+public alias ModificationTypes = list[ModificationType];
 
-public ModificationList getModificationList([]) = [];
-public ModificationList getModificationList([Insertion(text), *rest]) = [Insert() | _<-[0..size(text)]] + getModificationList(rest);
-public ModificationList getModificationList([Deletion(text), *rest]) = [Delete() | _<-[0..size(text)]] + getModificationList(rest);
-public ModificationList getModificationList([Unchanged(text), *rest]) = [Keep() | _<-[0..size(text)]] + getModificationList(rest);
+public ModificationType getTypeFromSection(ModificationSection section) { switch (section) {
+    case Insertion(_): return Insert();
+    case Unchanged(_): return Keep();
+    default: return Delete();
+} }
+public ModificationTypes getModificationTypes(ModifiedText text) = [*[t | _<-[0..size(s.text)]] | s<-text, t := getTypeFromSection(s)];
 
-public ModificationList getBeforeModifications(ModificationList types) = [t | t <- types, t!=Insert()];
-public ModificationList getAfterModifications(ModificationList types) = [t | t <- types, t!=Delete()];
+public ModificationTypes getBeforeModifications(ModificationTypes types) = [t | t <- types, t!=Insert()];
+public ModificationTypes getAfterModifications(ModificationTypes types) = [t | t <- types, t!=Delete()];
 
-public Tokenization getCommonTokenization([], []) = [];
-public Tokenization getCommonTokenization([CharacterTokens token, *rTokens], [Keep(), *rTypes]) = token + getCommonTokenization(rTokens, rTypes);
-public Tokenization getCommonTokenization([CharacterTokens token, *rTokens], [_, *rTypes]) = getCommonTokenization(rTokens, rTypes);
+public Tokenization getCommonTokenization(Tokenization tokens, ModificationTypes types) = [token | <token, t> <- zip2(tokens, types), Keep():=t];
+public Tokenization getCommonTokenization(type[Tree] grammar, str text, ModificationTypes modifications) 
+    = getCommonTokenization(getTokenization(grammar, text), modifications);
+
+public Tokenization getBeforeTokenization(type[Tree] grammar, ModifiedText text) =
+    getCommonTokenization(grammar, getBeforeText(text), (getBeforeModifications o getModificationTypes)(text));    
+public Tokenization getAfterTokenization(type[Tree] grammar, ModifiedText text) =
+    getCommonTokenization(grammar, getAfterText(text), (getAfterModifications o getModificationTypes)(text));
 
 // The main measure
-public tuple[Tokenization, Tokenization] getCommonTokenization(type[Tree] spec, type[Tree] highlighter, ModifiedText text) {
-    ModificationList charTypes = getModificationList(text);
+public TokenizationDifferences getCommonTokenizationDifferences(type[Tree] spec, type[Tree] highlighter, ModifiedText text) 
+    = getTokenDifferences(getBeforeTokenization(spec, text), getAfterTokenization(highlighter, text));
+public int getRobustnessPenalty(type[Tree] spec, type[Tree] highlighter, ModifiedText text) 
+    = getDifferenceCount(getCommonTokenizationDifferences(spec, highlighter, text));
 
-    str specText = getBeforeText(text);
-    Tokenization specTokenization = getTokenization(spec, specText);
-    Tokenization commonSpecTokenization = getCommonTokenization(specTokenization, getBeforeModifications(charTypes));
-
-    str highlightText = getAfterText(text);
-    Tokenization highlightTokenization = getTokenization(highlighter, highlightText);
-    Tokenization commonHighlightTokenization = getCommonTokenization(highlightTokenization, getAfterModifications(charTypes));
-
-    return <commonSpecTokenization, commonHighlightTokenization>;
-}
-public TokenizationDifferences getCommonTokenizationDifferences(type[Tree] spec, type[Tree] highlighter, ModifiedText text) {
-    <commonSpecTokenization, commonHighlightTokenization> = getCommonTokenization(spec, highlighter, text);
-    return getTokenDifferences(commonSpecTokenization, commonHighlightTokenization);
-}
-public int getRobustnessPenalty(type[Tree] spec, type[Tree] highlighter, ModifiedText text) = getDifferenceCount(getCommonTokenizationDifferences(spec, highlighter, text));
+public TokenizationDifferences getCommonTokenizationDifferences(type[Tree] spec, Tokenization highlighting, ModifiedText text) 
+    = getTokenDifferences(getBeforeTokenization(spec, text), highlighting);
+public int getRobustnessPenalty(type[Tree] spec, Tokenization highlighting, ModifiedText text) 
+    = getDifferenceCount(getCommonTokenizationDifferences(spec, highlighting, text));

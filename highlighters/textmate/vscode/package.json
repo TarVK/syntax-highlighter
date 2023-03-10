@@ -1,0 +1,25 @@
+{
+  "name": "highlighter-test",
+  "displayName": "highlighter-test",
+  "description": "Extension to test textmate grammars",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "highlight",
+      "aliases": ["highlight", "highlight"],
+      "extensions": ["hlt"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "highlight",
+      "scopeName": "source.highlight",
+      "path": "./syntaxes/highlight.tmLanguage.json"
+    }]
+  }
+}

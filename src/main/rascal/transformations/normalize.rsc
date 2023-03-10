@@ -1,4 +1,4 @@
-module testing::regularization
+module transformations::normalize
 
 import lang::rascal::grammar::definition::Parameters;
 import lang::rascal::grammar::definition::Regular;
@@ -11,35 +11,11 @@ import lang::rascal::grammar::definition::Keywords;
 import lang::rascal::grammar::ConcreteSyntax;
 
 import Grammar;
-import ParseTree;
-import IO;
 
-// syntax A = @category="test" 'a'*;
-syntax B = @category="test" "" [a-z]*;
-
-
-void main() {
-    resetFile();
-
-    Grammar gr = grammar(#B);
-    addToFile(gr);
-
+Grammar normalize(Grammar gr) {
     gr = expandParameterizedSymbols(gr);
-    addToFile(gr);
-
     gr = makeRegularStubs(gr);
-    addToFile(gr);
-
-    // gr = addHoles(gr);
-    // addToFile(gr);
-    
     gr = literals(gr);
-    addToFile(gr);
-
     gr = expandRegularSymbols(gr);
-    addToFile(gr);
+    return gr;
 }
-
-loc pos = |project://syntax-highlighter/outputs/testOutput.txt|;
-void resetFile() = writeFile(pos, "");
-void addToFile(value text) = writeFile(pos, readFile(pos)+"<text>\n\n");

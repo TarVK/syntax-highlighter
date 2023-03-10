@@ -14,7 +14,7 @@ import String;
 import measures::util::Tokenization;
 import measures::util::TokenComparison;
 
-public int getPrecisionPenalty(type[Tree] grammar, Tokenization tokens) {
+int getPrecisionPenalty(type[Tree] grammar, Tokenization tokens) {
     str text = ("" | it + stringChar(char) | characterTokens(char, _) <- tokens);
     Tokenization expectedTokens = getTokenization(grammar, text);
 
@@ -23,5 +23,5 @@ public int getPrecisionPenalty(type[Tree] grammar, Tokenization tokens) {
 
     return differenceCount;
 }
-public int getPrecisionPenalty(type[Tree] spec, type[Tree] highlighter, str text) 
+int getPrecisionPenalty(type[Tree] spec, type[Tree] highlighter, str text) 
     = getPrecisionPenalty(spec, getTokenization(highlighter, text));

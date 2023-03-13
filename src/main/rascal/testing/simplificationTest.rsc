@@ -4,8 +4,8 @@ import Grammar;
 import lang::rascal::format::Grammar;
 import IO;
 
-import transformations::normalize;
-import transformations::symbolSimplify;
+import transformations::Normalize;
+import transformations::SymbolSimplify;
 
 syntax A = @category="test" 'a'*;
 void main() {

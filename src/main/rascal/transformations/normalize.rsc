@@ -1,4 +1,4 @@
-module transformations::normalize
+module transformations::Normalize
 
 import lang::rascal::grammar::definition::Parameters;
 import lang::rascal::grammar::definition::Regular;

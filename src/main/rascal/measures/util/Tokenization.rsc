@@ -7,6 +7,7 @@ module measures::util::Tokenization
 
 import ParseTree;
 import Type;
+import util::List;
 
 alias Tokens = list[str];
 data CharacterTokens = characterTokens(int character, Tokens tokens);
@@ -25,6 +26,3 @@ Tokenization getTokenization(Tokens tokens, char(character)) = [characterTokens(
 
 Tokens getTokens(prod(_, _, attributes)) = ["<token>" | \tag("category"(token)) <- attributes];
 Tokens getTokens(_) = [];
-
-Tokens merge(Tokens tokens, []) = tokens;
-Tokens merge(Tokens tokens, [first, *rest]) = merge(first in tokens ? tokens : tokens + first, rest);

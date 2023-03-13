@@ -3,7 +3,7 @@
     Tools for creating simpler symbols for grammars, in order to output a readable grammar
 }
 
-module transformations::symbolSimplify
+module transformations::SymbolSimplify
 
 import util::Maybe;
 import Grammar;

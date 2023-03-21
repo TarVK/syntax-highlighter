@@ -1,4 +1,4 @@
-module testing::regularization
+module testing::normalization
 
 import lang::rascal::grammar::definition::Parameters;
 import lang::rascal::grammar::definition::Regular;
@@ -15,7 +15,8 @@ import ParseTree;
 import IO;
 
 // syntax A = @category="test" 'a'*;
-syntax B = @category="test" "" [a-z]*;
+// syntax B = @category="test" "" [a-z]*;
+syntax B = "a" > "a";
 
 
 void main() {

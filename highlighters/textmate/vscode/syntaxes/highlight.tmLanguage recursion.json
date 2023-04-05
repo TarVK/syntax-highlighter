@@ -1,0 +1,47 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "highlight",
+	"patterns": [
+		{"include": "#root"}
+	],
+	"repository": {
+		"root": {
+			"patterns": [
+				{ "include": "#keywords" },
+				{ "include": "#strings" }
+			]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.highlight",
+				"match": "\\b(if|while|for|return)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.highlight",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.highlight",
+					"match": "\\\\."
+				},
+				{
+					"name": "meta.template.expression",
+					"begin": "\\$\\{",
+					"beginCaptures": {"0": {
+						"name": "punctuation.definition.template-expression.begin"
+					}},
+					"end": "\\}",
+					"endCaptures": {"0": {
+						"name": "punctuation.definition.template-expression.end"
+					}},
+					"patterns": [
+						{ "include": "#root" }
+					]
+				}
+			]
+		}
+	},
+	"scopeName": "source.highlight"
+}

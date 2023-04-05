@@ -1,0 +1,24 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "highlight",
+	"patterns": [
+		{"include": "#variable"},
+		{"include": "#identifier"},
+		{"include": "#var"}
+	],
+	"repository": {
+		"identifier": {
+			"name": "entity.name.function",
+			"match": "(?!var\\s+\\w)\\w+"
+		},
+		"variable": {
+			"name": "variable",
+			"match": "(?<=var\\s+)\\w+"
+		},
+		"var": {
+			"name": "storage.type",
+			"match": "var(?=\\s+\\w)"
+		}
+	},
+	"scopeName": "source.highlight"
+}

@@ -1,0 +1,25 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "highlight",
+	"patterns": [
+		{ "include": "#bold" },
+		{ "include": "#italic" }
+	],
+	"repository": {
+		"bold": {
+			"name": "markup.bold",
+			"match": "\\*.*?\\*",
+			"captures": {
+				"0": { "patterns": [{"include": "#italic"}] }
+			}
+		},
+		"italic": {
+			"name": "markup.italic",
+			"match": "_.*?_",
+			"captures": {
+				"0": { "patterns": [{"include": "#bold"}] }
+			}
+		}
+	},
+	"scopeName": "source.highlight"
+}

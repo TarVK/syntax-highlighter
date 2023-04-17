@@ -1,0 +1,22 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "highlight",
+	"patterns": [
+		{"include": "#func"},
+		{"include": "#var"}
+	],
+	"repository": {
+		"func": {
+			"name": "entity.name.function",
+			"match": "\\w+(?=\\()"
+		},
+		"var": {
+			"match": "(v(a(r(\\s*(\\w*))?)?)?)",
+			"captures": {
+				"1": {"name": "storage.type"},
+				"5": {"name": "entity.name.function"}
+			}
+		}
+	},
+	"scopeName": "source.highlight"
+}

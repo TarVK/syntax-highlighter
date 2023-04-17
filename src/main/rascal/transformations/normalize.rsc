@@ -10,6 +10,8 @@ import lang::rascal::grammar::definition::Symbols;
 import lang::rascal::grammar::definition::Keywords;
 import lang::rascal::grammar::ConcreteSyntax;
 
+import transformations::RemovePriorities;
+
 import Grammar;
 
 Grammar normalize(Grammar gr) {
@@ -17,5 +19,6 @@ Grammar normalize(Grammar gr) {
     gr = makeRegularStubs(gr);
     gr = literals(gr);
     gr = expandRegularSymbols(gr);
+    gr = removePriorities(gr);
     return gr;
 }

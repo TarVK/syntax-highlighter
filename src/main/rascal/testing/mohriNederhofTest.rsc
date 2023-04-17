@@ -11,6 +11,13 @@ import transformations::Normalize;
 import transformations::SymbolSimplify;
 import transformations::util::GrammarComponents;
 import transformations::MohriNederhof;
+import transformations::simplify::RemoveEmpty;
+import transformations::simplify::RemoveSelfLoop;
+import transformations::simplify::SubstituteUnitRules;
+import transformations::simplify::RemoveUnusedRules;
+import transformations::simplify::CombineCharacters;
+
+// import testing::grammars::JS;
 
 // syntax A = @category="A" 'a'*;
 // syntax B = @category="B" 'b'
@@ -26,31 +33,48 @@ import transformations::MohriNederhof;
 
 syntax Never = ;
 
-syntax E = E "+" T
-         | T;
-syntax T = T "*" F
-         | F;
-syntax F = "(" E ")"
-         | [a-z];
+// syntax E = E "+" T
+//          | T;
+// syntax T = T "*" F
+//          | F;
+// syntax F = "(" E ")"
+//          | [a-z];
 
+syntax Stmt = iff: "if" "(" Expr ")" Stmt
+            | whilee: "while" "(" Expr ")" Stmt
+            | forr: "for" "(" Expr ";" Expr ";" Expr ")" Stmt
+            | brackett: "{" Stmt* "}"
+            | assign: [a-z] "=" Expr;
+syntax Expr = right plus: Expr "+" Expr
+         > left times: Expr "*" Expr
+         > brackett: "(" Expr ")"
+         > identifier: [a-z];
 
 void main() {
-    Grammar gr = grammar(#E);
+    Grammar gr = grammar(#Stmt);
+    // Grammar gr = grammar(#E);
+    // Grammar gr = grammar(#Source);
     gr = normalize(gr);
-    // comps = getGrammarComponents(gr);
-    // println(comps);
 
+    // println(gr);
+    // println(getGrammarComponents(gr));
+    // println(getDependencies(grammar(#Source)));
+
+    gr = removeUnusedRules(gr);
     gr = approximateMohriNederhof(gr);
+    gr = combineCharacters(gr);
+    gr = removeSelfLoop(gr);
+    gr = removeEmpty(gr);
+    gr = substituteUnitRules(gr);
 
     println(gr);
-    println(getGrammarComponents(gr));
     
     gr = simplifySymbols(gr);
     str grText = grammar2rascal(gr);    
     loc pos = |project://syntax-highlighter/outputs/grammarOutput.rsc|;
     writeFile(pos, "module something\n"+grText);
 
-    println(parse(getGrammarType(gr), "(b+(d)", allowAmbiguity=true));
+    // println(parse(getGrammarType(gr), "(b+(d)", allowAmbiguity=true));
     
     // println(parse(type(takeOneFrom(gr.starts), gr.rules), "(a * b + c)"));
 }

@@ -12,6 +12,8 @@ import Set;
 import Map;
 import Relation;
 
+import transformations::util::GetBaseDependency;
+
 @doc {
     Retrieves the mutually recursive symbols within the grammar
 }
@@ -25,7 +27,7 @@ set[Symbol] getDependencies(Production prod) {
     set[Symbol] dependencies = {};
 
     visit (prod) {
-        case prod(_, symbols, _): dependencies += {s | s <- symbols};
+        case prod(_, symbols, _): dependencies += {getBaseDependency(s) | s <- symbols};
     }
 
     return dependencies;

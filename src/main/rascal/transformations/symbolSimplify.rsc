@@ -10,13 +10,12 @@ import Grammar;
 import ParseTree;
 import Map;
 import Set;
+import IO;
 
 Grammar simplifySymbols(Grammar gr) {
-    reachableRules = getUsedRules(gr.starts, gr.rules);
-
     map[Symbol, Symbol] names = ();
     set[Symbol] taken = {};
-    for(Symbol name <- reachableRules) {
+    for(Symbol name <- gr.rules) {
         int i=0;
         str base = "G_";
         newName = sort(base+"<i>");
@@ -31,13 +30,12 @@ Grammar simplifySymbols(Grammar gr) {
         }
 
         taken += newName;
-        // names += ()
         names[name] = newName;
     }
 
     set[Symbol] newStarts = toRel(names)[gr.starts];
     set[Production] newProds = {};
-    for(Symbol name <- reachableRules)
+    for(Symbol name <- gr.rules)
         newProds += removeRedundant(replaceNames(gr.rules[name], names));
 
     return grammar(newStarts, newProds);
@@ -46,6 +44,7 @@ Grammar simplifySymbols(Grammar gr) {
 Maybe[str] getName(Symbol symbol) {
     visit(symbol) {
         case sort(name): return just(name);
+        case lex(name): return just(name);
     }
     return nothing();
 }
@@ -58,36 +57,3 @@ Production replaceNames(Production prod, map[Symbol, Symbol] names) = top-down v
 Production removeRedundant(Production prod) = top-down visit(prod) {
     case set[Production] prods => {p | p <- prods, !(regular(_) := p)}
 };
-
-map[Symbol, Production] getUsedRules(set[Symbol] starts, map[Symbol, Production] rules) {
-    rulesRel = toRel(rules);
-
-    rel[Symbol, Production] reachable = {<sym, prod> | <sym, prod> <- rulesRel, sym in starts};
-    extended = extendReachable(reachable, rulesRel);
-    while(reachable != extended) {
-        reachable = extended;
-        extended = extendReachable(reachable, rulesRel);
-    }
-
-    return toMapUnique(reachable);
-}
-
-
-rel[Symbol, Production] extendReachable(
-    rel[Symbol, Production] reachable, 
-    rel[Symbol, Production] allRules
-) = reachable + {<sym, prod> | <sym, prod> <- allRules, isUsed(sym, reachable)};
-
-bool isUsed(Symbol name, map[Symbol, Production] rules) {
-    visit(rules) {
-        case Symbol sym: if(sym == name) return true;
-    }
-    return false;
-}
-bool isUsed(Symbol name, rel[Symbol, Production] rules) {
-    visit(rules) {
-        case Symbol sym: if(sym == name) return true;
-    }
-    return false;
-}
-// bool isUsed(Symbol name, map[Symbol sort, Production def] rules) = name := \rules;

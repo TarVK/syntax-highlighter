@@ -10,6 +10,7 @@ import ParseTree;
 import IO;
 
 import transformations::util::GrammarComponents;
+import transformations::util::GetBaseDependency;
 
 data Symbol = Continuation(Symbol of);
 
@@ -38,7 +39,6 @@ set[Production] processComponent(map[Symbol, Production] productions, set[Symbol
 
         if([*list[Symbol] beginning, list[Symbol] last] := parts) {
             Symbol def = sym;
-            println(parts);
 
             // Handle the items 0 to m-1 (which end in symbols of the rhs)
             for(defParts <- beginning) {
@@ -70,7 +70,7 @@ list[list[Symbol]] split(list[Symbol] parts, set[Symbol] component) {
     list[Symbol] cur = [];
     for(sym <- parts) {
         cur += sym;
-        if(sym in component) {
+        if(getBaseDependency(sym) in component) {
             out += [cur];
             cur = [];
         }

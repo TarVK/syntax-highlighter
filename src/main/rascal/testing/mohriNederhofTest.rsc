@@ -44,11 +44,12 @@ syntax Stmt = iff: "if" "(" Expr ")" Stmt
             | whilee: "while" "(" Expr ")" Stmt
             | forr: "for" "(" Expr ";" Expr ";" Expr ")" Stmt
             | brackett: "{" Stmt* "}"
-            | assign: [a-z] "=" Expr;
+            | @category="assignment" assign: [a-z] "=" Expr;
+
 syntax Expr = right plus: Expr "+" Expr
          > left times: Expr "*" Expr
          > brackett: "(" Expr ")"
-         > identifier: [a-z];
+         > @category="identifier" identifier: [a-z];
 
 void main() {
     Grammar gr = grammar(#Stmt);

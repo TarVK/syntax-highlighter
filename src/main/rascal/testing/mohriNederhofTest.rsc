@@ -17,6 +17,8 @@ import transformations::simplify::SubstituteUnitRules;
 import transformations::simplify::RemoveUnusedRules;
 import transformations::simplify::CombineCharacters;
 
+import search::ApplicableSuffixSearch;
+
 // import testing::grammars::JS;
 
 // syntax A = @category="A" 'a'*;
@@ -63,7 +65,7 @@ void main() {
 
     gr = removeUnusedRules(gr);
     gr = approximateMohriNederhof(gr);
-    gr = combineCharacters(gr);
+    // gr = combineCharacters(gr);
     gr = removeSelfLoop(gr);
     gr = removeEmpty(gr);
     gr = substituteUnitRules(gr);
@@ -75,9 +77,9 @@ void main() {
     loc pos = |project://syntax-highlighter/outputs/grammarOutput.rsc|;
     writeFile(pos, "module something\n"+grText);
 
-    // println(parse(getGrammarType(gr), "(b+(d)", allowAmbiguity=true));
-    
-    // println(parse(type(takeOneFrom(gr.starts), gr.rules), "(a * b + c)"));
+    suffixes = getSuffixes(gr);
+    loc pos2 = |project://syntax-highlighter/outputs/suffixes.txt|;
+    writeFile(pos2, "<suffixes>");
 }
 
 type[Tree] getGrammarType(Grammar grammar) {

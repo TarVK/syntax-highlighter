@@ -13,3 +13,7 @@ rascal-DEPENDENCIES.txt
 
 # Outputs
 outputs/
+
+
+# TS stuff
+node_modules

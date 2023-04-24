@@ -63,23 +63,25 @@ void main() {
     // println(getGrammarComponents(gr));
     // println(getDependencies(grammar(#Source)));
 
+    gr = substituteUnitRules(gr);
+    gr = removeSelfLoop(gr);
+    gr = removeEmpty(gr);
     gr = removeUnusedRules(gr);
     gr = approximateMohriNederhof(gr);
     // gr = combineCharacters(gr);
-    gr = removeSelfLoop(gr);
-    gr = removeEmpty(gr);
-    gr = substituteUnitRules(gr);
 
     println(gr);
     
-    gr = simplifySymbols(gr);
-    str grText = grammar2rascal(gr);    
-    loc pos = |project://syntax-highlighter/outputs/grammarOutput.rsc|;
-    writeFile(pos, "module something\n"+grText);
+    // gr = simplifySymbols(gr);
+    // str grText = grammar2rascal(gr);    
+    // loc pos = |project://syntax-highlighter/outputs/grammarOutput.rsc|;
+    // writeFile(pos, "module something\n"+grText);
 
-    suffixes = getSuffixes(gr);
+    // suffixes = filterCharacterCompatibilities(getApplicableSuffixes(gr), gr);
+    suffixes = getApplicableSuffixes(gr);
+    flattenedSuffixes = (prod: {getSuffix(s) | s <- suffixes[prod]} | prod <- suffixes);
     loc pos2 = |project://syntax-highlighter/outputs/suffixes.txt|;
-    writeFile(pos2, "<suffixes>");
+    writeFile(pos2, "<flattenedSuffixes>");
 }
 
 type[Tree] getGrammarType(Grammar grammar) {

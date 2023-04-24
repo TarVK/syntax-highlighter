@@ -13,6 +13,7 @@ import transformations::util::GrammarComponents;
 import transformations::util::GetBaseDependency;
 
 data Symbol = Continuation(Symbol of);
+data Attr = prodSource(Symbol def, list[Symbol] symbols, set[Attr] attributes, int startIndex);
 
 @doc {
     Applies the Mohri-Nederhof algorithm on the given grammar. Expects the input grammar to be normalized. Attributes are forwarded in derived rules. 
@@ -39,15 +40,17 @@ set[Production] processComponent(map[Symbol, Production] productions, set[Symbol
 
         if([*list[Symbol] beginning, list[Symbol] last] := parts) {
             Symbol def = sym;
+            int index = 0;
 
             // Handle the items 0 to m-1 (which end in symbols of the rhs)
             for(defParts <- beginning) {
-                out += prod(def, defParts, attributes);
+                out += prod(def, defParts, {prodSource(sym, rhs, attributes, index)});
                 if([*_, lastSym] := defParts) def = Continuation(lastSym);
+                index += size(defParts);
             }
 
             // Handle the special last case (which ends in the continuation of this production)
-            out += prod(def, [*last, Continuation(sym)], attributes);
+            out += prod(def, [*last, Continuation(sym)], {prodSource(sym, rhs, attributes, index)});
         }
     }
 
@@ -60,7 +63,7 @@ data Prod = dProd(Symbol def, list[Symbol] symbols, set[Attr] attributes);
 set[Prod] choices(Production prod) {
     switch(prod) {
         case prod(def, symbols, attr): return {dProd(def, symbols, attr)};
-        case choice(def, alts): return {*choices(pr) | pr <- alts};
+        case choice(_, alts): return {*choices(pr) | pr <- alts};
         default: return {};
     }
 }

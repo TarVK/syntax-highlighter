@@ -17,7 +17,8 @@ import transformations::simplify::SubstituteUnitRules;
 import transformations::simplify::RemoveUnusedRules;
 import transformations::simplify::CombineCharacters;
 
-import search::ApplicableSuffixSearch;
+import search::ConflictSearch;
+import search::RegularApplicableSuffixes;
 
 // import testing::grammars::JS;
 
@@ -46,12 +47,15 @@ syntax Stmt = iff: "if" "(" Expr ")" Stmt
             | whilee: "while" "(" Expr ")" Stmt
             | forr: "for" "(" Expr ";" Expr ";" Expr ")" Stmt
             | brackett: "{" Stmt* "}"
-            | @category="assignment" assign: [a-z] "=" Expr;
+            | @category="assignment" assign: [a-z]+ "=" Expr;
 
 syntax Expr = right plus: Expr "+" Expr
          > left times: Expr "*" Expr
          > brackett: "(" Expr ")"
-         > @category="identifier" identifier: [a-z];
+         > Expr "(" {Expr ","}* ")"
+         > @category="identifier" identifier: [a-z]+
+         | "{" ([a-z]+ ":" Expr)* "}"
+         | "function" "(" {Expr ","}* ")" "{" Stmt* "}";
 
 void main() {
     Grammar gr = grammar(#Stmt);
@@ -78,8 +82,11 @@ void main() {
     // writeFile(pos, "module something\n"+grText);
 
     // suffixes = filterCharacterCompatibilities(getApplicableSuffixes(gr), gr);
-    suffixes = getApplicableSuffixes(gr);
-    flattenedSuffixes = (prod: {getSuffix(s) | s <- suffixes[prod]} | prod <- suffixes);
+    conflictData(approx, suffixes) = getConflictData(gr);
+    // map[Production, ProdConflictData] flattenedSuffixes = (prod:sProdConflict(a, {getSuffix(s) | s <- c}) | prod <- suffixes, prodConflict(a, c) := suffixes[prod]);
+
+    flattenedSuffixes = (prod: <suffixes[prod].approx, [getConflicts(approx, suffixes[prod], i, false) | i <- [1..3]]> | prod <- suffixes);
+
     loc pos2 = |project://syntax-highlighter/outputs/suffixes.txt|;
     writeFile(pos2, "<flattenedSuffixes>");
 }
@@ -90,3 +97,5 @@ type[Tree] getGrammarType(Grammar grammar) {
         default:  return #Never;
     };
 } 
+
+data ProdConflictData = sProdConflict(Production sApprox, set[list[Symbol]] sConflicts);

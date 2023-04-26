@@ -22,7 +22,7 @@ Groups getSuffixGroups(grammar(startr, rules)) {
     historyLength = 1;
 
     changed = true;
-    maxCycles = 25;
+    maxCycles = 5;
     while(changed) {
         changed = false;
 

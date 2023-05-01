@@ -4,7 +4,7 @@
 -   An empty end capture: "" can be used to never end a group
 -   Deals well with super deep nestings in terms of performance
 -   Only the top scope "end" match is active
-    -   Can use a lookahead of parent to break out of multiple scopes at once
+    -   Can use parent end as a lookahead to break out of multiple scopes at once
 -   If both "end" matches and a pattern in the scope matches, "end" gets priority:
 
     -   Can use a negative lookahead of the conjunction of all sub-patterns as the "end" match in order to exit when no more children match

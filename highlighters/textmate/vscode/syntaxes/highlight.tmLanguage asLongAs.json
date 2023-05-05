@@ -1,0 +1,25 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "highlight",
+    "patterns": [{ "include": "#a" }, { "include": "#b" }],
+    "repository": {
+        "a": {
+            "begin": "a",
+            "beginCaptures": {
+                "0": { "name": "string.quoted.double.highlight" }
+            },
+            "end": "(?!c)",
+            "patterns": [
+                {
+                    "name": "keyword.control.highlight",
+                    "match": "c"
+                }
+            ]
+        },
+        "b": {
+            "name": "constant.character.escape.highlight",
+            "match": "b"
+        }
+    },
+    "scopeName": "source.highlight"
+}

@@ -1,24 +1,17 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "highlight",
-    "patterns": [{ "include": "#a" }, { "include": "#b" }],
+    "patterns": [{ "include": "#a" }],
     "repository": {
         "a": {
-            "begin": "a",
-            "beginCaptures": {
-                "0": { "name": "string.quoted.double.highlight" }
-            },
-            "end": "(?!c)",
-            "patterns": [
-                {
-                    "name": "keyword.control.highlight",
-                    "match": "c"
-                }
-            ]
-        },
-        "b": {
-            "name": "constant.character.escape.highlight",
-            "match": "b"
+            "match": "(a((b)+|(c)+|))+|(d)|(e)",
+            "captures": {
+                "1": { "name": "a" },
+                "3": { "name": "b" },
+                "4": { "name": "c" },
+                "5": { "name": "d" },
+                "6": { "name": "e" }
+            }
         }
     },
     "scopeName": "source.highlight"

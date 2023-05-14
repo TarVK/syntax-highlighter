@@ -4,14 +4,8 @@
     "patterns": [{ "include": "#a" }],
     "repository": {
         "a": {
-            "match": "(a((b)+|(c)+|))+|(d)|(e)",
-            "captures": {
-                "1": { "name": "a" },
-                "3": { "name": "b" },
-                "4": { "name": "c" },
-                "5": { "name": "d" },
-                "6": { "name": "e" }
-            }
+            "match": "(.|.)*a",
+            "name": "comment"
         }
     },
     "scopeName": "source.highlight"

@@ -5,6 +5,7 @@ import ParseTree;
 
 import regex::NFA;
 import regex::PSNFACombinators;
+import regex::NFASimplification;
 
 
 void main() {
@@ -25,9 +26,10 @@ void main() {
         ),
         charPSNFA([range(100, 120)])
     );
+    m = removeDuplicates(removeEpsilon(relabel(n)));
 
     
-    nfaText = visualize(relabel(n));
+    nfaText = visualize(m);
     loc pos = |project://syntax-highlighter/outputs/nfa.txt|;
     writeFile(pos, "<nfaText>");
 }

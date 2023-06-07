@@ -15,17 +15,16 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
     rel[set[&T], TransSymbol, set[&T]] transitions = {};
     set[set[&T]] found = {initial};
 
-    queue = {initial};
-    void init(to) {
+    set[set[&T]] queue = {initial};
+    void init(set[&T] to) {
         if (!(to in found)) {
-            found += to;
-            queue += to;
+            found += {to};
+            queue += {to};
         }
     }
 
     while(size(queue)>0) {
         <stateSet, queue> = takeOneFrom(queue);
-        // queue -= stateSet;
         
         // Analyze extra symbols
         set[TransSymbol] otherSymbols = { sym 

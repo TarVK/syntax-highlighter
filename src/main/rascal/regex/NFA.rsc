@@ -53,8 +53,8 @@ set[&T] expandEpsilon(NFA[&T] nfa, set[&T] states) {
             transitions = nfa.transitions[state];
             for(<epsilon(), to> <- transitions){
                 if(to in states) continue;
-                newAdded += to;
-                states += to;
+                newAdded += {to};
+                states += {to};
             }
         }
         added = newAdded;
@@ -88,26 +88,6 @@ bool isEmpty(NFA[&T] nfa) {
     
     accepts = size(nfa.accepting & reached)>0;
     return !accepts;
-}
-
-@doc {
-    Relabels all states of the given NFA to a numeric one
-}
-NFA[int] relabel(NFA[&T] nfa) {
-    states = nfa.transitions<0> + nfa.transitions<2>;
-
-    maxID = 0;
-    map[&T, int] stateMapping = ();
-    for(state <- states) {
-        stateMapping[state] = maxID;
-        maxID += 1;
-    }
-
-    return <
-        stateMapping[nfa.initial],
-        {<stateMapping[from], sym, stateMapping[to]> | <from, sym, to> <- nfa.transitions},
-        {stateMapping[state] | state <- nfa.accepting}
-    >;
 }
 
 @doc {

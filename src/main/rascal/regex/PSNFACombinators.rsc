@@ -3,9 +3,12 @@ module regex::PSNFACombinators
 import ParseTree;
 import String;
 import Set;
+import IO;
 
+import regex::util::GetCombinations;
 import regex::util::GetDisjointCharClasses;
 import regex::NFA;
+import regex::NFASimplification;
 import regex::PSNFA;
 
 data State = simple(str name)
@@ -89,8 +92,8 @@ NFA[State] concatPSNFA(NFA[State] head, NFA[State] tail) {
     ) = {<epsilon(), statePair(hNew, t)> | <epsilon(), hNew> <- hTrans}
         + {<epsilon(), statePair(h, tNew)> | <epsilon(), tNew> <- tTrans}
         + {<character(charClass), statePair(hNew, tNew)> 
-            | <character(hCharClass), hNew> <- hTrans, <character(tCharClass), tNew> <- tTrans
-            && charClass := fIntersection(hCharClass, tCharClass) && size(charClass)>0}
+            | <character(hCharClass), hNew> <- hTrans, <character(tCharClass), tNew> <- tTrans,
+            charClass := fIntersection(hCharClass, tCharClass) && size(charClass)>0}
         + {<matchStart(), statePair(hNew, t)> | <matchStart(), hNew> <- hTrans}
         + {<epsilon(), statePair(hNew, tNew)> 
             | <matchEnd(), hNew> <- hTrans, <matchStart(), tNew> <- tTrans}
@@ -111,8 +114,8 @@ NFA[State] lookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
     ) = {<epsilon(), statePair(sNew, la)> | <epsilon(), sNew> <- sTrans}
         + {<epsilon(), statePair(s, laNew)> | <epsilon(), laNew> <- laTrans}
         + {<character(charClass), statePair(sNew, laNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(laCharClass), laNew> <- laTrans
-            && charClass := fIntersection(sCharClass, laCharClass) && size(charClass)>0}
+            | <character(sCharClass), sNew> <- sTrans, <character(laCharClass), laNew> <- laTrans,
+            charClass := fIntersection(sCharClass, laCharClass) && size(charClass)>0}
         + {<matchStart(), statePair(sNew, la)> | <matchStart(), sNew> <- sTrans}
         + {<matchEnd(), statePair(sNew, laNew)> 
             | <matchEnd(), sNew> <- sTrans, <matchStart(), laNew> <- laTrans}
@@ -123,7 +126,7 @@ NFA[State] lookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
 
 
 @doc {
-    Constructs a PSNFA matching any word of the nfa PSNFA, if it's preceeded by a word in the lookbehind PSNFA
+    Constructs a PSNFA matching any word of the n PSNFA, if it's preceeded by a word in the lookbehind PSNFA
 }
 NFA[State] lookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     rel[TransSymbol, State] combine(
@@ -134,8 +137,8 @@ NFA[State] lookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     ) = {<epsilon(), statePair(sNew, lb)> | <epsilon(), sNew> <- sTrans}
         + {<epsilon(), statePair(s, lbNew)> | <epsilon(), lbNew> <- lbTrans}
         + {<character(charClass), statePair(sNew, lbNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(lbCharClass), lbNew> <- lbTrans
-            && charClass := fIntersection(sCharClass, lbCharClass) && size(charClass)>0}
+            | <character(sCharClass), sNew> <- sTrans, <character(lbCharClass), lbNew> <- lbTrans,
+            charClass := fIntersection(sCharClass, lbCharClass) && size(charClass)>0}
         + {<epsilon(), statePair(s, lbNew)> | <matchStart(), lbNew> <- lbTrans}
         + {<matchStart(), statePair(sNew, lbNew)> 
             | <matchStart(), sNew> <- sTrans, <matchEnd(), lbNew> <- lbTrans}
@@ -143,6 +146,146 @@ NFA[State] lookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
 
     return productPSNFA(n, lookbehind, combine);
 }
+
+
+@doc {
+    Constructs a PSNFA matching any word of the n PSNFA, if it's not followed by a word in the lookahead PSNFA
+}
+NFA[State] negativeLookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
+    rel[TransSymbol, State] combine(
+        State s, 
+        State la, 
+        rel[TransSymbol, State] sTrans, 
+        rel[TransSymbol, State] laTrans
+    ) = {<epsilon(), statePair(sNew, la)> | <epsilon(), sNew> <- sTrans}
+        + {<epsilon(), statePair(s, laNew)> | <epsilon(), laNew> <- laTrans}
+        + {<character(charClass), statePair(sNew, laNew)> 
+            | <character(sCharClass), sNew> <- sTrans, <character(laCharClass), laNew> <- laTrans,
+            charClass := fIntersection(sCharClass, laCharClass) && size(charClass)>0}
+        + {<matchStart(), statePair(sNew, la)> | <matchStart(), sNew> <- sTrans}
+        + {<matchEnd(), statePair(sNew, laNew)> 
+            | <matchEnd(), sNew> <- sTrans, <matchStart(), laNew> <- laTrans};
+
+    if(<laInitial, laTransitions, laAccepting> := lookahead) {
+        laNoEndTransitions = {<from, on == matchEnd() ? epsilon() : on, to> | <from, on, to> <- laTransitions};
+        NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(<laInitial, laNoEndTransitions, laAccepting>));
+        invertedLookahead = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+        return productPSNFA(n, invertedLookahead, combine);
+    }
+
+    // Shouldn't be reachable
+    return n;
+}
+
+
+@doc {
+    Constructs a PSNFA matching any word of the n PSNFA, if it's not preceeded by a word in the lookbehind PSNFA
+}
+NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
+    rel[TransSymbol, State] combine(
+        State s, 
+        State lb, 
+        rel[TransSymbol, State] sTrans, 
+        rel[TransSymbol, State] lbTrans
+    ) = {<epsilon(), statePair(sNew, lb)> | <epsilon(), sNew> <- sTrans}
+        + {<epsilon(), statePair(s, lbNew)> | <epsilon(), lbNew> <- lbTrans}
+        + {<character(charClass), statePair(sNew, lbNew)> 
+            | <character(sCharClass), sNew> <- sTrans, <character(lbCharClass), lbNew> <- lbTrans,
+            charClass := fIntersection(sCharClass, lbCharClass) && size(charClass)>0}
+        + {<matchStart(), statePair(sNew, lbNew)> 
+            | <matchStart(), sNew> <- sTrans, <matchEnd(), lbNew> <- lbTrans}
+        + {<matchEnd(), statePair(sNew, lb)> | <matchEnd(), sNew> <- sTrans};
+
+    
+    if(<lbInitial, lbTransitions, lbAccepting> := lookbehind) {
+        lbNoStartTransitions = {<from, on == matchStart() ? epsilon() : on, to> | <from, on, to> <- lbTransitions};
+        NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(<lbInitial, lbNoStartTransitions, lbAccepting>));
+        invertedLookbehind = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+        return productPSNFA(n, invertedLookbehind, combine);
+    }
+
+    // Shouldn't be reachable
+    return n;
+}
+
+@doc {
+    Constructs a PSNFA matching one or more repititions of the n PSNFA, considering only valid overlap of prefix and suffix
+
+    Use a simplified DFA as input (without dead-end states) to prevent unnecessary expnential blow up
+}
+NFA[State] iterationPSNFA(NFA[State] n) {
+    State initial = stateSet({n.initial});
+    rel[State, TransSymbol, State] transitions = {};
+    set[State] found = {};
+
+    <prefixStates, _, _> = getPSNFApartition(n);
+
+    set[State] queue = {initial};
+    while(size(queue)>0) {
+        <state, queue> = takeOneFrom(queue);
+
+        if(stateSet(states) := state) {
+            trans = {<from, on, to> | <from, on, to> <- n.transitions, from in states};
+
+            // Get all standard epsilon transitions
+            rel[TransSymbol, State] newTransitions = 
+                {<epsilon(), stateSet(newStates)> | <_, epsilon(), to> <- trans, newStates := states + {to}, newStates != states}
+                + {<epsilon(), stateSet(newStates)> | <from, epsilon(), to> <- trans, newStates := states - {from} + {to}, newStates != states};
+
+            // Get all possible synchronized character transitions
+            outChars = {cc | character(cc) <- trans<1>};
+            disjointOutChars = getDisjointCharClasses(outChars);
+            for(ccr(cc, includes) <- disjointOutChars) {
+                stateCharTransitions = {<from, toOptions> | from <- states, 
+                    toOptions := {to | <character(on), to> <- n.transitions[from], on in includes}, 
+                    size(toOptions)>0};
+
+                allStatesTransition = size(states - stateCharTransitions<0>)==0;
+                if(!allStatesTransition) continue;
+
+                newTransitions += {<character(cc), stateSet(to)> | to <- getCombinations(stateCharTransitions<1>)};
+            }
+
+            // Match start/stop transitions
+            curPrefixStates = states & prefixStates;
+            allPrefix = size(curPrefixStates) == size(states);
+            if(allPrefix)
+                newTransitions += {<matchStart(), stateSet(states + {to})>, <matchStart(), stateSet(states - {from} + {to})> | <from, matchStart(), to> <- trans};
+            noPrefix = size(curPrefixStates) == 0;
+            if(noPrefix)
+                newTransitions += {<matchEnd(), stateSet(states - {from} + {to})> | <from, matchEnd(), to> <- trans};
+
+            // Match loop transitions
+            newTransitions += {<epsilon(), stateSet(states - {fromPrefix, fromMain} + {toMain, toSuffix})>, <epsilon(), stateSet(states - {fromMain} + {toMain, toSuffix})> | <fromPrefix, matchStart(), toMain> <- trans, <fromMain, matchEnd(), toSuffix> <- trans};
+
+            // println(<states, newTransitions>);
+            for(<sym, to> <- newTransitions) {
+                transitions += <state, sym, to>;
+                if(to in found) continue;
+                found += to;
+                queue += to;
+            }
+        }
+    }
+
+    accepting = {state | state:stateSet(states) <- found, all(s <- states, s in n.accepting)};
+
+    return <initial, transitions, accepting>;   
+}
+
+//         Helpers
+// ------------------------
+@doc {
+    Turns the PSNFA containing sets of states into a PSNFA with State instances, to be reusable in other PSNFA combinators
+}
+NFA[State] relabelSetPSNFA(NFA[set[State]] nfa) = mapStates(nfa, State (set[State] states) { return stateSet(states); });
+
+@doc {
+    Turns the PSNFA containing int states into a PSNFA with State instances, to be reusable in other PSNFA combinators
+}
+NFA[State] relabelIntPSNFA(NFA[int] nfa) = mapStates(nfa, State (int state) { return simple("<state>"); });
+
+
 
 @doc {
     A reusable function that can be used for arbitrary product automata
@@ -164,7 +307,6 @@ NFA[State] productPSNFA(
     set[State] queue = {initial};
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
-        // queue -= stateSet;
 
         if(statePair(s1, s2) := state) {
             rel[TransSymbol, State] newTransitions = combine(s1, s2, n1.transitions[s1], n2.transitions[s2]);
@@ -178,7 +320,7 @@ NFA[State] productPSNFA(
         }
     }
 
-    accepting = {state | state:statePair(s1, s2) <- found && s1 in n1.accepting && s2 in n2.accepting};
+    accepting = {state | state:statePair(s1, s2) <- found, s1 in n1.accepting, s2 in n2.accepting};
 
     return <initial, transitions, accepting>;   
 }

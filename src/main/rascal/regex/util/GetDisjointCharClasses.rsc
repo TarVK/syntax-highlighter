@@ -5,7 +5,7 @@ import ParseTree;
 import lang::rascal::grammar::definition::Characters;
 
 
-data CharClassRegion = ccr(CharClass, set[CharClass]);
+data CharClassRegion = ccr(CharClass cc, set[CharClass] includes);
 
 @doc{
     Given a set of possibly overlapping character classes, obtains all the disjoint character classes that together cover all specified classes and no more, such that every output class is contained within the same subset of character classes of the input. 

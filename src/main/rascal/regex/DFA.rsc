@@ -31,7 +31,7 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
             | state <- stateSet, <sym, _> <- nfa.transitions[state] 
             && !(character(_) := sym) && !(epsilon() := sym)};
         for(sym <- otherSymbols) {
-            set[set[&T]] toSet = expandEpsilon(nfa, 
+            set[&T] toSet = expandEpsilon(nfa, 
                     {to | state <- stateSet, to <- nfa.transitions[state][sym]});
             init(toSet);
             transitions += <stateSet, sym, toSet>;
@@ -39,7 +39,7 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
 
         restSymbols = getRemainder(otherSymbols);
         for(sym <- restSymbols) {
-            set[set[&T]] toSet = {};
+            set[&T] toSet = {};
             init(toSet);
             transitions += <stateSet, sym, toSet>;
         }
@@ -48,7 +48,7 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
         disjointCharClasses = getDisjointCharClasses(
             { charClass | state <- stateSet, <character(charClass), _> <- nfa.transitions[state]});
         for(ccr(charClass, ccMembers) <- disjointCharClasses) {
-            set[set[&T]] toSet = expandEpsilon(nfa, 
+            set[&T] toSet = expandEpsilon(nfa, 
                 {to | state <- stateSet, <character(cc), to> <- nfa.transitions[state] 
                     && cc in ccMembers});
             init(toSet);
@@ -57,7 +57,7 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
 
         restChars = fComplement(([] | fUnion(it, cc) | ccr(cc, _) <- disjointCharClasses));
         if(size(restChars)>0) {
-            set[set[&T]] toSet = {};
+            set[&T] toSet = {};
             init(toSet);
             transitions += <stateSet, character(restChars), toSet>;
         }

@@ -75,14 +75,41 @@ set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPa
     Relabels all states of the given NFA to a numeric one
 }
 NFA[int] relabel(NFA[&T] nfa) {
-    states = nfa.transitions<0> + nfa.transitions<2>;
+    maxID = 0; 
+    set[&T] found = {};
+    set[&T] queue = {nfa.initial};
+    map[&T, int] labels = ();
 
-    maxID = 0;
-    map[&T, int] stateMapping = ();
-    for(state <- states) {
-        stateMapping[state] = maxID;
+    while(size(queue)>0) {
+        <state, queue> = takeOneFrom(queue);
+
+        if(state in found) continue;
+        found += {state};
+
+        labels[state] = maxID;
         maxID += 1;
+
+        queue += nfa.transitions[state]<1>;
     }
+
+    int mapState(&T state) {
+        if (state in labels) return labels[state];
+        maxID += 1;
+        return maxID-1;
+    }
+
+    return mapStates(nfa, mapState);
+}
+
+@doc {
+    Obtains an isometric NFA with each state remapped
+}
+NFA[&K] mapStates(NFA[&T] nfa, &K(&T) mapState) {
+    states = getStates(nfa);
+
+    map[&T, &K] stateMapping = ();
+    for(state <- states)
+        stateMapping[state] = mapState(state);
 
     return <
         stateMapping[nfa.initial],
@@ -122,4 +149,41 @@ NFA[set[&T]] removeEpsilon(NFA[&T] nfa) {
     accepting = {stateSet | stateSet <- found && size(stateSet & nfa.accepting)>0};
 
     return <initial, transitions, accepting>;
+}
+
+@doc {
+    Removes all states from the NFA that are not reachable from initial state to accepting state
+}
+NFA[&T] removeUnreachable(NFA[&T] nfa) {
+    // Forward search
+    set[&T] queue = {nfa.initial};
+    set[&T] reachableInitial = queue;
+    while(size(queue)>0) {
+        <state, queue> = takeOneFrom(queue);
+        toStates = nfa.transitions[state]<1>;
+        newToStates = toStates - reachableInitial;
+        reachableInitial += newToStates;
+        queue += newToStates;
+    }
+
+    // Backward search
+    revTransitions = nfa.transitions<2, 1, 0>;
+    queue = nfa.accepting;
+    set[&T] reachableAccepting = queue;
+    while(size(queue)>0) {
+        <state, queue> = takeOneFrom(queue);
+        fromStates = revTransitions[state]<1>;
+        newFromStates = fromStates - reachableAccepting;
+        reachableAccepting += newFromStates;
+        queue += newFromStates;
+    }
+
+    return filterStates(nfa, reachableInitial & reachableAccepting);
+}
+NFA[&T] filterStates(NFA[&T] nfa, set[&T] states) {
+    return <
+        nfa.initial,
+        {<from, on, to> | <from, on, to> <- nfa.transitions, from in states, to in states},
+        {s | s <- nfa.accepting, s in states}
+    >;
 }

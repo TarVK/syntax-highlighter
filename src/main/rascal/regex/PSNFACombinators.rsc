@@ -19,9 +19,14 @@ data State = simple(str name)
 TransSymbol anyChar = character([range(1,0x10FFFF)]);
 
 @doc {
+    A PSNFA with a completely empty language
+}
+NFA[State] neverPSNFA() = <simple("never"), {}, {}>;
+
+@doc {
     A PSNFA matching the language consisting of the empty string with any prefix and suffix
 }
-NFA[State] emptyPSNFA = <
+NFA[State] emptyPSNFA() = <
     simple("empty-prefix"), 
     {
         <simple("empty-prefix"), anyChar, simple("empty-prefix")>,

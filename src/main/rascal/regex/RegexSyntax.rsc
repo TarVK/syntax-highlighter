@@ -8,16 +8,21 @@ syntax RegexCST
     | minIteration: RegexCST "{" Num min "," "}"
     | maxIteration: RegexCST "{" "," Num max "}"
     | minMaxIteration: RegexCST "{" Num min "," Num max "}"
+    | exactIteration: RegexCST "{" Num amount "}"
     | optional: RegexCST "?"
     > right concatenation: RegexCST head RegexCST tail
     > left (
         left lookahead: RegexCST exp "\>" RegexCST lookahead
+        | left emptyLookahead: "(" "\>" RegexCST lookahead ")"
         | left negativeLookahead: RegexCST exp "!\>" RegexCST negativeLookahead
+        | left emptyNegativeLookahead: "(" "!\>" RegexCST negativeLookahead ")"
         | right lookbehind: RegexCST lookbehind "\<" RegexCST exp
+        | right emptyLookbehind: "(" RegexCST lookbehind "\<" ")"
         | right negativeLookbehind: RegexCST negativeLookbehind "!\<" RegexCST exp
+        | right emptyNegativeLookbehind: "(" RegexCST negativeLookbehind "!\<" ")"
     )
     > left alternation: RegexCST opt1 "|" RegexCST opt2
-    | bracket \bracket: "(" RegexCST exp ")";
+    | bracket \bracket: "(" RegexCST ")";
 
 syntax ChararacterClass
 	= simpleCharclass: "[" Range* ranges "]" 
@@ -36,4 +41,4 @@ syntax Num = [0-9]+;
 lexical Char
 	= "\\" [\[\]\-bfnrt] 
 	| ![\[\]\-];
-lexical RawChar = ![{}\[\]\<\>,\-+*!|&?];      
+lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?];      

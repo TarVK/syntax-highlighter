@@ -22,6 +22,7 @@ data Regex = never()
            | alternation(list[Regex] options)
            | iteration(Regex regex)
            | optional(Regex regex)
+           | \exact-iteration(Regex regex, int amount)
            | \min-iteration(Regex regex, int min)
            | \max-iteration(Regex regex, int max)
            | \min-max-iteration(Regex regex, int min, int max);
@@ -43,6 +44,8 @@ Regex normalize(Regex inp) {
 
         case Regex::optional(regex) => alternation(regex, empty())
 
+        case \exact-iteration(regex, amount) => repeat(regex, amount)
+
         case \min-iteration(regex, 0) => alternation(\multi-iteration(regex), empty())
         case \min-iteration(regex, 1) => \multi-iteration(regex)
         case \min-iteration(regex, min) => (\multi-iteration(regex) | concatenation(regex, it) | _ <- [1..min])
@@ -53,6 +56,7 @@ Regex normalize(Regex inp) {
         case \min-max-iteration(_, min, max) => never() when min > max
         case \min-max-iteration(regex, min, max) => 
             concatenation(repeat(regex, min), expandMaxIteration(regex, max-min))
+
     }
 }
 
@@ -75,15 +79,22 @@ Regex CSTtoRegex(RegexCST regex) {
         case (RegexCST)`<ChararacterClass chars>`: return character(CSTtoChararacterClass(chars));
         case (RegexCST)`<RegexCST cst>+`: return \multi-iteration(CSTtoRegex(cst));
         case (RegexCST)`<RegexCST cst>*`: return iteration(CSTtoRegex(cst));
+        case (RegexCST)`<RegexCST cst>{<Num amount>}`: return \exact-iteration(CSTtoRegex(cst), CSTtoNumber(amount));
         case (RegexCST)`<RegexCST cst>{<Num min>,}`: return \min-iteration(CSTtoRegex(cst), CSTtoNumber(min));
         case (RegexCST)`<RegexCST cst>{,<Num max>}`: return \max-iteration(CSTtoRegex(cst), CSTtoNumber(max));
         case (RegexCST)`<RegexCST cst>{<Num min>,<Num max>}`: return \min-max-iteration(CSTtoRegex(cst), CSTtoNumber(min), CSTtoNumber(max));
         case (RegexCST)`<RegexCST cst>?`: return optional(CSTtoRegex(cst));
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
+        
         case (RegexCST)`<RegexCST cst>\><RegexCST la>`: return lookahead(CSTtoRegex(cst),CSTtoRegex(la));
         case (RegexCST)`<RegexCST cst>!\><RegexCST nla>`: return \negative-lookahead(CSTtoRegex(cst),CSTtoRegex(nla));
-        case (RegexCST)`<RegexCST lb>\<<RegexCST cst>`: return lookbehind(CSTtoRegex(lb),CSTtoRegex(cst));
-        case (RegexCST)`<RegexCST nlb>!\<<RegexCST cst>`: return \negative-lookbehind(CSTtoRegex(nlb),CSTtoRegex(cst));
+        case (RegexCST)`<RegexCST lb>\<<RegexCST cst>`: return lookbehind(CSTtoRegex(cst),CSTtoRegex(lb));
+        case (RegexCST)`<RegexCST nlb>!\<<RegexCST cst>`: return \negative-lookbehind(CSTtoRegex(cst),CSTtoRegex(nlb));
+        case (RegexCST)`(\><RegexCST la>)`: return lookahead(empty(),CSTtoRegex(la));
+        case (RegexCST)`(!\><RegexCST nla>)`: return \negative-lookahead(empty(),CSTtoRegex(nla));
+        case (RegexCST)`(<RegexCST lb>\<)`: return lookbehind(empty(), CSTtoRegex(lb));
+        case (RegexCST)`(<RegexCST nlb>!\<)`: return \negative-lookbehind(empty(), CSTtoRegex(nlb));
+
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
         case (RegexCST)`(<RegexCST cst>)`: return CSTtoRegex(cst);
     }

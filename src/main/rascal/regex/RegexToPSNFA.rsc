@@ -16,6 +16,7 @@ NFA[State] regexToPSNFA(Regex regex) {
     switch(regex) {
         case never(): n = neverPSNFA();
         case empty(): n = emptyPSNFA();
+        case always(): n = alwaysPSNFA();
         case character(cc): n = charPSNFA(cc);
         case lookahead(r, la): n = lookaheadPSNFA(regexToPSNFA(r), regexToPSNFA(la));
         case lookbehind(r, lb): n = lookbehindPSNFA(regexToPSNFA(r), regexToPSNFA(lb));
@@ -23,6 +24,7 @@ NFA[State] regexToPSNFA(Regex regex) {
         case \negative-lookbehind(r, lb): n = negativeLookbehindPSNFA(regexToPSNFA(r), regexToPSNFA(lb));
         case concatenation(h, t): n = concatPSNFA(regexToPSNFA(h), regexToPSNFA(t));
         case alternation(r1, r2): n = unionPSNFA(regexToPSNFA(r1), regexToPSNFA(r2));
+        case subtract(r, s): n = subtractPSNFA(regexToPSNFA(r), regexToPSNFA(s));
         case \multi-iteration(r): {
             rnfa = regexToPSNFA(r);
             rdfa = removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(rnfa)));
@@ -35,6 +37,7 @@ NFA[State] regexToPSNFA(Regex regex) {
 
 NFA[State] simplify(NFA[State] n) {
     simplified = removeDuplicates(removeEpsilon(removeUnreachable(n)));
+    // simplified = removeEpsilon(removeUnreachable(n));
     return relabelIntPSNFA(relabel(simplified));
     // return mapStates(simplified, State (set[set[State]] states) {
     //     return stateSet({*S | S <- states});

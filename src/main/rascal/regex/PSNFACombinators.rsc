@@ -37,6 +37,22 @@ NFA[State] emptyPSNFA() = <
     {simple("empty-suffix")}
 >;
 
+
+@doc {
+    A PSNFA matching the language consisting of the all strings with any prefix and suffix
+}
+NFA[State] alwaysPSNFA() = <
+    simple("always-prefix"), 
+    {
+        <simple("always-prefix"), anyChar, simple("always-prefix")>,
+        <simple("always-prefix"), matchStart(), simple("always-main")>,
+        <simple("always-main"), matchEnd(), simple("always-suffix")>,
+        <simple("always-main"), anyChar, simple("always-main")>,
+        <simple("always-suffix"), anyChar, simple("always-suffix")>
+    },
+    {simple("always-suffix")}
+>;
+
 @doc {
     Constructs a PSNFA matching the language consisting of the string consisting of 1 character (in the specified class) with any prefix and suffix
 }
@@ -173,8 +189,7 @@ NFA[State] negativeLookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
 
     if(<laInitial, laTransitions, laAccepting> := lookahead) {
         laNoEndTransitions = {<from, on == matchEnd() ? epsilon() : on, to> | <from, on, to> <- laTransitions};
-        NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(<laInitial, laNoEndTransitions, laAccepting>));
-        invertedLookahead = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+        invertedLookahead = invertPSNFA(<laInitial, laNoEndTransitions, laAccepting>);
         return productPSNFA(n, invertedLookahead, combine);
     }
 
@@ -204,14 +219,47 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     
     if(<lbInitial, lbTransitions, lbAccepting> := lookbehind) {
         lbNoStartTransitions = {<from, on == matchStart() ? epsilon() : on, to> | <from, on, to> <- lbTransitions};
-        NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(<lbInitial, lbNoStartTransitions, lbAccepting>));
-        invertedLookbehind = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+        invertedLookbehind = invertPSNFA(<lbInitial, lbNoStartTransitions, lbAccepting>);
         return productPSNFA(n, invertedLookbehind, combine);
     }
 
     // Shouldn't be reachable
     return n;
 }
+
+@doc {
+    Constructs a PSNFA matching all words that were not part of the language of PSNFA n
+}
+NFA[State] invertPSNFA(NFA[State] n) {
+    NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(n));
+    NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+    return removeUnreachable(dfaInverted);
+}
+
+@doc {
+    Constructs a PSNFA matching all words that are matched by n1 and n2
+}
+NFA[State] productPSNFA(NFA[State] n1, NFA[State] n2) {
+    rel[TransSymbol, State] combine(
+        State s1, 
+        State s2, 
+        rel[TransSymbol, State] trans1, 
+        rel[TransSymbol, State] trans2
+    ) = {<epsilon(), statePair(s1New, s2)> | <epsilon(), s1New> <- trans1}
+        + {<epsilon(), statePair(s1, s2New)> | <epsilon(), s2New> <- trans2}
+        + {<character(charClass), statePair(s1New, s2New)> 
+            | <character(s1CharClass), s1New> <- trans1, <character(s2CharClass), s2New> <- trans2,
+            charClass := fIntersection(s1CharClass, s2CharClass) && size(charClass)>0}
+        + {<matchStart(), statePair(s1New, s2New)> | <matchStart(), s1New> <- trans1, <matchStart(), s2New> <- trans2}
+        + {<matchEnd(), statePair(s1New, s2New)> | <matchEnd(), s1New> <- trans1, <matchEnd(), s2New> <- trans2};
+
+    return productPSNFA(n1, n2, combine);
+}
+
+@doc {
+    Constructs a PSNFA matching all words in n, that are not in subt
+}
+NFA[State] subtractPSNFA(NFA[State] n, NFA[State] subt) = productPSNFA(n, invertPSNFA(subt));
 
 @doc {
     Constructs a PSNFA matching one or more repititions of the n PSNFA, considering only valid overlap of prefix and suffix
@@ -289,7 +337,6 @@ NFA[State] relabelSetPSNFA(NFA[set[State]] nfa) = mapStates(nfa, State (set[Stat
     Turns the PSNFA containing int states into a PSNFA with State instances, to be reusable in other PSNFA combinators
 }
 NFA[State] relabelIntPSNFA(NFA[int] nfa) = mapStates(nfa, State (int state) { return simple("<state>"); });
-
 
 
 @doc {

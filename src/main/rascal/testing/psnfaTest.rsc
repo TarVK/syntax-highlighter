@@ -17,8 +17,10 @@ void main() {
     // regex = parseRegexNormalized("([a-o]\>[a-z]{3}!\>ok)*");
     // regex = parseRegexNormalized("((\>(a{5})*(a|b){4}b)a{4})*b*c");
     // regex = parseRegexNormalized("a{7}");
-    regex = parseRegexNormalized("(something|somethingElse|more|stuff)!\<[a-z]+!\>(stuff|orange|crap)");
-    // regex = parseRegexNormalized("(!\>something|somethingElse|more|stuff)[a-z]+");
+    // regex = parseRegexNormalized("(something|somethingElse|more|stuff)!\<[a-z]+!\>(stuff|orange|crap)");
+    // regex = parseRegexNormalized("a!\>(aa)+b");
+    // regex = parseRegexNormalized("-(something|somethingElse|more|stuff)");
+    regex = parseRegexNormalized("[a-z]*-$e");
     nfa = regexToPSNFA(regex);
 
     

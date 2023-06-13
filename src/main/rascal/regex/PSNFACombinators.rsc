@@ -7,6 +7,7 @@ import IO;
 
 import regex::util::GetCombinations;
 import regex::util::GetDisjointCharClasses;
+import regex::util::AnyCharClass;
 import regex::NFA;
 import regex::NFASimplification;
 import regex::PSNFA;
@@ -16,7 +17,7 @@ data State = simple(str name)
            | statePair(State a, State b)
            | stateSet(set[State] states);
 
-TransSymbol anyChar = character([range(1,0x10FFFF)]);
+TransSymbol anyChar = character(anyCharClass());
 
 @doc {
     A PSNFA with a completely empty language

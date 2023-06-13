@@ -5,7 +5,7 @@ lexical WhitespaceAndComment
     = [\t-\n\r\ ]
     | @category="comment" "//" ![\n]* $;
     
-lexical Identifier = [a-zA-Z0-9@$_\[\]{}\<\>&|+\-*/\\!%^#?,.:\'\"]+ \ "output" !>> [a-zA-Z0-9@$_\[\]{}\<\>&|+\-*/\\!%^#?,.:\'\"] !>> "//";
+lexical Identifier = [a-zA-Z0-9@$_\[\]{}\<\>&|+\-*/\\!%^#?,.:\'\"]+ \ "output" !>> [a-zA-Z0-9@$_\[\]{}\<\>&|+\-*/\\!%^#?,.:\'\"] !>> "//" ;
 start syntax Program = Statement*;
 syntax Statement = Output
 				 | Declaration;
@@ -18,7 +18,7 @@ syntax Function = Structure EQ Expression SC;
 syntax SimpleStructure =  @category="variable.parameter" Identifier
 				       |  @category="variable.parameter" bracket LB Structure RB;
 syntax Structure = Identifier SimpleStructure*; 
-syntax SimpleExpression = Identifier 
+syntax SimpleExpression = Identifier
 						| bracket LB Expression RB; 
 syntax Expression = SimpleExpression+; 
 syntax OutputKeyword = @category="keyword" "output";

@@ -1,49 +1,50 @@
 module regex::RegexSyntax
 
 syntax RegexCST 
-    = char: RawChar
-    | charClass: ChararacterClass
-    | never: "$0"
-    | empty: "$e"
-    | always: "$1"
-    | multiIteration: RegexCST "+"
-    | iteration: RegexCST "*"
-    | minIteration: RegexCST "{" Num min "," "}"
-    | maxIteration: RegexCST "{" "," Num max "}"
-    | minMaxIteration: RegexCST "{" Num min "," Num max "}"
-    | exactIteration: RegexCST "{" Num amount "}"
-    | optional: RegexCST "?"
-    > right concatenation: RegexCST head !>> [\-!\>\<] [\-!\>\<] !<< RegexCST tail
+    = charCST: RawChar
+    | charClassCST: ChararacterClass
+    | neverCST: "$0"
+    | emptyCST: "$e"
+    | alwaysCST: "$1"
+    | multiIterationCST: RegexCST "+"
+    | iterationCST: RegexCST "*"
+    | minIterationCST: RegexCST "{" Num min "," "}"
+    | maxIterationCST: RegexCST "{" "," Num max "}"
+    | minMaxIterationCST: RegexCST "{" Num min "," Num max "}"
+    | exactIterationCST: RegexCST "{" Num amount "}"
+    | optionalCST: RegexCST "?"
+    > right concatenationCST: RegexCST head !>> [\\!\>\<] [\\!\>\<] !<< RegexCST tail
     > left (
-        left lookahead: RegexCST exp "\>" RegexCST lookahead
-        | left emptyLookahead: "\>" RegexCST lookahead
-        | left negativeLookahead: RegexCST exp "!\>" RegexCST negativeLookahead
-        | left emptyNegativeLookahead: "!\>" RegexCST negativeLookahead
-        | right lookbehind: RegexCST lookbehind "\<" RegexCST exp
-        | right emptyLookbehind: RegexCST lookbehind "\<"
-        | right negativeLookbehind: RegexCST negativeLookbehind "!\<" RegexCST exp
-        | right emptyNegativeLookbehind: RegexCST negativeLookbehind "!\<"
+        left lookaheadCST: RegexCST exp "\>" RegexCST lookahead
+        | left emptyLookaheadCST: "\>" RegexCST lookahead
+        | left negativeLookaheadCST: RegexCST exp "!\>" RegexCST negativeLookahead
+        | left emptyNegativeLookaheadCST: "!\>" RegexCST negativeLookahead
+        | right lookbehindCST: RegexCST lookbehind "\<" RegexCST exp
+        | right emptyLookbehindCST: RegexCST lookbehind "\<"
+        | right negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
+        | right emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
     )
-    > left alternation: RegexCST opt1 "|" RegexCST opt2
-    > left subtract: RegexCST "-" RegexCST 
-    > left emptySubtract: "-" RegexCST 
-    | bracket \bracket: "(" RegexCST ")";
+    > left alternationCST: RegexCST opt1 "|" RegexCST opt2
+    > left subtractCST: RegexCST "\\" RegexCST 
+    > left emptySubtractCST: "\\" RegexCST 
+    | bracket \bracketCST: "(" RegexCST ")";
 
 syntax ChararacterClass
-	= simpleCharclass: "[" Range* ranges "]" 
-	| complement: "!" ChararacterClass 
-	> left difference: ChararacterClass lhs "--" ChararacterClass rhs 
-	> left intersection: ChararacterClass lhs "&&" ChararacterClass rhs 
-	> left union: ChararacterClass lhs "||" ChararacterClass rhs 
-	| bracket \bracket: "{" ChararacterClass charClass "}" ;
+	= anyCharCST: "."
+    | simpleCharclassCST: "[" Range* ranges "]" 
+	| complementCST: "!" ChararacterClass 
+	> left differenceCST: ChararacterClass lhs "-" ChararacterClass rhs 
+	> left intersectionCST: ChararacterClass lhs "&&" ChararacterClass rhs 
+	> left unionCST: ChararacterClass lhs "||" ChararacterClass rhs 
+	| bracket \bracketCST: "{" ChararacterClass charClass "}" ;
  
 syntax Range
-	= fromTo: Char start "-" Char end 
-	| character: Char character;
+	= fromToCST: Char start "-" Char end 
+	| characterCST: Char character;
 
 syntax Num = [0-9]+;
 
 lexical Char
 	= "\\" [\[\]\-bfnrt] 
 	| ![\[\]\-];
-lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?$];
+lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?$.\\];

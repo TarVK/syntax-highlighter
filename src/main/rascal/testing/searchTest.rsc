@@ -17,7 +17,7 @@ import transformations::simplify::SubstituteUnitRules;
 import transformations::simplify::RemoveUnusedRules;
 import transformations::simplify::CombineCharacters;
 
-import search::ApplicableSuffixSearch;
+import search::RegularApplicableSuffixes;
 
 
 syntax Never = ;
@@ -54,7 +54,7 @@ void main() {
     // gr = removeEmpty(gr);
 
 
-    suffixes = getSuffixes(gr);
+    suffixes = getRegularApplicableSuffixes(gr);
     loc pos2 = |project://syntax-highlighter/outputs/suffixes.txt|;
     writeFile(pos2, "<suffixes>");
 }

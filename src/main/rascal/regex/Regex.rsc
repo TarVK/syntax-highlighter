@@ -1,74 +1,81 @@
 module regex::Regex
 
 import lang::rascal::grammar::definition::Characters;
+import lang::rascal::format::Escape;
 import ParseTree;
 import String;
+import IO;
 
 import regex::util::GetDisjointCharClasses;
+import regex::util::AnyCharClass;
 import regex::RegexSyntax;
 
 data Regex = never()
            | empty()
            | always()
            | character(list[CharRange] ranges)
-           | lookahead(Regex regex, Regex lookahead)
-           | lookbehind(Regex regex, Regex lookbehind)
-           | \negative-lookahead(Regex regex, Regex lookahead)
-           | \negative-lookbehind(Regex regex, Regex lookbehind)
+           | lookahead(Regex r, Regex lookahead)
+           | lookbehind(Regex r, Regex lookbehind)
+           | \negative-lookahead(Regex r, Regex lookahead)
+           | \negative-lookbehind(Regex r, Regex lookbehind)
            | concatenation(Regex head, Regex tail)
            | alternation(Regex opt1, Regex opt2)
-           | \multi-iteration(Regex regex)
-           | subtract(Regex regex, Regex removal)
+           | \multi-iteration(Regex r)
+           | subtract(Regex r, Regex removal)
            // Additional extended syntax, translatable into the core
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
-           | iteration(Regex regex)
-           | optional(Regex regex)
-           | \exact-iteration(Regex regex, int amount)
-           | \min-iteration(Regex regex, int min)
-           | \max-iteration(Regex regex, int max)
-           | \min-max-iteration(Regex regex, int min, int max);
+           | iteration(Regex r)
+           | optional(Regex r)
+           | \exact-iteration(Regex r, int amount)
+           | \min-iteration(Regex r, int min)
+           | \max-iteration(Regex r, int max)
+           | \min-max-iteration(Regex r, int min, int max);
 
+//     normalization
+// ---------------------
 Regex normalize(Regex inp) {
     return visit (inp) {
-        case concatenation([]) => empty()
-        case concatenation([part]) => part
-        case concatenation([first, second, *rest]) => 
+        case Regex::concatenation([]) => empty()
+        case Regex::concatenation([part]) => part
+        case Regex::concatenation([first, second, *rest]) => 
             (concatenation(first, second) | concatenation(it, part) | part <- rest)
 
-        case alternation([]) => empty()
-        case alternation([opt]) => opt
-        case alternation([opt1, opt2, *rest]) => 
+        case Regex::alternation([]) => empty()
+        case Regex::alternation([opt]) => opt
+        case Regex::alternation([opt1, opt2, *rest]) => 
             (concatenation(opt1, opt2) | concatenation(it, part) | part <- rest)
 
-        case Regex::iteration(regex) =>
-            alternation(\multi-iteration(regex), empty())
+        case Regex::iteration(r) =>
+            alternation(\multi-iteration(r), empty())
 
-        case Regex::optional(regex) => alternation(regex, empty())
+        case Regex::optional(r) => alternation(r, empty())
 
-        case \exact-iteration(regex, amount) => repeat(regex, amount)
+        case Regex::\exact-iteration(r, amount) => repeat(r, amount)
 
-        case \min-iteration(regex, 0) => alternation(\multi-iteration(regex), empty())
-        case \min-iteration(regex, 1) => \multi-iteration(regex)
-        case \min-iteration(regex, min) => (\multi-iteration(regex) | concatenation(regex, it) | _ <- [1..min])
+        case Regex::\min-iteration(r, 0) => alternation(\multi-iteration(r), empty())
+        case Regex::\min-iteration(r, 1) => \multi-iteration(r)
+        case Regex::\min-iteration(r, min) => (\multi-iteration(r) | concatenation(r, it) | _ <- [1..min])
 
-        case \max-iteration(regex, max) => expandMaxIteration(regex, max)
+        case Regex::\max-iteration(r, max) => expandMaxIteration(r, max)
 
-        case \min-max-iteration(regex, min, max) => repeat(regex, min) when min == max
-        case \min-max-iteration(_, min, max) => never() when min > max
-        case \min-max-iteration(regex, min, max) => 
-            concatenation(repeat(regex, min), expandMaxIteration(regex, max-min))
+        case Regex::\min-max-iteration(r, min, max) => repeat(r, min) when min == max
+        case Regex::\min-max-iteration(_, min, max) => never() when min > max
+        case Regex::\min-max-iteration(r, min, max) => 
+            concatenation(repeat(r, min), expandMaxIteration(r, max-min))
 
     }
 }
+Regex repeat(Regex r, 0) = empty();
+Regex repeat(Regex r, 1) = r;
+Regex repeat(Regex r, int min) = (r | concatenation(r, it) | _ <- [1..min]);
 
-Regex repeat(Regex regex, 0) = empty();
-Regex repeat(Regex regex, 1) = regex;
-Regex repeat(Regex regex, int min) = (regex | concatenation(regex, it) | _ <- [1..min]);
+Regex expandMaxIteration(Regex r, 0) = empty();
+Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternation(concatenation(r, it), empty()) | _ <- [1..max]);
 
-Regex expandMaxIteration(Regex regex, 0) = empty();
-Regex expandMaxIteration(Regex regex, int max) = (alternation(regex, empty()) | alternation(concatenation(regex, it), empty()) | _ <- [1..max]);
 
+//       Parsing
+// ------------------
 Regex parseRegexNormalized(str text) = normalize(parseRegex(text));
 Regex parseRegex(str text) = CSTtoRegex(parse(#RegexCST, text));
 
@@ -80,7 +87,7 @@ Regex CSTtoRegex(RegexCST regex) {
 
         case (RegexCST)`<RawChar char>`: {
             code = charAt("<char>", 0);
-            return character([range(code, code)]);
+            return Regex::character([range(code, code)]);
         }
         case (RegexCST)`<ChararacterClass chars>`: return character(CSTtoChararacterClass(chars));
         case (RegexCST)`<RegexCST cst>+`: return \multi-iteration(CSTtoRegex(cst));
@@ -100,8 +107,8 @@ Regex CSTtoRegex(RegexCST regex) {
         case (RegexCST)`!\><RegexCST nla>`: return \negative-lookahead(empty(),CSTtoRegex(nla));
         case (RegexCST)`<RegexCST lb>\<`: return lookbehind(empty(), CSTtoRegex(lb));
 
-        case (RegexCST)`<RegexCST exp>-<RegexCST subt>`: return subtract(CSTtoRegex(exp), CSTtoRegex(subt));
-        case (RegexCST)`-<RegexCST subt>`: return subtract(always(), CSTtoRegex(subt));
+        case (RegexCST)`<RegexCST exp>\\<RegexCST subt>`: return subtract(CSTtoRegex(exp), CSTtoRegex(subt));
+        case (RegexCST)`\\<RegexCST subt>`: return subtract(always(), CSTtoRegex(subt));
 
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
@@ -112,6 +119,7 @@ Regex CSTtoRegex(RegexCST regex) {
 
 list[CharRange] CSTtoChararacterClass(ChararacterClass chars) { 
     switch(chars) {
+        case (ChararacterClass)`.`: return anyCharClass();
         case (ChararacterClass)`[<Range* ranges>]`: return [CSTtoCharRange(range) | range <- ranges];
         case (ChararacterClass)`!<ChararacterClass charClass>`: return fComplement(CSTtoChararacterClass(charClass));
         case (ChararacterClass)`<ChararacterClass lhs>-<ChararacterClass rhs>`: return fDifference(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
@@ -130,3 +138,51 @@ CharRange CSTtoCharRange(Range range) {
 }
 int CSTtoCharCode(Char char) = size("<char>")==1 ? charAt("<char>", 0) : charAt("<char>", 1);
 int CSTtoNumber(Num number) = toInt("<number>");
+
+//    stringifying
+// -------------------
+str stringify(Regex regex) {
+    // TODO: improve to consider associativity instead of just adding brackets everywhere
+    switch(regex) {
+        case Regex::never(): return "$0";
+        case Regex::empty(): return "$e";
+        case Regex::always(): return "$1";
+        case Regex::character(cc): return stringify(cc);
+        case Regex::lookahead(r, la): return "(<stringify(r)>)\>(<stringify(la)>)";
+        case Regex::lookbehind(r, lb): return "(<stringify(lb)>)\<(<stringify(r)>)";
+        case Regex::\negative-lookahead(r, la): return "(<stringify(r)>)!\>(<stringify(la)>)";
+        case Regex::\negative-lookbehind(r, lb): return "(<stringify(lb)>)!\<(<stringify(r)>)";
+        case Regex::concatenation(h, t): return "(<stringify(h)>)(<stringify(t)>)";
+        case Regex::alternation(h, t): return "(<stringify(h)>)|(<stringify(t)>)";
+        case Regex::\multi-iteration(r): return "(<stringify(r)>)+";
+        case Regex::subtract(r, s): return "(<stringify(r)>)-(<stringify(s)>)";
+        case Regex::concatenation([]): return "$e";
+        case Regex::concatenation([first]): return stringify(first);
+        case Regex::concatenation([first, *parts]): return ("(<stringify(first)>)" | it + "(<stringify(p)>)" | p <- parts);
+        case Regex::alternation([]): return "$e";
+        case Regex::alternation([first]): return stringify(first);
+        case Regex::alternation([first, *parts]): return ("(<stringify(first)>)" | it + "|(<stringify(p)>)" | p <- parts);
+        case Regex::iteration(r): return "(<stringify(r)>)*";
+        case Regex::optional(r): return "(<stringify(r)>)?";
+        case Regex::\exact-iteration(r, t): return "(<stringify(r)>){<t>}";
+        case Regex::\min-iteration(r, min): return "(<stringify(r)>){<min>,}";
+        case Regex::\max-iteration(r, max): return "(<stringify(r)>){,<max>}";
+        case Regex::\min-max-iteration(r, min, max): return "(<stringify(r)>){<min>,<max>}";
+    }
+    return "";
+}
+str stringify(CharClass cc) {
+    hasMin = any(range(s, e) <- cc, s <= 1 && 1 <= e);
+    hasMax = any(range(s, e) <- cc, s <= 0x10FFFF && 0x10FFFF <= e);
+    negate = hasMin && hasMax;
+    if (negate) cc = fComplement(cc);
+
+    str chars = "";
+    for(range(f, t)<-cc) {
+        from = makeCharClassChar(f);
+        to = makeCharClassChar(t);
+        if(from == to) chars += from;
+        else chars += from+"-"+to;
+    }
+    return negate ? (size(cc)==0 ? "." : "![<chars>]") : "[<chars>]";
+}

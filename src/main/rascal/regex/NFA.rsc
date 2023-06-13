@@ -4,9 +4,10 @@ import String;
 import util::Maybe;
 import ParseTree;
 import Set;
-import lang::rascal::format::Grammar;
 
 import regex::util::GetDisjointCharClasses;
+import regex::Regex;
+import regex::PSNFAToRegex;
 
 alias NFA[&T] = tuple[&T initial, rel[&T, TransSymbol, &T] transitions, set[&T] accepting];
 
@@ -15,7 +16,7 @@ data TransSymbol = character(CharClass char)
 data LangSym = char(int code)
              | literal(TransSymbol symb);
 
-set[&T] getStates(NFA[&T] nfa) = nfa.transitions<0> + nfa.transitions<2> + {nfa.initial};
+set[&T] getStates(NFA[&T] nfa) = nfa.transitions<0> + nfa.transitions<2> + {nfa.initial} + nfa.accepting;
 
 @doc{
     Checks whether the given text is within the NFA's language
@@ -110,13 +111,10 @@ str visualize(NFA[&T] nfa, Maybe[str](TransSymbol sym) getLabel) {
     for(<from, on, to> <- nfa.transitions)  {
         str label = "";
         if(just(l) := getLabel(on)) label = l;
-        else if(character([range(1,0x10FFFF)]) := on) label = "*";
-        else if(character(charClass) := on) {
-            hasMin = any(range(s, e) <- charClass, s <= 1 && 1 <= e);
-            hasMax = any(range(s, e) <- charClass, s <= 0x10FFFF && 0x10FFFF <= e);
-            if (hasMin && hasMax) label = "!"+cc2rascal(fComplement(charClass));
-            else label = cc2rascal(charClass);
-        } else if(epsilon() := on) label = "\\e";
+        else if(TransSymbol::character([range(1,0x10FFFF)]) := on) label = "*";
+        else if(TransSymbol::character(charClass) := on) label = stringify(charClass);
+        else if(regexp(r) := on) label = stringify(r);
+        else if(epsilon() := on) label = "\\e";
         else label = "<on>";
         out += "    <name(from)> -\> <name(to)> [label=<name(label)>]\n";
     }

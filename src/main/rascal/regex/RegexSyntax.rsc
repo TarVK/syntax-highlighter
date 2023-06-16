@@ -27,20 +27,25 @@ syntax RegexCST
     > left alternationCST: RegexCST opt1 "|" RegexCST opt2
     > left subtractCST: RegexCST "\\" RegexCST 
     > left emptySubtractCST: "\\" RegexCST 
-    | bracket \bracketCST: "(" RegexCST ")";
+    | bracket \bracketCST: "(" RegexCST ")"
+    | bracket \scopedCST: "(""\<"ScopesCST"\>" RegexCST ")";
 
 syntax ChararacterClass
 	= anyCharCST: "."
-    | simpleCharclassCST: "[" Range* ranges "]" 
+    | simpleCharclassCST: "[" RangeCST* ranges "]" 
 	| complementCST: "!" ChararacterClass 
 	> left differenceCST: ChararacterClass lhs "-" ChararacterClass rhs 
 	> left intersectionCST: ChararacterClass lhs "&&" ChararacterClass rhs 
 	> left unionCST: ChararacterClass lhs "||" ChararacterClass rhs 
 	| bracket \bracketCST: "{" ChararacterClass charClass "}" ;
  
-syntax Range
+syntax RangeCST
 	= fromToCST: Char start "-" Char end 
 	| characterCST: Char character;
+
+syntax ScopesCST = {ScopeCST ","}+;
+syntax ScopeCST = {TokenCST "."}+;
+syntax TokenCST = RawChar+;
 
 syntax Num = [0-9]+;
 

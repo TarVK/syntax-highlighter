@@ -9,6 +9,7 @@ import IO;
 import regex::util::GetDisjointCharClasses;
 import regex::util::AnyCharClass;
 import regex::RegexSyntax;
+import Scope;
 
 data Regex = never()
            | empty()
@@ -22,6 +23,7 @@ data Regex = never()
            | alternation(Regex opt1, Regex opt2)
            | \multi-iteration(Regex r)
            | subtract(Regex r, Regex removal)
+           | scoped(Scope::Scopes scopes, Regex r)
            // Additional extended syntax, translatable into the core
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
@@ -32,9 +34,12 @@ data Regex = never()
            | \max-iteration(Regex r, int max)
            | \min-max-iteration(Regex r, int min, int max);
 
-//     normalization
+//     Reduction
 // ---------------------
-Regex normalize(Regex inp) {
+@doc {
+    Gets rid of the extended syntax in the regex
+}
+Regex reduce(Regex inp) {
     return visit (inp) {
         case Regex::concatenation([]) => empty()
         case Regex::concatenation([part]) => part
@@ -76,7 +81,7 @@ Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternat
 
 //       Parsing
 // ------------------
-Regex parseRegexNormalized(str text) = normalize(parseRegex(text));
+Regex parseRegexReduced(str text) = reduce(parseRegex(text));
 Regex parseRegex(str text) = CSTtoRegex(parse(#RegexCST, text));
 
 Regex CSTtoRegex(RegexCST regex) {
@@ -113,6 +118,7 @@ Regex CSTtoRegex(RegexCST regex) {
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
         case (RegexCST)`(<RegexCST cst>)`: return CSTtoRegex(cst);
+        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return scoped(CSTtoScopes(scopes), CSTtoRegex(cst));
     }
     return empty();
 }
@@ -120,7 +126,7 @@ Regex CSTtoRegex(RegexCST regex) {
 list[CharRange] CSTtoChararacterClass(ChararacterClass chars) { 
     switch(chars) {
         case (ChararacterClass)`.`: return anyCharClass();
-        case (ChararacterClass)`[<Range* ranges>]`: return [CSTtoCharRange(range) | range <- ranges];
+        case (ChararacterClass)`[<RangeCST* ranges>]`: return [CSTtoCharRange(range) | range <- ranges];
         case (ChararacterClass)`!<ChararacterClass charClass>`: return fComplement(CSTtoChararacterClass(charClass));
         case (ChararacterClass)`<ChararacterClass lhs>-<ChararacterClass rhs>`: return fDifference(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
         case (ChararacterClass)`<ChararacterClass lhs>||<ChararacterClass rhs>`: return fUnion(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
@@ -129,15 +135,30 @@ list[CharRange] CSTtoChararacterClass(ChararacterClass chars) {
     }
     return [];
 }
-CharRange CSTtoCharRange(Range range) {
+CharRange CSTtoCharRange(RangeCST range) {
     switch(range) {
-        case (Range)`<Char begin>-<Char end>`: return CharRange::range(CSTtoCharCode(begin), CSTtoCharCode(end));
-        case (Range)`<Char char>`: return CharRange::range(CSTtoCharCode(char), CSTtoCharCode(char));
+        case (RangeCST)`<Char begin>-<Char end>`: return CharRange::range(CSTtoCharCode(begin), CSTtoCharCode(end));
+        case (RangeCST)`<Char char>`: return CharRange::range(CSTtoCharCode(char), CSTtoCharCode(char));
     }
     return CharRange::range(0, 0);
 }
 int CSTtoCharCode(Char char) = size("<char>")==1 ? charAt("<char>", 0) : charAt("<char>", 1);
 int CSTtoNumber(Num number) = toInt("<number>");
+
+Scope::Scopes CSTtoScopes(ScopesCST scopes) {
+    if((ScopesCST)`<{ScopeCST ","}+ scopesT>` := scopes) {
+        Scope::Scopes out = [];
+        for((ScopeCST)`<{TokenCST "."}+ scopeT>` <- scopesT) {
+            Scope::Scope scope = [];
+            for((TokenCST)`<RawChar+ chars>` <- scopeT) {
+                scope += "<chars>";
+            }
+            out += [scope];
+        }
+        return out;
+    }
+    return [];
+}
 
 //    stringifying
 // -------------------
@@ -168,6 +189,7 @@ str stringify(Regex regex) {
         case Regex::\min-iteration(r, min): return "(<stringify(r)>){<min>,}";
         case Regex::\max-iteration(r, max): return "(<stringify(r)>){,<max>}";
         case Regex::\min-max-iteration(r, min, max): return "(<stringify(r)>){<min>,<max>}";
+        case Regex::scoped(n, r): return "(\<<stringify(n)>\><stringify(r)>)";
     }
     return "";
 }
@@ -186,3 +208,5 @@ str stringify(CharClass cc) {
     }
     return negate ? (size(cc)==0 ? "." : "![<chars>]") : "[<chars>]";
 }
+str stringify(Scopes scopes) = stringify([stringify(scope, ".") | scope <- scopes], ",");
+str stringify(list[str] scopes, str sep) = ("" | it + val | val <- intersperse(sep, scopes));

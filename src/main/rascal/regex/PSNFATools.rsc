@@ -6,6 +6,7 @@
 module regex::PSNFATools
 
 import regex::PSNFA;
+import regex::NFA;
 
 @doc {
     Computes a PSNFA that accepts all tuples (p, w, s), such that 
@@ -25,4 +26,15 @@ NFA[State]  getConcatOverlapPSNFA(NFA[State] head, NFA[State] tail){
 }
 NFA[State] getExtensionPSNFA(NFA[State] n) {
 
+}
+
+@doc {
+    Checks whether the two given NFAs define the same language
+}
+bool equals(NFA[State] a, NFA[State] b) {
+    if (a == b) return true;
+    
+    inANotB = subtractPSNFA(a, b);
+    inBNotA = subtractPSNFA(b, a);
+    return isEmpty(inANotB) && isEmpty(inBNotA);
 }

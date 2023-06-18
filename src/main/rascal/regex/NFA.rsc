@@ -7,14 +7,18 @@ import Set;
 
 import regex::util::GetDisjointCharClasses;
 import regex::Regex;
-import regex::PSNFAToRegex;
 
 alias NFA[&T] = tuple[&T initial, rel[&T, TransSymbol, &T] transitions, set[&T] accepting];
 
 data TransSymbol = character(CharClass char)
+                 | rest()
                  | epsilon();
-data LangSym = char(int code)
-             | literal(TransSymbol symb);
+data LangSymbol = char(int code);
+
+data MatchType = none() | match() | ifNoOther();
+alias CharMatcher = MatchType(LangSymbol input, TransSymbol transition);
+
+
 
 set[&T] getStates(NFA[&T] nfa) = nfa.transitions<0> + nfa.transitions<2> + {nfa.initial} + nfa.accepting;
 
@@ -22,27 +26,36 @@ set[&T] getStates(NFA[&T] nfa) = nfa.transitions<0> + nfa.transitions<2> + {nfa.
     Checks whether the given text is within the NFA's language
 }
 bool matches(NFA[&T] nfa, str text) {
-    list[LangSym] chars = [];
+    list[LangSymbol] chars = [];
     for(index <- [0..size(text)])
         chars += char(charAt(text, index));
     return matches(nfa, chars);
 }
-bool matches(NFA[&T] nfa, list[LangSym] input) {
+MatchType simpleMatch(LangSymbol input, TransSymbol match, bool matchedNoOthers) {
+    if(epsilon() == match) return none();
+    else if(rest() == match) return ifNoOther();
+    else if(character(ranges) := match) return char(charCode) := input && contains(ranges, charCode) ? match() : none();
+    return none();
+}
+bool matches(NFA[&T] nfa, list[LangSymbol] input, CharMatcher matcher) {
     states = expandEpsilon(nfa, {nfa.initial});
 
     for (symbol <- input) {
         newStates = {};
         for(state <- states) {
             transitions = nfa.transitions[state];
-            for(<match, to> <- transitions) {
-                matches = false;
-                if(epsilon() == match) matches = false;
-                else if(character(ranges) := match) matches = char(charCode) := symbol && contains(ranges, charCode);
-                else matches = literal(sym) := symbol && sym := match;
 
-                if (!matches) continue;
+            set[&T] rest = {};
+            bool matched = false;
+            for(<match, to> <- transitions) {
+                matchType = matcher(symbol, match, transitions);
+                if (matchType==ifNoOther()) rest += {to};
+                if (matchType!=match()) continue;
                 newStates += to;
+                matched = true;
             }
+
+            if(!matched) newStates += rest;
         }
         states = expandEpsilon(nfa, newStates);
     }
@@ -126,3 +139,5 @@ str visualize(NFA[&T] nfa, Maybe[str](TransSymbol sym) getLabel) {
 
     return out;
 }
+// Used by conversion NFA
+data TransSymbol = regexp(Regex r);

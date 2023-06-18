@@ -6,8 +6,6 @@ import Set;
 import regex::Regex;
 import regex::NFA;
 
-data TransSymbol = regexp(Regex r);
-
 // -------------------------------------
 // This file is incomplete, 
 // and no function exists for fully 

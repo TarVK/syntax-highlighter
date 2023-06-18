@@ -56,9 +56,27 @@ NFA[State] reservationTest() {
     return removeUnreachable(unionPSNFA(inNfa1NotNfa2, inNfa2NotNfa1));
 }
 
-void main() {
-    nfa = nfaTest();
+NFA[State] captureTest() {
+    // return regexToPSNFA(parseRegexReduced(".{5}((\<ok\>stuff)\<)"));
 
+    nfa1 = regexToPSNFA(parseRegexReduced(".{5}((\<ok\>stuff)\<)"));
+    return nfa1;
+    nfa2 = regexToPSNFA(parseRegexReduced("(\<ok\>stuff)"));
+
+    // nfa1 = regexToPSNFA(parseRegexReduced("sh.*it|(\<hoi.shit,bye.stuff\>stuff)"));
+    // nfa2 = regexToPSNFA(parseRegexReduced("(\<hoi.shit,bye.stuff\>(st|s)((t\<uff)|(s\<tuff)))|sh.*it"));
+    // // nfa2 = regexToPSNFA(parseRegexReduced("(\<hoi.shit,bye.stuff\>(st|s)((t\<uff)|(tuff)))|sh.*it"));
+    // // nfa2 = regexToPSNFA(parseRegexReduced("(\<hoi.shit,bye\>(st|s)((t\<uff)|(s\<tuff)))|sh.*it"));
+    // // nfa2 = regexToPSNFA(parseRegexReduced("((st|s)((t\<uff)|(s\<tuff)))|sh.*it"));
+
+    inNfa1NotNfa2 = subtractPSNFA(nfa1, nfa2);
+    inNfa2NotNfa1 = subtractPSNFA(nfa2, nfa1);
+    // return removeUnreachable(unionPSNFA(inNfa1NotNfa2, inNfa2NotNfa1));
+    return nfa2;
+}
+
+void main() {
+    nfa = captureTest();
 
     nfaText = visualize(relabel(nfa));
     loc pos = |project://syntax-highlighter/outputs/nfa.txt|;

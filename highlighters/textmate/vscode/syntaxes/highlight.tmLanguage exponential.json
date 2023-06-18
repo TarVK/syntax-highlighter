@@ -1,0 +1,12 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "highlight",
+    "patterns": [{ "include": "#a" }],
+    "repository": {
+        "a": {
+            "match": "(.|.)*a",
+            "name": "comment"
+        }
+    },
+    "scopeName": "source.highlight"
+}

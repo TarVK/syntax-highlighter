@@ -14,10 +14,10 @@ import regex::NFASimplification;
 NFA[State] regexToPSNFA(Regex regex) {
     NFA[State] n = neverPSNFA();
     switch(regex) {
-        case never(): n = neverPSNFA();
-        case empty(): n = emptyPSNFA();
-        case always(): n = alwaysPSNFA();
-        case character(cc): n = charPSNFA(cc);
+        case never(): return neverPSNFA();
+        case empty(): return emptyPSNFA();
+        case always(): return alwaysPSNFA();
+        case character(cc): return charPSNFA(cc);
         case lookahead(r, la): n = lookaheadPSNFA(regexToPSNFA(r), regexToPSNFA(la));
         case lookbehind(r, lb): n = lookbehindPSNFA(regexToPSNFA(r), regexToPSNFA(lb));
         case \negative-lookahead(r, la): n = negativeLookaheadPSNFA(regexToPSNFA(r), regexToPSNFA(la));
@@ -25,12 +25,13 @@ NFA[State] regexToPSNFA(Regex regex) {
         case concatenation(h, t): n = concatPSNFA(regexToPSNFA(h), regexToPSNFA(t));
         case alternation(r1, r2): n = unionPSNFA(regexToPSNFA(r1), regexToPSNFA(r2));
         case subtract(r, s): n = subtractPSNFA(regexToPSNFA(r), regexToPSNFA(s));
-        case scoped(n, r): return regexToPSNFA(r);
         case \multi-iteration(r): {
             rnfa = regexToPSNFA(r);
-            rdfa = removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(rnfa)));
+            set[NFA[State]] context = {};
+            rdfa = removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(rnfa, context)));
             n = iterationPSNFA(rdfa);
         }
+        case capture(tags, r): return capturePSNFA(regexToPSNFA(r), tags);
         case cached(psnfa, exp): return psnfa;
     }
 
@@ -53,7 +54,7 @@ str stringify(cached(psnfa, exp)) = stringify(exp);
 @doc {
     Retrieves the PSNFA of the given regular expression, and the regular expression with the PSNFA cached into it for quick access later (using this same function)
 }
-tuple[Regex, NFA[state]] cachedRegexToPSNFA(Regex regex) {
+tuple[Regex, NFA[State]] cachedRegexToPSNFA(Regex regex) {
     if (cached(nfa, exp) := regex) return <regex, nfa>;
 
     nfa = regexToPSNFA(regex);

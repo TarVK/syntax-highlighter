@@ -9,8 +9,7 @@ import regex::NFA;
 @doc {
     Converts a NFA to an equivalent NFA that satisfies all DFA restrictions (no epsilon transitions, and complete)
 }
-NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa) = convertNFAtoDFA(nfa, defaultComplement);
-NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) getRemainder) {
+NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa) {
     initial = expandEpsilon(nfa, {nfa.initial});
     rel[set[&T], TransSymbol, set[&T]] transitions = {};
     set[set[&T]] found = {initial};
@@ -24,22 +23,17 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
     }
 
     while(size(queue)>0) {
-        <stateSet, queue> = takeOneFrom(queue);
-        
+        <stateSet, queue> = takeOneFrom(queue);        
+        bool hasRest = false;
+
         // Analyze extra symbols
         set[TransSymbol] otherSymbols = { sym 
             | state <- stateSet, <sym, _> <- nfa.transitions[state] 
             && !(character(_) := sym) && !(epsilon() := sym)};
         for(sym <- otherSymbols) {
+            if(rest() == sym) hasRest = true;
             set[&T] toSet = expandEpsilon(nfa, 
                     {to | state <- stateSet, to <- nfa.transitions[state][sym]});
-            init(toSet);
-            transitions += <stateSet, sym, toSet>;
-        }
-
-        restSymbols = getRemainder(otherSymbols);
-        for(sym <- restSymbols) {
-            set[&T] toSet = {};
             init(toSet);
             transitions += <stateSet, sym, toSet>;
         }
@@ -55,11 +49,10 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, set[TransSymbol](set[TransSymbol]) get
             transitions += <stateSet, character(charClass), toSet>;
         }
 
-        restChars = fComplement(([] | fUnion(it, cc) | ccr(cc, _) <- disjointCharClasses));
-        if(size(restChars)>0) {
+        // Add rest if not present
+        if(!hasRest){
             set[&T] toSet = {};
-            init(toSet);
-            transitions += <stateSet, character(restChars), toSet>;
+            transitions += <stateSet, rest(), toSet>;
         }
     }
 

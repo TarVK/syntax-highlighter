@@ -11,6 +11,7 @@ import regex::util::AnyCharClass;
 import regex::RegexSyntax;
 import Scope;
 
+data ScopeTag = scopeTag(Scopes scopes);
 data Regex = never()
            | empty()
            | always()
@@ -23,7 +24,7 @@ data Regex = never()
            | alternation(Regex opt1, Regex opt2)
            | \multi-iteration(Regex r)
            | subtract(Regex r, Regex removal)
-           | scoped(Scope::Scopes scopes, Regex r)
+           | capture(set[value] tags, Regex r)
            // Additional extended syntax, translatable into the core
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
@@ -118,7 +119,7 @@ Regex CSTtoRegex(RegexCST regex) {
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
         case (RegexCST)`(<RegexCST cst>)`: return CSTtoRegex(cst);
-        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return scoped(CSTtoScopes(scopes), CSTtoRegex(cst));
+        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return capture({scopeTag(CSTtoScopes(scopes))}, CSTtoRegex(cst));
     }
     return empty();
 }
@@ -160,6 +161,19 @@ Scope::Scopes CSTtoScopes(ScopesCST scopes) {
     return [];
 }
 
+@doc {
+    Labels every capture group with an integer based on the position of the capture group within the expression
+}
+Regex labelCaptureGroups(Regex regex) {
+    index = 0;
+    return visit(regex) {
+        case Regex::capture(tags, i): {
+            index += 1;
+            insert Regex::capture({*tags, index-1}, i);
+        }
+    };
+}
+
 //    stringifying
 // -------------------
 str stringify(Regex regex) {
@@ -189,7 +203,7 @@ str stringify(Regex regex) {
         case Regex::\min-iteration(r, min): return "(<stringify(r)>){<min>,}";
         case Regex::\max-iteration(r, max): return "(<stringify(r)>){,<max>}";
         case Regex::\min-max-iteration(r, min, max): return "(<stringify(r)>){<min>,<max>}";
-        case Regex::scoped(n, r): return "(\<<stringify(n)>\><stringify(r)>)";
+        case Regex::capture(tags, r): return "(\<<stringify(tags)>\><stringify(r)>)";
     }
     return "";
 }
@@ -208,5 +222,6 @@ str stringify(CharClass cc) {
     }
     return negate ? (size(cc)==0 ? "." : "![<chars>]") : "[<chars>]";
 }
+str stringify(set[value] tags) = stringify([stringify(t) | scopeTag(t) <- tags], ",");
 str stringify(Scopes scopes) = stringify([stringify(scope, ".") | scope <- scopes], ",");
 str stringify(list[str] scopes, str sep) = ("" | it + val | val <- intersperse(sep, scopes));

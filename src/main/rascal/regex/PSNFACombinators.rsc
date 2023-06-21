@@ -8,6 +8,7 @@ import IO;
 import regex::util::GetCombinations;
 import regex::util::GetDisjointCharClasses;
 import regex::util::AnyCharClass;
+import regex::Tags;
 import regex::NFA;
 import regex::NFASimplification;
 import regex::PSNFA;
@@ -17,7 +18,7 @@ data State = simple(str name)
            | statePair(State a, State b)
            | stateSet(set[State] states);
 
-TransSymbol anyChar = character(anyCharClass());
+TransSymbol anyChar = character(anyCharClass(), tags({}));
 
 @doc {
     A PSNFA with a completely empty language
@@ -63,7 +64,7 @@ NFA[State] charPSNFA(CharClass char) = <
     {
         <simple("char-prefix"), anyChar, simple("char-prefix")>,
         <simple("char-prefix"), matchStart(), simple("char-main0")>,
-        <simple("char-main0"), character(char), simple("char-main1")>,
+        <simple("char-main0"), character(char, tags({})), simple("char-main1")>,
         <simple("char-main1"), matchEnd(), simple("char-suffix")>,
         <simple("char-suffix"), anyChar, simple("char-suffix")>
     },
@@ -111,11 +112,7 @@ NFA[State] concatPSNFA(NFA[State] head, NFA[State] tail) {
         State t, 
         rel[TransSymbol, State] hTrans, 
         rel[TransSymbol, State] tTrans
-    ) = {<epsilon(), statePair(hNew, t)> | <epsilon(), hNew> <- hTrans}
-        + {<epsilon(), statePair(h, tNew)> | <epsilon(), tNew> <- tTrans}
-        + {<character(charClass), statePair(hNew, tNew)> 
-            | <character(hCharClass), hNew> <- hTrans, <character(tCharClass), tNew> <- tTrans,
-            charClass := fIntersection(hCharClass, tCharClass) && size(charClass)>0}
+    ) = getStandardTransitions(h, t, hTrans, tTrans)
         + {<matchStart(), statePair(hNew, t)> | <matchStart(), hNew> <- hTrans}
         + {<epsilon(), statePair(hNew, tNew)> 
             | <matchEnd(), hNew> <- hTrans, <matchStart(), tNew> <- tTrans}
@@ -133,11 +130,7 @@ NFA[State] lookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
         State la, 
         rel[TransSymbol, State] sTrans, 
         rel[TransSymbol, State] laTrans
-    ) = {<epsilon(), statePair(sNew, la)> | <epsilon(), sNew> <- sTrans}
-        + {<epsilon(), statePair(s, laNew)> | <epsilon(), laNew> <- laTrans}
-        + {<character(charClass), statePair(sNew, laNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(laCharClass), laNew> <- laTrans,
-            charClass := fIntersection(sCharClass, laCharClass) && size(charClass)>0}
+    ) = getStandardTransitions(s, la, sTrans, laTrans)
         + {<matchStart(), statePair(sNew, la)> | <matchStart(), sNew> <- sTrans}
         + {<matchEnd(), statePair(sNew, laNew)> 
             | <matchEnd(), sNew> <- sTrans, <matchStart(), laNew> <- laTrans}
@@ -156,11 +149,7 @@ NFA[State] lookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
         State lb, 
         rel[TransSymbol, State] sTrans, 
         rel[TransSymbol, State] lbTrans
-    ) = {<epsilon(), statePair(sNew, lb)> | <epsilon(), sNew> <- sTrans}
-        + {<epsilon(), statePair(s, lbNew)> | <epsilon(), lbNew> <- lbTrans}
-        + {<character(charClass), statePair(sNew, lbNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(lbCharClass), lbNew> <- lbTrans,
-            charClass := fIntersection(sCharClass, lbCharClass) && size(charClass)>0}
+    ) = getStandardTransitions(s, lb, sTrans, lbTrans)
         + {<epsilon(), statePair(s, lbNew)> | <matchStart(), lbNew> <- lbTrans}
         + {<matchStart(), statePair(sNew, lbNew)> 
             | <matchStart(), sNew> <- sTrans, <matchEnd(), lbNew> <- lbTrans}
@@ -179,18 +168,15 @@ NFA[State] negativeLookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
         State la, 
         rel[TransSymbol, State] sTrans, 
         rel[TransSymbol, State] laTrans
-    ) = {<epsilon(), statePair(sNew, la)> | <epsilon(), sNew> <- sTrans}
-        + {<epsilon(), statePair(s, laNew)> | <epsilon(), laNew> <- laTrans}
-        + {<character(charClass), statePair(sNew, laNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(laCharClass), laNew> <- laTrans,
-            charClass := fIntersection(sCharClass, laCharClass) && size(charClass)>0}
+    ) = getStandardTransitions(s, la, sTrans, laTrans)
         + {<matchStart(), statePair(sNew, la)> | <matchStart(), sNew> <- sTrans}
         + {<matchEnd(), statePair(sNew, laNew)> 
             | <matchEnd(), sNew> <- sTrans, <matchStart(), laNew> <- laTrans};
 
     if(<laInitial, laTransitions, laAccepting> := lookahead) {
         laNoEndTransitions = {<from, on == matchEnd() ? epsilon() : on, to> | <from, on, to> <- laTransitions};
-        invertedLookahead = invertPSNFA(<laInitial, laNoEndTransitions, laAccepting>);
+        tagIndependent = replaceTagClasses(<laInitial, laNoEndTransitions, laAccepting>, anyTag);
+        invertedLookahead = invertPSNFA(tagIndependent);
         return productPSNFA(n, invertedLookahead, combine);
     }
 
@@ -208,11 +194,7 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
         State lb, 
         rel[TransSymbol, State] sTrans, 
         rel[TransSymbol, State] lbTrans
-    ) = {<epsilon(), statePair(sNew, lb)> | <epsilon(), sNew> <- sTrans}
-        + {<epsilon(), statePair(s, lbNew)> | <epsilon(), lbNew> <- lbTrans}
-        + {<character(charClass), statePair(sNew, lbNew)> 
-            | <character(sCharClass), sNew> <- sTrans, <character(lbCharClass), lbNew> <- lbTrans,
-            charClass := fIntersection(sCharClass, lbCharClass) && size(charClass)>0}
+    ) = getStandardTransitions(s, lb, sTrans, lbTrans)
         + {<matchStart(), statePair(sNew, lbNew)> 
             | <matchStart(), sNew> <- sTrans, <matchEnd(), lbNew> <- lbTrans}
         + {<matchEnd(), statePair(sNew, lb)> | <matchEnd(), sNew> <- sTrans};
@@ -220,7 +202,8 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     
     if(<lbInitial, lbTransitions, lbAccepting> := lookbehind) {
         lbNoStartTransitions = {<from, on == matchStart() ? epsilon() : on, to> | <from, on, to> <- lbTransitions};
-        invertedLookbehind = invertPSNFA(<lbInitial, lbNoStartTransitions, lbAccepting>);
+        tagIndependent = replaceTagClasses(<lbInitial, lbNoStartTransitions, lbAccepting>, anyTag);
+        invertedLookbehind = invertPSNFA(tagIndependent);
         return productPSNFA(n, invertedLookbehind, combine);
     }
 
@@ -248,9 +231,10 @@ NFA[State] productPSNFA(NFA[State] n1, NFA[State] n2) {
         rel[TransSymbol, State] trans2
     ) = {<epsilon(), statePair(s1New, s2)> | <epsilon(), s1New> <- trans1}
         + {<epsilon(), statePair(s1, s2New)> | <epsilon(), s2New> <- trans2}
-        + {<character(charClass), statePair(s1New, s2New)> 
-            | <character(s1CharClass), s1New> <- trans1, <character(s2CharClass), s2New> <- trans2,
-            charClass := fIntersection(s1CharClass, s2CharClass) && size(charClass)>0}
+        + {<character(charClass, tags), statePair(s1New, s2New)> 
+            | <character(charClass1, tags1), s1New> <- trans1, <character(charClass2, tags2), s2New> <- trans2,
+            charClass := fIntersection(charClass1, charClass2) && size(charClass)>0, 
+            tags := intersection(tags1, tags2) && !isEmpty(tags)}
         + {<matchStart(), statePair(s1New, s2New)> | <matchStart(), s1New> <- trans1, <matchStart(), s2New> <- trans2}
         + {<matchEnd(), statePair(s1New, s2New)> | <matchEnd(), s1New> <- trans1, <matchEnd(), s2New> <- trans2};
 
@@ -260,7 +244,7 @@ NFA[State] productPSNFA(NFA[State] n1, NFA[State] n2) {
 @doc {
     Constructs a PSNFA matching all words in n, that are not in subt
 }
-NFA[State] subtractPSNFA(NFA[State] n, NFA[State] subt) = productPSNFA(n, invertPSNFA(subt));
+NFA[State] subtractPSNFA(NFA[State] n, NFA[State] subt) = productPSNFA(n, invertPSNFA(replaceTagClasses(subt, anyTag)));
 
 @doc {
     Constructs a PSNFA matching one or more repititions of the n PSNFA, considering only valid overlap of prefix and suffix
@@ -339,6 +323,20 @@ NFA[State] relabelSetPSNFA(NFA[set[State]] nfa) = mapStates(nfa, State (set[Stat
 }
 NFA[State] relabelIntPSNFA(NFA[int] nfa) = mapStates(nfa, State (int state) { return simple("<state>"); });
 
+@doc {
+    Retrieves the standard concat/lookahead/lookbehind transitions
+}
+rel[TransSymbol, State] getStandardTransitions(
+    State s1, 
+    State s2, 
+    rel[TransSymbol, State] trans1, 
+    rel[TransSymbol, State] trans2
+) = {<epsilon(), statePair(s1New, s2)> | <epsilon(), s1New> <- trans1}
+    + {<epsilon(), statePair(s1, s2New)> | <epsilon(), s2New> <- trans2}
+    + {<character(charClass, union(tags1, tags2)), statePair(s1New, s2New)> 
+        | <character(charClass1, tags1), s1New> <- trans1, <character(charClass2, tags2), s2New> <- trans2,
+        charClass := fIntersection(charClass1, charClass2) && size(charClass)>0};
+
 
 @doc {
     A reusable function that can be used for arbitrary product automata
@@ -377,3 +375,16 @@ NFA[State] productPSNFA(
 
     return <initial, transitions, accepting>;   
 }
+
+@doc {
+    Replaces all tag classes of transitions with the specified tagclass
+}
+NFA[&T] replaceTagClasses(NFA[&T] n, TagClass tc) = <
+    n.initial,
+    {
+        character(cc, tc) | character(cc, _) <- n.transitions
+    } + {
+        transSymbol | transSymbol <- n.transitions, character(_, _) !:= transSymbol
+    },
+    n.accepting
+>;

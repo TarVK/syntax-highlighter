@@ -9,6 +9,7 @@ import IO;
 import regex::util::GetDisjointCharClasses;
 import regex::util::AnyCharClass;
 import regex::RegexSyntax;
+import regex::Tags;
 import Scope;
 
 data Regex = never()
@@ -23,7 +24,7 @@ data Regex = never()
            | alternation(Regex opt1, Regex opt2)
            | \multi-iteration(Regex r)
            | subtract(Regex r, Regex removal)
-           | scoped(Scope::Scopes scopes, Regex r)
+           | mark(Tags tags, Regex r)
            // Additional extended syntax, translatable into the core
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
@@ -33,6 +34,7 @@ data Regex = never()
            | \min-iteration(Regex r, int min)
            | \max-iteration(Regex r, int max)
            | \min-max-iteration(Regex r, int min, int max);
+data ScopeTag = scopeTag(Scopes scopes);
 
 //     Reduction
 // ---------------------
@@ -118,7 +120,7 @@ Regex CSTtoRegex(RegexCST regex) {
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
         case (RegexCST)`(<RegexCST cst>)`: return CSTtoRegex(cst);
-        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return scoped(CSTtoScopes(scopes), CSTtoRegex(cst));
+        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return mark({scopeTag(CSTtoScopes(scopes))}, CSTtoRegex(cst));
     }
     return empty();
 }

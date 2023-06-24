@@ -30,13 +30,13 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, ComputeDisjoint getDisjoint, ComputeRe
     while(size(queue)>0) {
         <stateSet, queue> = takeOneFrom(queue);
         
-        transitions = nfa.transitions[stateSet];
-        transitionSymbols = {symbol <- transitions<0>, symbol != epsilon()};
+        stateTransitions = nfa.transitions[stateSet];
+        transitionSymbols = {symbol | symbol <- stateTransitions<0>, symbol != epsilon()};
 
         disjoinSymbolsMapping = getDisjoint(transitionSymbols);
         for(<disjoint, original> <- disjoinSymbolsMapping) {
-            directToSet = transitions[original];
-            toSet = expandEpsilon(directToSet);
+            directToSet = stateTransitions[original];
+            set[&T] toSet = expandEpsilon(nfa, directToSet);
             init(toSet);
             transitions += <stateSet, disjoint, toSet>;
         }
@@ -58,7 +58,11 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] nfa, ComputeDisjoint getDisjoint, ComputeRe
 @doc {
     The default transition complement retriever
 }
-set[TransSymbol] defaultComplement(set[TransSymbol] symbols) = character(getCharsComplements({cc | character(cc) <- symbols}));
+set[TransSymbol] defaultComplement(set[TransSymbol] symbols) {
+    complementChars = getCharsComplements({cc | character(cc) <- symbols});
+    if(size(complementChars)==0) return {};
+    return {character(complementChars)};
+}
 
 @doc {
     A function to get the complement of a set of character classes

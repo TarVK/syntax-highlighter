@@ -6,6 +6,7 @@
 module regex::PSNFATools
 
 import regex::PSNFA;
+import regex::PSNFACombinators;
 import regex::NFA;
 
 @doc {
@@ -14,8 +15,9 @@ import regex::NFA;
 
     I.e. words that can both be the end of a match of head and also the beginning of a match of tail, while considering prefixes and suffixes
 }
-NFA[State]  getConcatOverlapPSNFA(NFA[State] head, NFA[State] tail){
-
+NFA[State] getConcatOverlapPSNFA(NFA[State] head, NFA[State] tail){
+    // TODO: ...
+    return ();
 }
 
 @doc {
@@ -25,7 +27,8 @@ NFA[State]  getConcatOverlapPSNFA(NFA[State] head, NFA[State] tail){
     I.e. words that are valid extensions of other words that are already accepted
 }
 NFA[State] getExtensionPSNFA(NFA[State] n) {
-
+    // TODO: ...
+    return ();
 }
 
 @doc {
@@ -37,4 +40,15 @@ bool equals(NFA[State] a, NFA[State] b) {
     inANotB = subtractPSNFA(a, b);
     inBNotA = subtractPSNFA(b, a);
     return isEmpty(inANotB) && isEmpty(inBNotA);
+}
+
+@doc {
+    Computes the difference between the two PSNFAs, which includes all words in one and not the other
+}
+NFA[State] differencePSNFA(NFA[State] a, NFA[State] b) {
+    if (a == b) return neverPSNFA();
+    
+    inANotB = subtractPSNFA(a, b);
+    inBNotA = subtractPSNFA(b, a);
+    return unionPSNFA(inANotB, inBNotA);
 }

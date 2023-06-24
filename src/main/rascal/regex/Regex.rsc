@@ -10,6 +10,7 @@ import regex::util::GetDisjointCharClasses;
 import regex::util::AnyCharClass;
 import regex::RegexSyntax;
 import regex::Tags;
+import util::List;
 import Scope;
 
 data Regex = never()
@@ -86,7 +87,9 @@ Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternat
 Regex parseRegexReduced(str text) = reduce(parseRegex(text));
 Regex parseRegex(str text) = CSTtoRegex(parse(#RegexCST, text));
 
-Regex CSTtoRegex(RegexCST regex) {
+Regex CSTtoRegex(RegexCST regex) = CSTtoRegex(regex, []);
+Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
+    Regex r(RegexCST regex) = CSTtoRegex(regex, scopes);
     switch(regex) {
         case (RegexCST)`$0`: return never();
         case (RegexCST)`$e`: return empty();
@@ -97,30 +100,33 @@ Regex CSTtoRegex(RegexCST regex) {
             return Regex::character([range(code, code)]);
         }
         case (RegexCST)`<ChararacterClass chars>`: return character(CSTtoChararacterClass(chars));
-        case (RegexCST)`<RegexCST cst>+`: return \multi-iteration(CSTtoRegex(cst));
-        case (RegexCST)`<RegexCST cst>*`: return iteration(CSTtoRegex(cst));
+        case (RegexCST)`<RegexCST cst>+`: return \multi-iteration(r(cst));
+        case (RegexCST)`<RegexCST cst>*`: return iteration(r(cst));
 
-        case (RegexCST)`<RegexCST cst>{<Num amount>}`: return \exact-iteration(CSTtoRegex(cst), CSTtoNumber(amount));
-        case (RegexCST)`<RegexCST cst>{<Num min>,}`: return \min-iteration(CSTtoRegex(cst), CSTtoNumber(min));
-        case (RegexCST)`<RegexCST cst>{,<Num max>}`: return \max-iteration(CSTtoRegex(cst), CSTtoNumber(max));
-        case (RegexCST)`<RegexCST cst>{<Num min>,<Num max>}`: return \min-max-iteration(CSTtoRegex(cst), CSTtoNumber(min), CSTtoNumber(max));
-        case (RegexCST)`<RegexCST cst>?`: return optional(CSTtoRegex(cst));
+        case (RegexCST)`<RegexCST cst>{<Num amount>}`: return \exact-iteration(r(cst), CSTtoNumber(amount));
+        case (RegexCST)`<RegexCST cst>{<Num min>,}`: return \min-iteration(r(cst), CSTtoNumber(min));
+        case (RegexCST)`<RegexCST cst>{,<Num max>}`: return \max-iteration(r(cst), CSTtoNumber(max));
+        case (RegexCST)`<RegexCST cst>{<Num min>,<Num max>}`: return \min-max-iteration(r(cst), CSTtoNumber(min), CSTtoNumber(max));
+        case (RegexCST)`<RegexCST cst>?`: return optional(r(cst));
         
-        case (RegexCST)`<RegexCST cst>\><RegexCST la>`: return lookahead(CSTtoRegex(cst),CSTtoRegex(la));
-        case (RegexCST)`<RegexCST cst>!\><RegexCST nla>`: return \negative-lookahead(CSTtoRegex(cst),CSTtoRegex(nla));
-        case (RegexCST)`<RegexCST lb>\<<RegexCST cst>`: return lookbehind(CSTtoRegex(cst),CSTtoRegex(lb));
-        case (RegexCST)`<RegexCST nlb>!\<<RegexCST cst>`: return \negative-lookbehind(CSTtoRegex(cst),CSTtoRegex(nlb));
-        case (RegexCST)`\><RegexCST la>`: return lookahead(empty(),CSTtoRegex(la));
-        case (RegexCST)`!\><RegexCST nla>`: return \negative-lookahead(empty(),CSTtoRegex(nla));
-        case (RegexCST)`<RegexCST lb>\<`: return lookbehind(empty(), CSTtoRegex(lb));
+        case (RegexCST)`<RegexCST cst>\><RegexCST la>`: return lookahead(r(cst), r(la));
+        case (RegexCST)`<RegexCST cst>!\><RegexCST nla>`: return \negative-lookahead(r(cst), r(nla));
+        case (RegexCST)`<RegexCST lb>\<<RegexCST cst>`: return lookbehind(r(cst), r(lb));
+        case (RegexCST)`<RegexCST nlb>!\<<RegexCST cst>`: return \negative-lookbehind(r(cst), r(nlb));
+        case (RegexCST)`\><RegexCST la>`: return lookahead(empty(), r(la));
+        case (RegexCST)`!\><RegexCST nla>`: return \negative-lookahead(empty(), r(nla));
+        case (RegexCST)`<RegexCST lb>\<`: return lookbehind(empty(), r(lb));
 
-        case (RegexCST)`<RegexCST exp>\\<RegexCST subt>`: return subtract(CSTtoRegex(exp), CSTtoRegex(subt));
-        case (RegexCST)`\\<RegexCST subt>`: return subtract(always(), CSTtoRegex(subt));
+        case (RegexCST)`<RegexCST exp>\\<RegexCST subt>`: return subtract(r(exp), r(subt));
+        case (RegexCST)`\\<RegexCST subt>`: return subtract(always(), r(subt));
 
-        case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(CSTtoRegex(head),CSTtoRegex(tail));
-        case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(CSTtoRegex(opt1),CSTtoRegex(opt2));
-        case (RegexCST)`(<RegexCST cst>)`: return CSTtoRegex(cst);
-        case (RegexCST)`(\<<ScopesCST scopes>\><RegexCST cst>)`: return mark({scopeTag(CSTtoScopes(scopes))}, CSTtoRegex(cst));
+        case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(r(head), r(tail));
+        case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(r(opt1), r(opt2));
+        case (RegexCST)`(<RegexCST cst>)`: return r(cst);
+        case (RegexCST)`(\<<ScopesCST scopesCST>\><RegexCST cst>)`: {
+            newSCopes = scopes + CSTtoScopes(scopesCST);
+            return mark({scopeTag(newSCopes)}, CSTtoRegex(cst, newSCopes));
+        }
     }
     return empty();
 }
@@ -191,7 +197,7 @@ str stringify(Regex regex) {
         case Regex::\min-iteration(r, min): return "(<stringify(r)>){<min>,}";
         case Regex::\max-iteration(r, max): return "(<stringify(r)>){,<max>}";
         case Regex::\min-max-iteration(r, min, max): return "(<stringify(r)>){<min>,<max>}";
-        case Regex::scoped(n, r): return "(\<<stringify(n)>\><stringify(r)>)";
+        case Regex::mark(n, r): return "(\<<stringify(n)>\><stringify(r)>)";
     }
     return "";
 }
@@ -210,5 +216,6 @@ str stringify(CharClass cc) {
     }
     return negate ? (size(cc)==0 ? "." : "![<chars>]") : "[<chars>]";
 }
+
+str stringify(Tags t) = stringify([stringify(scopes) | scopeTag(scopes) <- t], ",");
 str stringify(Scopes scopes) = stringify([stringify(scope, ".") | scope <- scopes], ",");
-str stringify(list[str] scopes, str sep) = ("" | it + val | val <- intersperse(sep, scopes));

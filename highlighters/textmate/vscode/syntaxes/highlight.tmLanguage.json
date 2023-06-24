@@ -4,8 +4,13 @@
     "patterns": [{ "include": "#a" }],
     "repository": {
         "a": {
-            "match": "(.|.)*a",
-            "name": "comment"
+            "match": "(?=hel(l))((hel)lo)",
+            "name": "comment",
+            "captures": {
+                "1": { "name": "string" },
+                "2": { "name": "keyword" },
+                "3": { "name": "variable.parameter"}
+            }
         }
     },
     "scopeName": "source.highlight"

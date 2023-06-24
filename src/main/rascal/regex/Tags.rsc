@@ -3,114 +3,54 @@ module regex::Tags
 import IO;
 import Set;
 
+import util::List;
+
 alias Tags = set[value];
+alias TagsClass = set[Tags];
 
-data TagClass = tags(set[Tags] tagSetOptions)       // Any tags set included in this sets of tag sets
-              | notTags(set[Tags] tagSetOptions);   // Any tags set NOT included in this sets of tag sets
-
-@doc { The tagclass that accepts any tag }
-TagClass anyTag = notTags({});
 
 // Note on tagClasses being sets of sets:
 // The Tags set (inner set) essentially expresses an AND: all the given tags have to be present
-// The TagClass (outer set) expresses an OR: it may match any of these Tags sets
-// Then `notTags` ofc simply adds a negation: it may not match any of these Tags sets exactly
+// The TagsClass (outer set) expresses an OR: it may match any of these Tags sets
 
 @doc {
     Checks whether the given tag class includes the given tags
 }
-bool contains(TagClass tc, Tags tags) {
-    switch(tc) {
-        case tags(options): return tags in options;
-        case notTags(options): return !(tags in options);
-    };
-    return false;
-}
-
-data TagsClassRegion = tcr(TagClass tc, set[TagClass] includes);
+bool contains(TagsClass tc, Tags tags) = tags in tc;
 
 @doc {
     Computes the intersection of two tag classes
 }
-TagClass intersection(TagClass tc1, TagClass tc2) {
-    switch(<tc1, tc2>) {
-        case <tags(t1), tags(t2)>: return tags(t1 & t2);
-        case <tags(t1), notTags(t2)>: return tags(t1 - t2);
-        case <notTags(t1), tags(t2)>: return tags(t2 - t1);
-        case <notTags(t1), notTags(t2)>: return notTags(t1 + t2);
-    }
-    // Unreachable
-    return tags({});
-}
+TagsClass intersection(TagsClass tc1, TagsClass tc2) = tc1 & tc2;
 
 @doc {
     Computes the union of the two tag classes
 }
-TagClass union(TagClass tc1, TagClass tc2) {
-    switch(<tc1, tc2>) {
-        case <tags(t1), tags(t2)>: return tags(t1 + t2);
-        case <tags(t1), notTags(t2)>: return notTags(t2 - t1);
-        case <notTags(t1), tags(t2)>: return notTags(t1 - t2);
-        case <notTags(t1), notTags(t2)>: return notTags(t1 & t2);
-    }
-    // Unreachable
-    return tags({});
-}
-
-@doc {
-    Creates a tag class, that represents all tag sets that combine all elements of one tag set of tc1, and all elements of one tag set of tc2
-}
-TagClass merge(TagClass tc1, TagClass tc2) {
-    switch(<tc1, tc2>) {
-        case <tags(t1), tags(t2)>: return tags({tagSet1 + tagSet2 | tagSet1 <- t1, tagSet2 <- t2});
-        case <tags(t1), notTags(t2)>: return notTags({tagSet2 - tagSet1 | tagSet1 <- t1, tagSet2 <- t2});
-        case <notTags(t1), tags(t2)>: return notTags(t1 - t2);
-        case <notTags(t1), notTags(t2)>: return notTags(t1 & t2);
-    }
-    // Unreachable
-    return tags({});
-}
-
-/*
-tags({{1}, {2}}), notTags({{4}, {2, 3}})
-
-should accept:
-- {1}
-- {2}
-- {2, 3} // Can be made by joining {2} in tc1 and {3} in tc2
-- {2, 4} // Can be made by joining {2} in tc1 and {2, 4} in tc2
-- {1, 2}
-
-should not accept:
-- {4}
-- {5}
-
-I.e. every set has to contain either 1 or 2, and must be obtaininable by merging with a set not in {{4}, {2, 3}, {1}}. 
-
-
-notTags({{4}, {2, 3}, {3}})
-*/
-
-@doc {
-    Computes the complement of two tag classes
-}
-TagClass complement(TagClass tc) {
-    switch(tc) {
-        case tags(t): return notTags(t);
-        case notTags(t): return tags(t);
-    }
-    // Unreachable
-    return tags({});
-}
-
-bool isEmpty(tags(t)) = size(t)==0;
-bool isEmpty(notTags(_)) = false;
+TagsClass union(TagsClass tc1, TagsClass tc2) = tc1 + tc2;
 
 @doc {
     Takes the first input class, and removes all elements that are in class two
 }
-TagClass subtract(TagClass tc1, TagClass tc2) = intersection(tc1, complement(tc2));
+TagsClass subtract(TagsClass tc1, TagsClass tc2) = tc1 - tc2;
 
+@doc {
+    Creates a tag class, that represents all tag sets that combine all elements of one tag set of tc1, and all elements of one tag set of tc2
+}
+TagsClass merge(TagsClass tc1, TagsClass tc2) = {tagSet1 + tagSet2 | tagSet1 <- tc1, tagSet2 <- tc2};
+
+@doc {
+    Computes the complement of a tag class, given a universe of tagsets
+}
+TagsClass complement(TagsClass tc, TagsClass universe) = universe - tc;
+
+@doc {
+    Checks whether the given tags class is empty
+}
+bool isEmpty(TagsClass tc) = size(tc)==0;
+
+
+
+data TagsClassRegion = tcr(TagsClass tc, set[TagsClass] includes);
 
 @doc {
     Given a set of possibly overlapping tag classes, obtains all the disjoint tags classes that together cover exactly the union of all input tags classes
@@ -125,7 +65,7 @@ TagClass subtract(TagClass tc1, TagClass tc2) = intersection(tc1, complement(tc2
         tcr(notTags({1, 2, 3, 4}), {notTags({3}), notTags({4, 2})})
     }
 }
-set[TagsClassRegion] getDisjointTagClasses(set[TagClass] inClasses) {
+set[TagsClassRegion] getDisjointTagsClasses(set[TagsClass] inClasses) {
     set[TagsClassRegion] outClasses = {};
     for(inClass <- inClasses) {
         inClassRemainder = inClass;
@@ -149,18 +89,15 @@ set[TagsClassRegion] getDisjointTagClasses(set[TagClass] inClasses) {
     return outClasses;
 }
 
+str stringify(TagsClass tc) = stringify(["{<stringify([t | t <- tags], ";")>}" | tags <- tc], ",");
+
 void main(){
     Tags t1 = {1};
     Tags t2 = {2};
     Tags t3 = {3};
     Tags t4 = {4};
-    input1 = {tags({t1, t2}), tags({t2, t3}), notTags({t3}), notTags({t4, t2})};
-    input2 = {tags({t1, t2}), tags({t2, t3}), notTags({})};
-    input3 = {tags({t1}), notTags({t2})};
-    input4 = {tags({t1, t2}), notTags({t2, t3})};
-    input5 = {notTags({t1, t2}), notTags({t2, t3})};
+    input1 = {{t1, t2}, {t2, t3}, {t1, t2, t4}};
+    input2 = {{t1, t2}, {t1, t2, t3}, {t1, t2, t4}};
 
-    println(getDisjointTagClasses(input1));
-
-    // println(complement((tags({}) | union(it, tc) | tc <- input4)));
+    println(getDisjointTagsClasses(input2));
 }

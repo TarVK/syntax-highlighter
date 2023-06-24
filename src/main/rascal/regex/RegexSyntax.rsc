@@ -14,6 +14,9 @@ syntax RegexCST
     | exactIterationCST: RegexCST "{" Num amount "}"
     | optionalCST: RegexCST "?"
     > right concatenationCST: RegexCST head !>> [\\!\>\<] [\\!\>\<] !<< RegexCST tail
+    > left alternationCST: RegexCST opt1 "|" RegexCST opt2
+    > left subtractCST: RegexCST "\\" RegexCST 
+    > left emptySubtractCST: "\\" RegexCST 
     > left (
         left lookaheadCST: RegexCST exp "\>" RegexCST lookahead
         | left emptyLookaheadCST: "\>" RegexCST lookahead
@@ -24,9 +27,6 @@ syntax RegexCST
         | right negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
         | right emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
     )
-    > left alternationCST: RegexCST opt1 "|" RegexCST opt2
-    > left subtractCST: RegexCST "\\" RegexCST 
-    > left emptySubtractCST: "\\" RegexCST 
     | bracket \bracketCST: "(" RegexCST ")"
     | bracket \scopedCST: "(""\<"ScopesCST"\>" RegexCST ")";
 

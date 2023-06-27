@@ -1,4 +1,4 @@
-module conversionGrammar::RegexConversion
+module conversionGrammar::regexConversion::unionRegexes
 
 import Set;
 import Relation;
@@ -7,24 +7,12 @@ import List;
 import IO;
 
 import conversionGrammar::ConversionGrammar;
+import conversionGrammar::regexConversion::liftScopes;
+import regex::RegexToPSNFA;
 import regex::Regex;
+import regex::PSNFACombinators;
+import regex::PSNFATools;
 
-
-@doc {
-    Combines productions into regular expressions in the given grammar
-}
-ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
-    productions = index(grammar.productions);
-    for(nonTerminal <- productions) {
-        nonTerminalProductions = productions[nonTerminal];
-        combined = combineUnions(nonTerminalProductions);
-        if(size(combined) < size(nonTerminalProductions)) {
-            productions[nonTerminal] = combined;
-        }
-    }
-
-    return convGrammar(grammar.\start, toRel(productions));
-}
 
 @doc {
     Tries to apply the union rule:
@@ -39,7 +27,7 @@ ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
 
     This is done exhasutively for this production set.
 }
-set[ConvProd] combineUnions(set[ConvProd] productions) = combineUnions(productions, 0);
+set[ConvProd] unionRegexes(set[ConvProd] productions) = unionRegexes(productions, 0);
 
 @doc {
     Tries to apply the union rule:
@@ -55,7 +43,7 @@ set[ConvProd] combineUnions(set[ConvProd] productions) = combineUnions(productio
     This is done exhasutively for this production set.
     Assumes the symbols up to and excluding startIndex to be identical between all productions
 }
-set[ConvProd] combineUnions(set[ConvProd] productions, int startIndex) {
+set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
     set[ConvProd] out = {};
 
     // Index all productions on their start symbol, and add prods with no more start symbols to the output
@@ -74,6 +62,7 @@ set[ConvProd] combineUnions(set[ConvProd] productions, int startIndex) {
     for(i <- [0..size(symbols)]) {
         symbI = symbols[i];
         if(!(regexp(_) := symbI)) continue;
+
         prodsI = indexed[symbI];
         for(prodI <- prodsI) {
             set[tuple[ConvSymbol, ConvProd]] combine = {<symbI, prodI>};
@@ -84,7 +73,8 @@ set[ConvProd] combineUnions(set[ConvProd] productions, int startIndex) {
 
                 prodsJ = indexed[symbJ];
                 for(prodJ <- prodsJ) {
-                    if(!equals(prodI, prodJ, startIndex+1)) continue;
+                    prodsRemaindersEqual = equalsAfter(prodI, prodJ, startIndex+1);
+                    if(!prodsRemaindersEqual) continue;
 
                     combine += <symbJ, prodJ>;
                     indexed -= <symbJ, prodJ>;
@@ -94,9 +84,13 @@ set[ConvProd] combineUnions(set[ConvProd] productions, int startIndex) {
 
             if(size(combine) > 1 && convProd(def, pb, _) := prodI) {
                 indexed -= <symbI, prodI>;
-                combinedSymbol = regexp(alternation([r | <regexp(r), _> <- combine]));
+
+                combinedRegex = reduceAlternation(alternation([r | <regexp(r), _> <- combine]));
+                combinedSymbol = regexp(liftScopes(combinedRegex));
+
                 sources = {*s | <_, convProd(_, _, s)> <- combine};
                 pb[startIndex] = combinedSymbol;
+
                 indexed += <combinedSymbol, convProd(def, pb, sources)>;
             }
         }
@@ -107,15 +101,8 @@ set[ConvProd] combineUnions(set[ConvProd] productions, int startIndex) {
     for(symb <- newSymbols) {
         prods = indexed[symb];
         if(size(prods) == 1) out += prods;
-        else out += combineUnions(prods, startIndex+1);
+        else out += unionRegexes(prods, startIndex+1);
     }
 
     return out;
-}
-
-bool equals(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
-    if(size(pa) != size(pb)) return false;
-    for(i <- [index..size(pa)])
-        if(pa[i] != pb[i]) return false;
-    return true;
 }

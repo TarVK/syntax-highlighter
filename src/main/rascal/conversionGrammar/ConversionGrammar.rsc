@@ -7,9 +7,11 @@ import Set;
 import Map;
 import String;
 
+import conversionGrammar::RegexCache;
+import regex::Regex;
+import regex::PSNFATools;
 import Scope;
 import Warning;
-import regex::Regex;
 
 data ConversionGrammar = convGrammar(Symbol \start, rel[Symbol, ConvProd] productions);
 
@@ -33,6 +35,52 @@ data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-termi
 
 // Allow sources to be specified within an expression, to track how a regular expression was obtained
 data Regex = regexSource(Regex r, set[ConvProd] prods);
+
+@doc {
+    Replaces the given production in the grammar with the new production
+}
+ConversionGrammar replaceProduction(ConversionGrammar grammar, ConvProd old, ConvProd new) 
+    = addProduction(removeProduction(grammar, old), new);
+
+@doc {
+    Removes a production from the given grammar
+}
+ConversionGrammar removeProduction(ConversionGrammar grammar, ConvProd old) {
+    grammar.productions = grammar.productions - <old.symb, old>;
+    return grammar;
+}
+
+@doc {
+    Adds a production to the given grammar
+}
+ConversionGrammar addProduction(ConversionGrammar grammar, ConvProd new) {
+    grammar.productions = grammar.productions + <new.symb, new>;
+    return grammar;
+}
+
+
+
+@doc {
+    Checks whether two productions define the same language/tokenization from the given index forward
+}
+bool equalsAfter(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
+    if(size(pa) != size(pb)) return false;
+
+    for(i <- [index..size(pa)]) {
+        sa = pa[i];
+        sb = pb[i];
+        if(sa == sb) continue;
+        if(regexp(ra) := sa && regexp(rb) := sb) {
+            psnfaA = regexToPSNFA(ra);
+            psnfaB = regexToPSNFA(rb);
+            if(equals(psnfaA, psnfaB)) continue;
+        }
+
+        return false;
+    }
+
+    return true;
+}
 
 @doc {
     Retrieves a conversion grammar that we can operate on to obtain a highlighting grammar
@@ -75,15 +123,18 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termS
     }
 
     ConvSymbol getRegex(Regex exp) {
-        if(size(termScopes) > 0) exp = scoped(termScopes, exp);
+        if(size(termScopes) > 0) exp = mark({scopeTag(termScopes)}, exp);
         return regexp(exp);
     }
 
+    // TODO: create a normal form for delete/precode/follow statements
     ConvSymbol res;
     switch(sym) {
         case \char-class(cc): res = getRegex(character(cc));
-        case \lit(text): res = getRegex(concatenation([character(c) | c <- getCharRanges(text, false)]));
-        case \cilit(text): res = getRegex(concatenation([character(c) | c <- getCharRanges(text, true)]));
+        case \lit(text): res = getRegex(reduceConcatenation(concatenation(
+            [character(c) | c <- getCharRanges(text, false)])));
+        case \cilit(text): res = getRegex(reduceConcatenation(concatenation(
+            [character(c) | c <- getCharRanges(text, true)])));
         case \conditional(s, conditions): {
             res = rec(s);
             for(c <- conditions) {

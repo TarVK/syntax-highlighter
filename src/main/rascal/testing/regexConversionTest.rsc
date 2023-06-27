@@ -4,14 +4,14 @@ import IO;
 import ParseTree;
 
 import conversionGrammar::ConversionGrammar;
-import conversionGrammar::RegexConversion;
+import conversionGrammar::regexConversion::RegexConversion;
 
-syntax A = B "a" B "c"
-         | B "c" B "c"
-         | B "d" B "c"
-         | B "a" B "d"
-         | B "c" B "d"
-         | B "d" B "d"
+syntax A = @token="b" B "a" B "c"
+         | @token="b" B "c" B "c"
+         | @token="b" B "d" B "c"
+         | @token="b" B "a" B "d"
+         | @token="b" B "c" B "d"
+         | @token="b" B "d" B "d"
          | "a" B "c"
          | "b" B "c"
          | "c"

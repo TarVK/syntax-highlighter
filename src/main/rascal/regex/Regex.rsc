@@ -44,15 +44,8 @@ data ScopeTag = scopeTag(Scopes scopes);
 }
 Regex reduce(Regex inp) {
     return visit (inp) {
-        case Regex::concatenation([]) => empty()
-        case Regex::concatenation([part]) => part
-        case Regex::concatenation([first, second, *rest]) => 
-            (concatenation(first, second) | concatenation(it, part) | part <- rest)
-
-        case Regex::alternation([]) => empty()
-        case Regex::alternation([opt]) => opt
-        case Regex::alternation([opt1, opt2, *rest]) => 
-            (concatenation(opt1, opt2) | concatenation(it, part) | part <- rest)
+        case r:Regex::concatenation(_) => reduceConcatenation(r)
+        case r:Regex::alternation(_) => reduceAlternation(r)
 
         case Regex::iteration(r) =>
             alternation(\multi-iteration(r), empty())
@@ -81,6 +74,15 @@ Regex repeat(Regex r, int min) = (r | concatenation(r, it) | _ <- [1..min]);
 Regex expandMaxIteration(Regex r, 0) = empty();
 Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternation(concatenation(r, it), empty()) | _ <- [1..max]);
 
+Regex reduceAlternation(Regex::alternation([])) = empty();
+Regex reduceAlternation(Regex::alternation([opt])) = opt;
+Regex reduceAlternation(Regex::alternation([opt1, opt2, *rest])) 
+    = (alternation(opt1, opt2) | alternation(it, part) | part <- rest);
+
+Regex reduceConcatenation(Regex::concatenation([])) = empty();
+Regex reduceConcatenation(Regex::concatenation([part])) = part;
+Regex reduceConcatenation(Regex::concatenation([first, second, *rest])) 
+    = (concatenation(first, second) | concatenation(it, part) | part <- rest);
 
 //       Parsing
 // ------------------

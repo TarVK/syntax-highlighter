@@ -46,17 +46,3 @@ NFA[State] simplify(NFA[State] n) {
     //     return stateSet({*S | S <- states});
     // });
 }
-
-
-data Regex = cached(NFA[State] psnfa, Regex exp);
-str stringify(cached(psnfa, exp)) = stringify(exp);
-
-@doc {
-    Retrieves the PSNFA of the given regular expression, and the regular expression with the PSNFA cached into it for quick access later (using this same function)
-}
-tuple[Regex, NFA[State]] cachedRegexToPSNFA(Regex regex) {
-    if (cached(nfa, exp) := regex) return <regex, nfa>;
-
-    nfa = regexToPSNFA(regex);
-    return <cached(nfa, regex), nfa>;
-}

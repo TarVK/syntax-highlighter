@@ -50,6 +50,7 @@ ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
     - Concatenation
     - Substitution
     - Scope lifting
+    - Modifier lowering
 
     Until no more rules can be applied
 }

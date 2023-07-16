@@ -114,22 +114,28 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
     grammar = expandRegularSymbols(grammar);
 
     rel[Symbol, ConvProd] prods = {};
-    for(/p:prod(def, parts, attributes) <- range(grammar.rules)) {
-        nonTermScopes = [parseScope(scope) | \tag("scope"(scope)) <- attributes];
-        termScopes = nonTermScopes + [parseScope(scope) | \tag("token"(scope)) <- attributes];
+    for(def <- grammar.rules) {
+        defProds = grammar.rules[def];
 
-        list[ConvSymbol] newParts = [];
-        for(orSymb <- parts) {
-            if(<newWarnings, symb> := getConvSymbol(orSymb, p, termScopes, nonTermScopes)){
-                warnings += newWarnings;
-                newParts += symb;
+        // Note that def and lDef are not neccessarily the same, due to possible labels
+        for(/p:prod(lDef, parts, attributes) <- defProds) {
+            nonTermScopes = [parseScope(scope) | \tag("scope"(scope)) <- attributes];
+            termScopes = nonTermScopes + [parseScope(scope) | \tag("token"(scope)) <- attributes];
+
+            list[ConvSymbol] newParts = [];
+            for(orSymb <- parts) {
+                if(<newWarnings, symb> := getConvSymbol(orSymb, p, termScopes, nonTermScopes)){
+                    warnings += newWarnings;
+                    newParts += symb;
+                }
             }
-        }
 
-        newProd = convProd(def, newParts, {origProdSource(p)});
-        prods += <def, newProd>;
+            newProd = convProd(lDef, newParts, {origProdSource(p)});
+            prods += <def, newProd>;
+        }
     }
 
+    // TODO: look into why multiple starts are allowed
     startSymbol = getOneFrom(grammar.starts);
     return <warnings, convGrammar(startSymbol, prods)>;
 }
@@ -195,9 +201,9 @@ Scope parseScope(str scope) = split(".", scope);
 Grammar fromConversionGrammar(ConversionGrammar gr) = fromConversionGrammar(gr, true);
 Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
     set[Production] outProds = {};
-    for(<sym, pr:convProd(sym, parts, sources)> <- prods) {
+    for(<_, pr:convProd(lSym, parts, sources)> <- prods) {
         newParts = [p | part <- parts, just(p) := convSymbolToSymbol(part)];
-        newProd = prod(sym, newParts, {\tag(pr), \tag(sources)});
+        newProd = prod(lSym, newParts, {\tag(pr), \tag(sources)});
         outProds += newProd;
     }
     return grammar({\start}, outProds);

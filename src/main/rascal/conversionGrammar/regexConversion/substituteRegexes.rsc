@@ -51,24 +51,28 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
         set[Symbol] affected = {};
 
         productions = delete(productions, target);
-        for(s:convProd(def, parts:[*_, /symb(target, _), *_],  _) <- flatten(productions<1>)) {
-            list[ConvSymbol] newParts = [];
-            for(part <- parts)
-                newParts += visit(part) {
-                    case symb(target, scopes) => regexp(
-                        size(scopes)>0
-                            ? liftScopes(mark({scopeTag(scopes)}, regex))
-                            : regex
-                    )
-                };
+        for(def <- productions) {
+            prods = productions[def];
             
-            affected += def;
-            productions[def] -= s;
-            productions[def] += concatenateRegexes(lowerModifiers(
-                convProd(def, newParts, {targetSource, convProdSource(s)})
-            ));
+            // Note that def and lDef may be different, because of applied labels
+            for(s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods) {
+                list[ConvSymbol] newParts = [];
+                for(part <- parts)
+                    newParts += visit(part) {
+                        case symb(target, scopes) => regexp(
+                            size(scopes)>0
+                                ? liftScopes(mark({scopeTag(scopes)}, regex))
+                                : regex
+                        )
+                    };
+                
+                affected += def;
+                productions[def] -= s;
+                productions[def] += concatenateRegexes(lowerModifiers(
+                    convProd(lDef, newParts, {targetSource, convProdSource(s)})
+                ));
+            }
         }
-
         return <affected, productions>;
     }
     
@@ -104,22 +108,27 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
         set[Symbol] affected = {};
         canRemove = true;
 
-        for(s:convProd(def, parts:[*_, /symb(target, []), *_],  _) <- flatten(productions<1>)) {
-            list[ConvSymbol] newParts = [];
-            for(part <- parts) {
-                newPart = [part];
-                if(symb(target, l) := part) {
-                    if([] := l) newPart = subParts;
-                    else canRemove = false;
+        for(def <- productions) {
+            prods = productions[def];
+
+            // Note that def and lDef may be different, because of applied labels
+            for(s:convProd(lDef, parts:[*_, /symb(target, []), *_],  _) <- prods) {
+                list[ConvSymbol] newParts = [];
+                for(part <- parts) {
+                    newPart = [part];
+                    if(symb(target, l) := part) {
+                        if([] := l) newPart = subParts;
+                        else canRemove = false;
+                    }
+                    newParts += newPart;
                 }
-                newParts += newPart;
+                
+                affected += def;
+                productions[def] -= s;
+                productions[def] += concatenateRegexes(
+                    convProd(lDef, newParts, {targetSource, convProdSource(s)})
+                );
             }
-            
-            affected += def;
-            productions[def] -= s;
-            productions[def] += concatenateRegexes(
-                convProd(def, newParts, {targetSource, convProdSource(s)})
-            );
         }
 
         if(canRemove)  productions = delete(productions, target);

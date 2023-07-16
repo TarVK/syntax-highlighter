@@ -8,6 +8,7 @@ import IO;
 
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
+import conversionGrammar::regexConversion::concatenateRegexes;
 import regex::RegexToPSNFA;
 import regex::Regex;
 import regex::PSNFACombinators;
@@ -25,9 +26,13 @@ import regex::PSNFATools;
     A -> x (X | Y) y
     ```
 
+    Internally applies the rules:
+    - Concatenation
+    - Scope lifting
+
     This is done exhasutively for this production set.
 }
-set[ConvProd] unionRegexes(set[ConvProd] productions) = unionRegexes(productions, 0);
+set[ConvProd] unionRegexes(set[ConvProd] productions) = concatenateRegexes(unionRegexes(productions, 0));
 
 @doc {
     Tries to apply the union rule:
@@ -39,6 +44,9 @@ set[ConvProd] unionRegexes(set[ConvProd] productions) = unionRegexes(productions
     ```
     A -> x (X | Y) y
     ```
+
+    Internally applies the rules:
+    - Scope lifting
 
     This is done exhasutively for this production set.
     Assumes the symbols up to and excluding startIndex to be identical between all productions
@@ -85,13 +93,28 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
             if(size(combine) > 1 && convProd(def, pb, _) := prodI) {
                 indexed -= <symbI, prodI>;
 
-                combinedRegex = reduceAlternation(alternation([r | <regexp(r), _> <- combine]));
-                combinedSymbol = regexp(liftScopes(combinedRegex));
+                combinedRegex = liftScopes(
+                    reduceAlternation(alternation([r | <regexp(r), _> <- combine]))
+                );
+                combinedSymbol = regexp(combinedRegex);
 
                 sources = {*s | <_, convProd(_, _, s)> <- combine};
                 pb[startIndex] = combinedSymbol;
 
-                indexed += <combinedSymbol, convProd(def, pb, sources)>;
+                // Find an equivalent regex (maybe not syntactically) to index the prod under
+                indexSym = combinedSymbol;
+                indexedSymbols = indexed<0>;
+                if(!(combinedSymbol in indexedSymbols)) {
+                    for(symb:regexp(symbRegex) <- indexedSymbols) {
+                        combinedRegexPsnfa = regexToPSNFA(combinedRegex);
+                        symbPsnfa = regexToPSNFA(symbRegex);
+                        if(equals(symbPsnfa, combinedRegexPsnfa)) {
+                            indexSym = symb;
+                            break;
+                        }
+                    }                    
+                }
+                indexed += <indexSym, convProd(def, pb, sources)>;
             }
         }
     }

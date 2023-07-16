@@ -1,36 +1,66 @@
 module conversionGrammar::regexConversion::concatenateRegexes
 
+import List;
+
 import conversionGrammar::ConversionGrammar;
+import conversionGrammar::regexConversion::liftScopes;
+import regex::Regex;
 
 @doc {
-    Tries to apply the union rule:
+    Tries to apply the concatenation rule:
     ```
-    A -> x X y          
-    A -> x Y y          
+    A -> x X Y y         
     ```
-    => {Union}
+    => {Concatenation}
     ```
-    A -> x (X | Y) y
+    A -> x (X Y) y
     ```
+    
+    Internally applies the rules:
+    - Scope lifting
 
-    This is done exhasutively for this production set.
+    This is done exhasutively for this set of productions.
 }
-tuple[ConversionGrammar, set[ConvProd]] concatenateRegexes(ConversionGrammar grammar, set[ConvProd] productions) 
-    = unionRegexes(grammar, productions, 0);
+set[ConvProd] concatenateRegexes(set[ConvProd] productions) 
+    = {concatenateRegexes(production) | production <- productions};
 
 @doc {
-    Tries to apply the union rule:
+    Tries to apply the concatenation rule:
     ```
-    A -> x X y          
-    A -> x Y y          
+    A -> x X Y y         
     ```
-    => {Union}
+    => {Concatenation}
     ```
-    A -> x (X | Y) y
+    A -> x (X Y) y
     ```
 
-    This is done exhasutively for this production set.
-    Assumes the symbols up to and excluding startIndex to be identical between all productions
+    Internally applies the rules:
+    - Scope lifting
+
+    This is done exhasutively for this production.
 }
-tuple[ConversionGrammar, set[ConvProd]] unionRegexes(ConversionGrammar grammar, set[ConvProd] productions, int startIndex) {
+ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
+    list[ConvSymbol] newParts = [];
+    list[Regex] regexes = [];
+    void flush(){
+        if(size(regexes)>0) {
+            if([r] := regexes)
+                newParts += regexp(r);
+            else
+                newParts += regexp(liftScopes(concatenation(regexes)));
+            regexes = [];
+        }
+    }
+
+    for(part <- parts) {
+        if(regexp(r) := part) {
+            regexes += r;
+        } else {
+            flush();
+            newParts += part;
+        }
+    }
+    flush();
+
+    return convProd(symb, newParts, {convProdSource(p)});
 }

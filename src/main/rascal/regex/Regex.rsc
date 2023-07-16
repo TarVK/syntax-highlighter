@@ -220,4 +220,3 @@ str stringify(CharClass cc) {
 }
 
 str stringify(Tags t) = stringify([stringify(scopes) | scopeTag(scopes) <- t], ",");
-str stringify(Scopes scopes) = stringify([stringify(scope, ".") | scope <- scopes], ",");

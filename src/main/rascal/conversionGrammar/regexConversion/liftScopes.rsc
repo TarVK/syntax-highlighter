@@ -11,6 +11,8 @@ import regex::Regex;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 
+// TODO: also merge nested mark constructors
+
 @doc {
     Tries to apply scope lifting if possible:
     ```

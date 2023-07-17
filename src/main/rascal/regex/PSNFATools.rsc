@@ -5,6 +5,8 @@
 
 module regex::PSNFATools
 
+import regex::Regex;
+import regex::RegexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
@@ -40,6 +42,15 @@ bool equals(NFA[State] a, NFA[State] b) {
     inANotB = subtractPSNFA(a, b);
     inBNotA = subtractPSNFA(b, a);
     return isEmpty(inANotB) && isEmpty(inBNotA);
+}
+
+@doc {
+    Checks whether two given regular expressions define the same language
+}
+bool equals(Regex a, Regex b) {
+    aNFA = regexToPSNFA(a);
+    bNFA = regexToPSNFA(b);
+    return equals(aNFA, bNFA);
 }
 
 @doc {

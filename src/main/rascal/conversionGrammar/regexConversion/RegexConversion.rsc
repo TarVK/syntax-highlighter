@@ -3,6 +3,7 @@ module conversionGrammar::regexConversion::RegexConversion
 import Set;
 import Map;
 import List;
+import util::Maybe;
 import Relation;
 import IO;
 
@@ -11,6 +12,7 @@ import conversionGrammar::regexConversion::unionRegexes;
 import conversionGrammar::regexConversion::concatenateRegexes;
 import conversionGrammar::regexConversion::substituteRegexes;
 import conversionGrammar::regexConversion::lowerModifiers;
+import conversionGrammar::regexConversion::repeatRegexes;
 import regex::RegexToPSNFA;
 import regex::Regex;
 import regex::PSNFATools;
@@ -65,16 +67,25 @@ tuple[bool, ProdMap] applyRegexRules(Symbol \start, ProdMap productions) {
 
             // Try to apply the union rule
             symProductions = productions[sym];
-            combined = unionRegexes(symProductions);
-            if(size(combined) < size(symProductions)) {
-                productions[sym] = combined;        
-                newDirty += sym;
+            count = Set::size(symProductions);
+            if(count > 1) {
+                combined = unionRegexes(symProductions);
+                if(size(combined) < count) {
+                    productions[sym] = combined;
+                    newDirty += sym;
+                }
             }
 
             // Try to apply the substitution rule
             if(sym != \start) {
                 <affected, productions> = substituteRegexes(productions, sym);
                 newDirty += affected;
+            }
+
+            // Try to apply the repeat rule
+            if(just(repeatRegexRule) := repeatRegexes(sym, symProductions)) {
+                productions[sym] = repeatRegexRule;
+                newDirty += sym;
             }
         }
 

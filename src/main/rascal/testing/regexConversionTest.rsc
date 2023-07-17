@@ -11,18 +11,18 @@ import conversionGrammar::regexConversion::RegexConversion;
 syntax A = @token="b" B "a" B "i"
          | @token="b" B "ce" B "i"
          | @token="b" B "d" B "i"
-         | @token="b" B "a" B+ "o"
-         | @token="b" B "ce" B+ "o"
-         | @token="b" B "d" B+ "o"
+         | @token="b" B "a" C+ "o"
+         | @token="b" B "ce" C+ "o"
+         | @token="b" B "d" C+ "o"
          | "a" B >> D "c"
          | "b" B >> D "c"
          | "c"
          | "d";
 syntax B = "b"
          | "ab"
-         | @scope="c" C;
-syntax C = "c"
-         | "ac";
+         | @scope="C" C;
+syntax C = @token="c" "c"
+         | @token="c" "ac";
 syntax D = [a-z];
 
 // syntax A = B+;

@@ -23,13 +23,13 @@ data Regex = never()
            | \negative-lookbehind(Regex r, Regex lookbehind)
            | concatenation(Regex head, Regex tail)
            | alternation(Regex opt1, Regex opt2)
-           | \multi-iteration(Regex r)
+           | \multi-iteration(Regex r) // 1 or more
            | subtract(Regex r, Regex removal)
            | mark(Tags tags, Regex r)
            // Additional extended syntax, translatable into the core
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
-           | iteration(Regex r)
+           | iteration(Regex r) // 0 ore more
            | optional(Regex r)
            | \exact-iteration(Regex r, int amount)
            | \min-iteration(Regex r, int min)

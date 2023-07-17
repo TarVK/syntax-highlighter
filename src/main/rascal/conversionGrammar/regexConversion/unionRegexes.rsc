@@ -14,6 +14,18 @@ import regex::Regex;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
 
+/* 
+    TODO: consider special case of unioning the implicit empty regex
+    E.g.:
+    ```
+    A -> x X y          
+    A -> x y          
+    ```
+    => {Union}
+    ```
+    A -> x (X | ) y
+    ```
+*/
 
 @doc {
     Tries to apply the union rule:

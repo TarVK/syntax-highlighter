@@ -20,6 +20,10 @@ Regex removeCache(Regex regex) =
     visit(regex) {
         case cached(exp, _, _) => exp
     };
+value removeRegexCache(value anything) = 
+    visit(anything) {
+        case Regex::cached(exp, _, _) => exp
+    };
 
 @doc {
     Checks whether the given regular expression contains a scope

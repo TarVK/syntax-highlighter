@@ -4,13 +4,12 @@
     "patterns": [{ "include": "#a" }],
     "repository": {
         "a": {
-            "match": "((a))((b))",
+            "match": "(?=hel(l))((hel)lo)",
             "name": "comment",
             "captures": {
-                "1": { "name": "A" },
-                "2": { "name": "a" },
-                "3": { "name": "B"},
-                "4": { "name": "b"}
+                "1": { "name": "string" },
+                "2": { "name": "keyword" },
+                "3": { "name": "variable.parameter"}
             }
         }
     },

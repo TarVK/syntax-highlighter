@@ -5,6 +5,8 @@ import Map;
 import ParseTree;
 import IO;
 
+import Scope;
+import conversionGrammar::RegexCache;
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
 import conversionGrammar::regexConversion::concatenateRegexes;
@@ -61,7 +63,7 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
                     newParts += visit(part) {
                         case symb(target, scopes) => regexp(
                             size(scopes)>0
-                                ? liftScopes(mark({scopeTag(scopes)}, regex))
+                                ? wrapScopes(regex, scopes)
                                 : regex
                         )
                     };
@@ -112,12 +114,13 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
             prods = productions[def];
 
             // Note that def and lDef may be different, because of applied labels
-            for(s:convProd(lDef, parts:[*_, /symb(target, []), *_],  _) <- prods) {
+            for(s:convProd(lDef, parts:[*_, /symb(target, scopes), *_],  _) <- prods) {
                 list[ConvSymbol] newParts = [];
                 for(part <- parts) {
                     newPart = [part];
                     if(symb(target, l) := part) {
-                        if([] := l) newPart = subParts;
+                        if([] := l || subParts == []) 
+                            newPart = subParts;
                         else canRemove = false;
                     }
                     newParts += newPart;
@@ -139,4 +142,27 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
     return <{}, productions>;
 }
 
-set[&T] flatten(set[set[&T]] s) = {*S | S <- s};
+@doc {
+    Wraps the given regular expresion in the given scope
+}
+Regex wrapScopes(Regex regex, Scopes scopes) {
+    Regex prefixScopes(Regex regex) {
+        switch(regex) {
+            case mark(tags, r): return mark({
+                scopeTag(s) := t ? scopeTag([*scopes, *s]) : t | t <- tags
+            }, prefixScopes(r));
+            case lookahead(r, la): return lookahead(prefixScopes(r), la);
+            case \negative-lookahead(r, la): return \negative-lookahead(prefixScopes(r), la);
+            case lookbehind(r, lb): return lookbehind(prefixScopes(r), lb);
+            case \negative-lookbehind(r, lb): return \negative-lookbehind(prefixScopes(r), lb);
+            case subtract(r, re): return subtract(prefixScopes(r), re);
+            case concatenation(h, t): return concatenation(prefixScopes(h), prefixScopes(t));
+            case alternation(o1, o2): return alternation(prefixScopes(o1), prefixScopes(o2));
+            case \multi-iteration(r): return \multi-iteration(prefixScopes(r));
+            case cached(r, a, s): return cached(prefixScopes(r), a, s);
+            default: return regex;
+        }
+    }
+
+    return liftScopes(mark({scopeTag(scopes)}, prefixScopes(regex)));
+}

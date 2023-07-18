@@ -30,17 +30,21 @@ ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
     Symbol \start = grammar.\start;
 
     bool changed = true;
+    bool first = true;
     ProdMap tentativeProductions = productions;
     while(changed) {
         <changed, tentativeProductions> = applyRegexRules(\start, tentativeProductions);
 
         // If no more pure regex rules apply, try sequence substitution which could kick-off new regex rules
         // We don't perform sequence substituion right away, since it may unneccessarily increase the amount of work by duplicating symbols
-        if(changed) {
+        if(changed || first) {
             productions = tentativeProductions; // Only update productions, if regex changes were made
             for(sym <- productions<0>, sym != grammar.\start) 
                 <_, tentativeProductions> = substituteSequence(tentativeProductions, sym);
+            changed = true;
         }
+
+        first = false;
     }
 
     return convGrammar(\start, toRel(productions));

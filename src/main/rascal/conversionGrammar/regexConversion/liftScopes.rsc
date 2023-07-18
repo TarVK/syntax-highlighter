@@ -25,14 +25,16 @@ import regex::PSNFACombinators;
     B -> (<s> X|Y)
     ```
 
-    This is done exhaustively. This rule is not based on exact grammar structure, instead teh PSNFA is analyzed to decide whether internal scopes can be moved upwards. 
+    This is done exhaustively. This rule is not based on exact grammar structure, instead the PSNFA is analyzed to decide whether internal scopes can be moved upwards. 
 }
 Regex liftScopes(Regex regex) {
     <cachedRegex, psnfa, hasScope> = cachedRegexToPSNFAandContainsScopes(regex);
     
-    liftableScopes = findLiftableScopes(cachedRegex);
-    if(size(liftableScopes)>0) {
-        Tags removeScopes(Tags tags) = tags - {t | t:scopeTag(scopes) <- tags, [*scopes, *_] := liftableScopes};
+    liftableScopesSet = findLiftableScopes(cachedRegex);
+    if(size(liftableScopesSet)>0) {
+        Tags removeScopes(Tags tags) = tags - {t | t:scopeTag(scopes) <- tags, 
+            // Remove scopes tags that has a prefix of lifable scopes
+            any(liftableScopes <- liftableScopesSet, [*scopes, *_] := liftableScopes)}; 
 
         regexWithoutScope = visit(cachedRegex) {
             case mark(tags, exp): {
@@ -42,13 +44,55 @@ Regex liftScopes(Regex regex) {
         };
 
         if(cached(nonCached, _, _) := regexWithoutScope) 
-            return cached(mark({scopeTag(liftableScopes)}, nonCached), psnfa, true);
+            return cached(mark(
+                {scopeTag(liftableScopes) | liftableScopes <- liftableScopesSet}, 
+                nonCached), 
+            psnfa, true);
     }
 
     return cachedRegex;
 }
 
-list[Scope] findLiftableScopes(Regex regex) {
+set[list[Scope]] findLiftableScopes(Regex regex) {
+    <mainScopesSets, universalNonContextScopes> = findUniversalMainScopes(regex);
+
+    set[list[Scope]] liftableScopesSet = {};
+
+    for(outerScope <- universalNonContextScopes) {
+        list[Scope] liftableScopes = [outerScope];
+
+        // Check whether this is a first most/outermost scope
+        isAlwaysNext = all(scopesSet <- mainScopesSets, 
+            any(scopes <- scopesSet, startPrefix([outerScope], scopes)));
+        if(!isAlwaysNext) continue;
+        
+        // Try to augment it with sub-scopes
+        foundAllScopes = false;
+        while(!foundAllScopes) {
+            foundAllScopes = true;
+            for(scope <- universalNonContextScopes) {
+                // Check whether this is a first most/outermost scope (apart from the already found liftableScopes)
+                isAlwaysNext = all(scopesSet <- mainScopesSets, 
+                    any(scopes <- scopesSet, startPrefix([*liftableScopes, scope], scopes)));
+                if(!isAlwaysNext) continue;
+
+                foundAllScopes = false;
+                liftableScopes += [scope];
+                break;
+            }
+        }
+
+        // Add to output
+        liftableScopesSet += liftableScopes;
+    }
+
+    return liftableScopesSet;
+}
+
+@doc {
+    Retrieves all the main scope sets, as well as a set of all scopes that only occur in all transitions of the main match of the regex and not the context match.
+}
+tuple[set[set[Scopes]], set[Scope]] findUniversalMainScopes(Regex regex) {
     <cachedRegex, psnfa, hasScope> = cachedRegexToPSNFAandContainsScopes(regex);
     <prefixStates, mainStates, suffixStates> = getPSNFApartition(psnfa);
     contextStates = prefixStates + suffixStates;
@@ -70,28 +114,11 @@ list[Scope] findLiftableScopes(Regex regex) {
     universalScopes = {scope | scope <- mainScopes, 
         all(scopesSet <- mainScopesSets, any(scopes <- scopesSet, scope in scopes))};
 
-    // Find all universal scopes that are not part of the context matches
+    // Find all universal scopes that are not part of the context (prefix/suffix) matches
     universalNonContextScopes = {scope | scope <- universalScopes,
         !any(scopesSet <- contextScopesSets, scopes <- scopesSet, scope in scopes)};
 
-
-    list[Scope] liftableScopes = [];
-    foundAllScopes = false;
-    while(!foundAllScopes) {
-        foundAllScopes = true;
-        for(scope <- universalNonContextScopes) {
-            // Check whether this is the first most/outermost scope (apart from the already found liftableScopes)
-            isAlwaysNext = all(scopesSet <- mainScopesSets, 
-                any(scopes <- scopesSet, startPrefix([*liftableScopes, scope], scopes)));
-            if(!isAlwaysNext) continue;
-
-            foundAllScopes = false;
-            liftableScopes += [scope];
-            break;
-        }
-    }
-
-    return liftableScopes;
+    return <mainScopesSets, universalNonContextScopes>;
 }
 
 bool startPrefix(list[&T] prefix, list[&T] target) {

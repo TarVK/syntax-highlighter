@@ -5,6 +5,7 @@ import util::Maybe;
 import IO;
 
 import conversionGrammar::ConversionGrammar;
+import conversionGrammar::regexConversion::liftScopes;
 import regex::Regex;
 import regex::Tags;
 import regex::PSNFATools;
@@ -12,7 +13,7 @@ import conversionGrammar::RegexCache;
 import Scope;
 
 @doc {
-    Tries to apply either of the repeat rules:
+    Tries to apply any of the repeat rules and variations:
     ```
     A -> (<s> X!) A!
     A -> Y
@@ -32,12 +33,28 @@ import Scope;
     ```
     A -> Y (<s> X*)
     ```
+    and
+    ```
+    A -> (<s1> X!) A! 
+    A -> A! (<s2> Y!) 
+    A -> Z
+    A -/> 
+    ```
+    => {Repetition-both}
+    ```
+    A -> (<s1> X*) Z (<s2> Y*)
+    ```
+
+    Internally applies the rules:
+    - Scope lifting
 }
 Maybe[set[ConvProd]] repeatRegexes(Symbol sym, set[ConvProd] productions) {
     if(s:just(_) := repeatMultiLeftRegexes(sym, productions)) return s;
     if(s:just(_) := repeatLeftRegexes(sym, productions)) return s;
     if(s:just(_) := repeatMultiRightRegexes(sym, productions)) return s;
     if(s:just(_) := repeatRightRegexes(sym, productions)) return s;
+    if(s:just(_) := repeatMultiBothRegexes(sym, productions)) return s;
+    if(s:just(_) := repeatBothRegexes(sym, productions)) return s;
 
     return nothing();
 }
@@ -54,6 +71,9 @@ Maybe[set[ConvProd]] repeatRegexes(Symbol sym, set[ConvProd] productions) {
     A -> Y (<s> X*)
     ```
     Where Y is non-empty
+
+    Internally applies the rules:
+    - Scope lifting
 }
 Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] productions) {
     if({s:convProd(_, [regexp(fRegex)], _), r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)} := productions,
@@ -68,11 +88,12 @@ Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] production
             equals(repeatRegex, firstRegex)) 
             newRegex = withTags(\multi-iteration(repeatRegex));
         else             
-            newRegex = concatenation(
+            newRegex = liftScopes(concatenation(
                             fRegex, 
-                            alternation(
-                                withTags(\multi-iteration(repeatRegex)),
+                            withTags(alternation(
+                                \multi-iteration(repeatRegex),
                                 empty()
+                            ))
                         ));
 
         return createNewProd(sym, newRegex, {s, r});
@@ -119,6 +140,9 @@ Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
     A -> (<s> X*) Y
     ```
     Where Y is non-empty
+
+    Internally applies the rules:
+    - Scope lifting
 }
 Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productions) {
     if({s:convProd(_, [regexp(lRegex)], _), r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)} := productions,
@@ -133,13 +157,13 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
             equals(repeatRegex, lastRegex)) 
             newRegex = withTags(\multi-iteration(repeatRegex));
         else             
-            newRegex = concatenation(
-                            alternation(
-                                withTags(\multi-iteration(repeatRegex)),
+            newRegex = liftScopes(concatenation(
+                            withTags(alternation(
+                                \multi-iteration(repeatRegex),
                                 empty()
-                            ),
+                            )),
                             lRegex
-                        );
+                        ));
 
         return createNewProd(sym, newRegex, {s, r});
     }
@@ -149,7 +173,7 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
 @doc {
     Tries to apply the right repeat rule: 
     ```
-    A -> (<s> X!)  A!
+    A -> (<s> X!) A!
     A ->
     A -/> 
     ```
@@ -169,6 +193,118 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
                             \multi-iteration(repeatRegex),
                             empty()
                         )), {s, r});
+    }
+    return nothing();
+}
+
+
+@doc {
+    Tries to apply the both repeat rule: 
+    ```
+    A -> (<s1> X!) A! 
+    A -> A! (<s2> Y!) 
+    A -> Z
+    A -/> 
+    ```
+    => {Repetition-both}
+    ```
+    A -> (<s1> X*) Z (<s2> Y*)
+    ```
+    Where Z is non-empty
+    
+    Internally applies the rules:
+    - Scope lifting
+}
+Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] productions) {
+    if({m:convProd(_, [regexp(mRegex)], _), 
+        p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
+        s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+    } := productions,
+        getWithoutLabel(pSym) == sym, 
+        getWithoutLabel(sSym) == sym, 
+        just(<prefixRegex, prefixTags>) := getScopelessRegex(pRegex),
+        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex)) {
+
+        Regex withTags(Tags tags, Regex r) = size(tags)>0 ? mark(tags, r) : r;
+        
+        Regex getDefault() = 
+            liftScopes(concatenation(
+                liftScopes(concatenation(
+                    withTags(prefixTags, alternation(
+                        \multi-iteration(prefixRegex),
+                        empty()
+                    )),
+                    mRegex
+                )), 
+                withTags(suffixTags, alternation(
+                    \multi-iteration(suffixRegex),
+                    empty()
+                ))
+            ));
+        
+        Regex newRegex;
+        if(just(<middleRegex, middleTags>) := getScopelessRegex(mRegex)) {
+            if(equals(middleRegex, prefixRegex),  middleTags==prefixTags) {
+                newRegex = liftScopes(concatenation(
+                    withTags(prefixTags, \multi-iteration(prefixRegex)),
+                    withTags(suffixTags, alternation(
+                        \multi-iteration(suffixRegex),
+                        empty()
+                    ))
+                ));
+            } else if (equals(middleRegex, suffixRegex),  middleTags==suffixTags) {
+                newRegex = liftScopes(concatenation(
+                    withTags(prefixTags, alternation(
+                        \multi-iteration(prefixRegex),
+                        empty()
+                    )),
+                    withTags(suffixTags, \multi-iteration(suffixRegex))
+                ));
+            } else newRegex = getDefault();
+        } else newRegex = getDefault();
+        
+        return createNewProd(sym, newRegex, {m, p, s});
+    }
+    return nothing();
+}
+
+@doc {
+    Tries to apply the both repeat rule: 
+    ```
+    A -> (<s1> X!) A! 
+    A -> A! (<s2> Y!) 
+    A -> 
+    A -/> 
+    ```
+    => {Repetition-both}
+    ```
+    A -> (<s1> X*) (<s2> Y*)
+    ```
+}
+Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
+    if({m:convProd(_, [], _), 
+        p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
+        s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+    } := productions,
+        getWithoutLabel(pSym) == sym, 
+        getWithoutLabel(sSym) == sym, 
+        just(<prefixRegex, prefixTags>) := getScopelessRegex(pRegex),
+        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex)) {
+
+        Regex withTags(Tags tags, Regex r) = size(tags)>0 ? mark(tags, r) : r;
+
+        Regex newRegex = liftScopes(concatenation(
+            withTags(prefixTags, alternation(
+                \multi-iteration(prefixRegex),
+                empty()
+            )),
+            withTags(suffixTags, alternation(
+                \multi-iteration(suffixRegex),
+                empty()
+            ))
+        ));
+
+        return createNewProd(sym, newRegex, {m, p, s});
     }
     return nothing();
 }
@@ -205,6 +341,22 @@ default Symbol getWithoutLabel(Symbol sym) = sym;
     ```
     => {Repetition-modifier-right}
     ```
-    A -> (<s> X!)? (<s> (X! > Z)*) (Y > Z)
+    A -> (<s> X)? (<s> (X > Z)*) (Y > Z)
     ```
+*/
+
+/*
+    TODO: also considered a mixed case:
+    ```
+    A -> X
+    A -> (<s1> Y!) A!
+    A -> A! (<s2> Z!)
+    A -/>
+    ```
+    => {Repetition-both}
+    ```
+    A -> (<s1> Y*) X (<s2> Z*)
+    ```
+
+    This structure only occurs in ambiguous grammars, but we're ignoring priorities so maybe with the original priorities the grammar was not ambiguous
 */

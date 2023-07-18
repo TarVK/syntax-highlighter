@@ -46,6 +46,11 @@ data Regex = regexSource(Regex r, set[ConvProd] prods);
 
 alias ProdMap = map[Symbol, set[ConvProd]];
 
+// Warnings that may be produced by conversion
+data Warning = unsupportedCondition(Condition condition, Production inProd)
+             | multipleTokens(set[Scopes] tokens, Production inProd) // Warning because order can not be guaranteed, use a single token declaration instead
+             | multipleScopes(set[Scopes] scopes, Production inProd); // Warning because order can not be guaranteed, use a single scope declaration instead
+
 @doc {
     Replaces the given production in the grammar with the new production
 }
@@ -80,11 +85,8 @@ bool equalsAfter(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
         sa = pa[i];
         sb = pb[i];
         if(sa == sb) continue;
-        if(regexp(ra) := sa && regexp(rb) := sb) {
-            psnfaA = regexToPSNFA(ra);
-            psnfaB = regexToPSNFA(rb);
-            if(equals(psnfaA, psnfaB)) continue;
-        }
+        if(regexp(ra) := sa && regexp(rb) := sb) 
+            if(equals(ra, rb)) continue;
 
         return false;
     }
@@ -119,8 +121,14 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
 
         // Note that def and lDef are not neccessarily the same, due to possible labels
         for(/p:prod(lDef, parts, attributes) <- defProds) {
-            nonTermScopes = [parseScope(scope) | \tag("scope"(scope)) <- attributes];
-            termScopes = nonTermScopes + [parseScope(scope) | \tag("token"(scope)) <- attributes];
+            nonTermScopesSet = {parseScopes(scopes) | \tag("scope"(scopes)) <- attributes};
+            if(size(nonTermScopesSet)>1) warnings += multipleScopes(nonTermScopesSet, p);
+            nonTermScopes = [*scopes | scopes <- nonTermScopesSet];
+
+            pureTermScopesSet = {parseScopes(scopes) | \tag("token"(scopes)) <- attributes};
+            if(size(pureTermScopesSet)>1) warnings += multipleTokens(pureTermScopesSet, p);
+            pureTermScopes = [*scopes | scopes <- pureTermScopesSet];
+            termScopes = nonTermScopes + pureTermScopes;
 
             list[ConvSymbol] newParts = [];
             for(orSymb <- parts) {
@@ -139,11 +147,11 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
     startSymbol = getOneFrom(grammar.starts);
     return <warnings, convGrammar(startSymbol, prods)>;
 }
-
-data Warning = unsupportedCondition(Condition condition, Production inProd);
 WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termScopes, Scopes nonTermScopes) {
     list[Warning] warnings = [];
-    ConvSymbol rec(Symbol s){
+
+    ConvSymbol rec(Symbol s) = rec(s, termScopes, nonTermScopes);
+    ConvSymbol rec(Symbol s, Scopes termScopes, Scopes nonTermScopes){
         warningsAndResult = getConvSymbol(s, prod, termScopes, nonTermScopes);
         warnings += warningsAndResult.warnings;
         return warningsAndResult.result;
@@ -165,11 +173,12 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termS
             res = rec(s);
             for(c <- conditions) {
                 switch(c) {
-                    case \delete(s2): res = delete(res, rec(s2));
-                    case \follow(s2): res = follow(res, rec(s2));
-                    case \precede(s2): res = precede(res, rec(s2));
-                    case \not-follow(s2): res = notFollow(res, rec(s2));
-                    case \not-precede(s2): res = notPrecede(res, rec(s2));
+                    // Modifiers should not recieve any scopes
+                    case \delete(s2): res = delete(res, rec(s2, [], []));
+                    case \follow(s2): res = follow(res, rec(s2, [], []));
+                    case \precede(s2): res = precede(res, rec(s2, [], []));
+                    case \not-follow(s2): res = notFollow(res, rec(s2, [], []));
+                    case \not-precede(s2): res = notPrecede(res, rec(s2, [], []));
                     default: {
                         warnings += unsupportedCondition(c, prod);
                     }
@@ -193,7 +202,7 @@ list[CharClass] getCharRanges(str text, bool caseInsensitive) {
     }
     return [getCharClass(c) | i <- [0..size(text)], c := charAt(text, i)];
 }
-Scope parseScope(str scope) = split(".", scope);
+Scopes parseScopes(str scopes) = [split(".", scope) | scope <- split(",", scopes)];
 
 @doc {
     Converts a conversion grammar into a standard grammar
@@ -252,7 +261,7 @@ Maybe[Symbol] convSymbolToSymbol(ConvSymbol inp) {
 Maybe[Symbol] regexToSymbol(Regex inp) {
     switch(inp) {
         case never(): return nothing();
-        case empty(): return just(\empty());
+        case Regex::empty(): return just(\empty());
         case always(): return just(\iter-start(complement(\char-class([]))));
         case character(ranges): {
             if([range(k, k)]:=ranges)
@@ -300,6 +309,12 @@ Maybe[Symbol] regexToSymbol(Regex inp) {
             }
             return mTailSym;
         }
+        case alternation(\multi-iteration(r), Regex::empty()): {
+            mRSym = regexToSymbol(r);
+            if(just(rSym) := mRSym)
+                return just(\iter-star(rSym));
+            return nothing();
+        }
         case alternation(opt1, opt2): {
             mOpt1Sym = regexToSymbol(opt1);
             mOpt2Sym = regexToSymbol(opt2);
@@ -339,3 +354,8 @@ Symbol simpAlt(Symbol a, Symbol b) = \alt({a, b});
 Symbol simpAlt(Symbol a, \alt(b)) = \alt({a, *b});
 Symbol simpAlt(\alt(a), Symbol b) = \alt({*a, b});
 Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
+
+// utils
+value stripSources(value anything) = visit (anything) {
+    case convProd(lDef, parts, _) => convProd(lDef, parts, {})
+};

@@ -309,7 +309,14 @@ Maybe[Symbol] regexToSymbol(Regex inp) {
             }
             return mTailSym;
         }
+        // Special alternation case for iter-star
         case alternation(\multi-iteration(r), Regex::empty()): {
+            mRSym = regexToSymbol(r);
+            if(just(rSym) := mRSym)
+                return just(\iter-star(rSym));
+            return nothing();
+        }
+        case alternation(Regex::empty(), \multi-iteration(r)): {
             mRSym = regexToSymbol(r);
             if(just(rSym) := mRSym)
                 return just(\iter-star(rSym));
@@ -359,3 +366,6 @@ Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
 value stripSources(value anything) = visit (anything) {
     case convProd(lDef, parts, _) => convProd(lDef, parts, {})
 };
+
+Symbol getWithoutLabel(label(_, sym)) = sym;
+default Symbol getWithoutLabel(Symbol sym) = sym;

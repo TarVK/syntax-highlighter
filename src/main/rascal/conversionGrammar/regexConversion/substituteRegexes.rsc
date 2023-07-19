@@ -3,6 +3,7 @@ module conversionGrammar::regexConversion::substituteRegexes
 import Set;
 import Map;
 import ParseTree;
+import util::Maybe;
 import IO;
 
 import Scope;
@@ -48,7 +49,7 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
     if(target notin productions) return <{}, productions>;
 
     targetProds = productions[target];
-    if({p:convProd(target, [regexp(regex)], _)} := targetProds) {
+    if({p:convProd(_, [regexp(regex)], _)} := targetProds) {
         targetSource = convProdSource(p);
         set[Symbol] affected = {};
 
@@ -57,15 +58,20 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
             prods = productions[def];
             
             // Note that def and lDef may be different, because of applied labels
-            for(s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods) {
+            targetProds = {
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods
+            } + {
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(label(_, target), _), *_],  _) <- prods
+            };
+            for(<s,lDef,parts> <- targetProds) {
                 list[ConvSymbol] newParts = [];
+
+                ConvSymbol sub(Scopes scopes) 
+                    = regexp(size(scopes)>0 ? wrapScopes(regex, scopes) : regex);
                 for(part <- parts)
                     newParts += visit(part) {
-                        case symb(target, scopes) => regexp(
-                            size(scopes)>0
-                                ? wrapScopes(regex, scopes)
-                                : regex
-                        )
+                        case symb(target, scopes) => sub(scopes)
+                        case symb(label(_, target), scopes) => sub(scopes)
                     };
                 
                 affected += def;
@@ -105,7 +111,7 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
     if(target notin productions) return <{}, productions>;
 
     targetProds = productions[target];
-    if({p:convProd(target, subParts, _)} := targetProds) {
+    if({p:convProd(_, subParts, _)} := targetProds) {
         targetSource = convProdSource(p);
         set[Symbol] affected = {};
         canRemove = true;
@@ -114,15 +120,31 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
             prods = productions[def];
 
             // Note that def and lDef may be different, because of applied labels
-            for(s:convProd(lDef, parts:[*_, /symb(target, scopes), *_],  _) <- prods) {
+            targetProds = {
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods
+            } + {
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(label(_, target), _), *_],  _) <- prods
+            };
+            for(<s,lDef,parts> <- targetProds) {
                 list[ConvSymbol] newParts = [];
                 for(part <- parts) {
                     newPart = [part];
-                    if(symb(target, l) := part) {
+
+                    Maybe[Scopes] scopes = nothing();
+                    if(symb(target, l) := part) scopes = just(l);
+                    else if(symb(label(_, target), l) := part) scopes = just(l);
+                    // If the part isn't a reference to the target but does contain it, the symbol can't be removed
+                    else visit(part) {
+                        case symb(target, scopes): canRemove = false;
+                        case symb(label(_, target), scopes): canRemove = false;
+                    }
+
+                    if(just(l) := scopes) {
                         if([] := l || subParts == []) 
                             newPart = subParts;
                         else canRemove = false;
                     }
+
                     newParts += newPart;
                 }
                 

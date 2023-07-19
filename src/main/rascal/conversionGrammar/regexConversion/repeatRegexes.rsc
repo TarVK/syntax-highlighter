@@ -329,8 +329,6 @@ Maybe[Regex, Tags] getScopelessRegex(Regex regex) {
 
     return nothing();
 }
-Symbol getWithoutLabel(label(_, sym)) = sym;
-default Symbol getWithoutLabel(Symbol sym) = sym;
 
 /*
     TODO: Also consider cases with modifiers, since I think this should also work. Would have to do better analysis on the regex's language though. E.g.
@@ -343,20 +341,4 @@ default Symbol getWithoutLabel(Symbol sym) = sym;
     ```
     A -> (<s> X)? (<s> (X > Z)*) (Y > Z)
     ```
-*/
-
-/*
-    TODO: also considered a mixed case:
-    ```
-    A -> X
-    A -> (<s1> Y!) A!
-    A -> A! (<s2> Z!)
-    A -/>
-    ```
-    => {Repetition-both}
-    ```
-    A -> (<s1> Y*) X (<s2> Z*)
-    ```
-
-    This structure only occurs in ambiguous grammars, but we're ignoring priorities so maybe with the original priorities the grammar was not ambiguous
 */

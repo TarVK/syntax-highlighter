@@ -5,6 +5,7 @@ import Relation;
 import Map;
 import List;
 import IO;
+import util::List;
 
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
@@ -96,10 +97,13 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
             }
         }
 
+        // println(stripSources(removeRegexCache(<indexSym, parts, startIndex>)));
         indexed += <indexSym, p>;    
     }
     for(prod <- productions) 
         addToIndex(prod);
+
+        
 
     emptySym = regexp(empty());
 
@@ -142,6 +146,8 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
                 combine += <emptySym, augmented>;
                 if(size(parts)>startIndex)
                     indexed -= <parts[startIndex], prodJ>;
+                else
+                    out -= prodJ;
             }
 
             // Perform the unioning
@@ -155,7 +161,10 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
                 sources = {*s | <_, convProd(_, _, s)> <- combine};
                 pb[startIndex] = combinedSymbol;
 
-                addToIndex(convProd(def, pb, sources));
+                labels = [name | <_, convProd(label(name, _), _, _)> <- combine];
+                plainDef = getWithoutLabel(def);
+                labeledDef = size(labels)>0 ? label(stringify(labels, ","), plainDef) : plainDef;
+                addToIndex(convProd(labeledDef, pb, sources));
             }
         }
     }
@@ -164,7 +173,6 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
     newSymbols = indexed<0>;
     for(symb <- newSymbols) {
         prods = indexed[symb];
-        // println(removeRegexCache(<symb, {prod.parts | prod <- prods}>));
         if(size(prods) == 1) out += prods;
         else out += unionRegexes(prods, startIndex+1);
     }

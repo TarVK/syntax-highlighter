@@ -1,6 +1,5 @@
 module conversionGrammar::RegexCache
 
-import regex::Regex;
 extend regex::RegexToPSNFA;
 
 import regex::Regex;
@@ -11,7 +10,7 @@ import regex::PSNFACombinators;
 // Create a new regex constructor an related functions
 data Regex = cached(Regex exp, NFA[State] psnfa, bool hasScope);
 str stringify(cached(exp, _, _)) = stringify(exp);
-NFA[State] regexToPSNFA(cached(exp, _, _)) = regexToPSNFA(exp);
+NFA[State] regexToPSNFA(cached(_, psnfa, _)) = psnfa;
 
 @doc {
     Removes all caches from the regex

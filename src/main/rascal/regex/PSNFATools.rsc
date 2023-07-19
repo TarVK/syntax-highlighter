@@ -5,11 +5,16 @@
 
 module regex::PSNFATools
 
+import IO;
+
 import regex::Regex;
 import regex::RegexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
+
+// Would prefer to not import this here, see if we can get around this
+import conversionGrammar::RegexCache;
 
 @doc {
     Computes a PSNFA that accepts all tuples (p, w, s), such that 

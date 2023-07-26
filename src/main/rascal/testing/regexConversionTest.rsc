@@ -3,10 +3,13 @@ module testing::regexConversionTest
 import IO;
 import Grammar;
 import ParseTree;
+import ValueIO;
 
 import Visualize;
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::RegexConversion;
+import conversionGrammar::RegexCache;
+import regex::PSNFA;
 
 // syntax A = @token="b" B "a" B "i"
 //          | @token="b" B "ce" B "i"
@@ -59,62 +62,25 @@ import conversionGrammar::regexConversion::RegexConversion;
 //   | nil    :"nil-type"
 //   ;
 
+import testing::grammars::Pico;
 
-start syntax A  = program: "begin" Declarations decls {Statement  ";"}* body "end" ;
+// syntax A = @scope="smth" "a" B;
+// syntax B = @token="stuff" "b";
 
-syntax Declarations  = "declare" {IdType ","}* decls ";" ;  
-syntax IdType = idtype: Id id ":" Type t;
-
-syntax Statement 
-  = assign: Id var ":="  Expression val 
-  | cond: "if" Expression cond "then" {Statement ";"}*  thenPart "else" {Statement ";"}* elsePart "fi"
-  | cond: "if" Expression cond "then" {Statement ";"}*  thenPart "fi"
-  | loop: "while" Expression cond "do" {Statement ";"}* body "od"
-  ;  
-     
-syntax Type 
-  = natural:"natural" 
-  | string :"string" 
-  | nil    :"nil-type"
-  ;
-
-syntax Expression 
-  = id: Id name
-  | strcon: String string
-  | natcon: Natural natcon
-  | bracket "(" Expression e ")"
-  > left concat: Expression lhs "||" Expression rhs
-  > left ( add: Expression lhs "+" Expression rhs
-         | min: Expression lhs "-" Expression rhs
-         )
-  ;
-
-lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
-lexical Natural = [0-9]+ ;
-lexical String = "\"" ![\"]*  "\"";
-
-layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
-
-lexical WhitespaceAndComment 
-   = [\ \t\n\r]
-   | @category="Comment" "%" ![%]+ "%"
-   | @category="Comment" "%%" ![\n]* $
-   ;
 
 void main() {
-    if(<warnings, conversionGrammar> := toConversionGrammar(#A)){
-        conversionGrammar = convertToRegularExpressions(conversionGrammar);
-        conversionGrammar = stripConvSources(conversionGrammar);
-        stdGrammar = fromConversionGrammar(conversionGrammar);
+    loc pos = |project://syntax-highlighter/outputs/regexGrammar.bin|;
+    <warnings, conversionGrammar> = toConversionGrammar(#A);
+    conversionGrammar = convertToRegularExpressions(conversionGrammar);
 
-        visualize(<
-            grammar(#A),
-            stdGrammar
-        >);
+    conversionGrammar = removeInnerRegexCache(stripConvSources(conversionGrammar));
+    stdGrammar = fromConversionGrammar(conversionGrammar);
 
-        if(size(warnings)>0) println(warnings);
+    visualize(insertPSNFADiagrams(<
+        grammar(#A),
+        stdGrammar
+    >));
 
-        // loc pos = |project://syntax-highlighter/outputs/regexGrammar.txt|;
-        // writeFile(pos, "<stdGrammar>");
-    }
+    writeBinaryValueFile(pos, conversionGrammar);
+    if(size(warnings)>0) println(warnings);
 }

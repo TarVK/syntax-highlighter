@@ -97,7 +97,7 @@ bool equalsAfter(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
 @doc {
     Removes the intermediate conversion productions from the grammar, and only keeps the base grammar sources
 }
-ConversionGrammar stripConvSources(ConversionGrammar grammar) {
+&T stripConvSources(&T grammar) {
     return visit (grammar) {
         case set[SourceProd] sources => 
             {s | s:origProdSource(_) <- sources} 
@@ -159,7 +159,8 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termS
 
     ConvSymbol getRegex(Regex exp) {
         if(size(termScopes) > 0) exp = mark({scopeTag(termScopes)}, exp);
-        return regexp(exp);
+        <cachedExp, _, _> = cachedRegexToPSNFAandContainsScopes(exp);
+        return regexp(cachedExp);
     }
 
     ConvSymbol res;
@@ -212,7 +213,7 @@ Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
     set[Production] outProds = {};
     for(<_, pr:convProd(lSym, parts, sources)> <- prods) {
         newParts = [p | part <- parts, just(p) := convSymbolToSymbol(part)];
-        newProd = prod(lSym, newParts, {\tag(pr), \tag(sources)});
+        newProd = prod(lSym, newParts, {\tag(pr)});
         outProds += newProd;
     }
     return grammar({\start}, outProds);

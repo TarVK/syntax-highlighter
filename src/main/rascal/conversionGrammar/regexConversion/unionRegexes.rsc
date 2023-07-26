@@ -11,7 +11,6 @@ import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
 import conversionGrammar::regexConversion::concatenateRegexes;
 import conversionGrammar::RegexCache;
-import regex::RegexToPSNFA;
 import regex::Regex;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
@@ -97,12 +96,10 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
             }
         }
 
-        // println(stripSources(removeRegexCache(<indexSym, parts, startIndex>)));
         indexed += <indexSym, p>;    
     }
     for(prod <- productions) 
         addToIndex(prod);
-
         
 
     emptySym = regexp(empty());

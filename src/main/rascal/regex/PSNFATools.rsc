@@ -6,6 +6,7 @@
 module regex::PSNFATools
 
 import IO;
+import util::Maybe;
 
 import regex::Regex;
 import regex::RegexToPSNFA;
@@ -15,28 +16,6 @@ import regex::NFA;
 
 // Would prefer to not import this here, see if we can get around this
 import conversionGrammar::RegexCache;
-
-@doc {
-    Computes a PSNFA that accepts all tuples (p, w, s), such that 
-    ∃ ph,pt,sh,st ∈ E* . phpt=p ∧ shst=s ∧ (ph, ptw, s) ∈ L(head) ∧ (ph, pt, ws) ∈ L(head) ∧ (p, wsh, st) ∈ L(tail)
-
-    I.e. words that can both be the end of a match of head and also the beginning of a match of tail, while considering prefixes and suffixes
-}
-NFA[State] getConcatOverlapPSNFA(NFA[State] head, NFA[State] tail){
-    // TODO: ...
-    return ();
-}
-
-@doc {
-    Computes a PSNFA that accepts all tuples (p, w, s), for which
-    ∃ ph ∈ E*, pt ∈ E+. pspt = p ∧ (ph, ptw, s) ∈ L(n)
-
-    I.e. words that are valid extensions of other words that are already accepted
-}
-NFA[State] getExtensionPSNFA(NFA[State] n) {
-    // TODO: ...
-    return ();
-}
 
 @doc {
     Checks whether the two given NFAs define the same language
@@ -67,4 +46,23 @@ NFA[State] differencePSNFA(NFA[State] a, NFA[State] b) {
     inANotB = subtractPSNFA(a, b);
     inBNotA = subtractPSNFA(b, a);
     return unionPSNFA(inANotB, inBNotA);
+}
+
+@doc {
+    Creates a NFA that accepts all the original words, as well as any extensions of those words
+}
+NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());
+
+@doc {
+    Obtains PSNFAs o and e such that,
+    L(no) = {(p, w, s) | (p, w, s) ∈ L(n) ∧ (∃ wp, ws . w = wp ws ∧ (p, wp, ws s) ∈ L(m))}
+    L(me) = {(p, w, s) | ∃ (mp, mw, ms) ∈ L(m) . p = mp mw ∧ w s = ms ∧ (mp, mw w, s) ∈ L(n)}
+
+    I.e. no specifies all words in n, such that m contains a prefix of said word,
+    and me specifies all extension words t such that there exists a word h in m for which the concatenation ht is in n (a word in m can be extended using e to be part of n). 
+
+    If these languages are empty, nothing is returned instead
+}
+Maybe[tuple[NFA[State] no, NFA[State] me]] getPrefixOverlap(NFA[State] n, NFA[State] m) {
+    // TODO: implement
 }

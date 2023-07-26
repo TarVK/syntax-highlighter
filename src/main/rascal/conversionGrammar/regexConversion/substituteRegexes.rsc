@@ -13,6 +13,8 @@ import conversionGrammar::regexConversion::liftScopes;
 import conversionGrammar::regexConversion::concatenateRegexes;
 import conversionGrammar::regexConversion::lowerModifiers;
 import regex::Regex;
+import regex::PSNFA;
+import regex::Tags;
 
 @doc {
     Tries to apply the substitution rule:
@@ -68,11 +70,12 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
 
                 ConvSymbol sub(Scopes scopes) 
                     = regexp(size(scopes)>0 ? wrapScopes(regex, scopes) : regex);
-                for(part <- parts)
+                for(part <- parts) {
                     newParts += visit(part) {
                         case symb(target, scopes) => sub(scopes)
                         case symb(label(_, target), scopes) => sub(scopes)
                     };
+                }
                 
                 affected += def;
                 productions[def] -= s;
@@ -105,11 +108,12 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
     Only asubstitues on the top-level of the rule, notin special constructs like follows.
 
     This is done exhasutively for this symbol.
-    Returns the set of affected non-terminals, and the grammar with the substitutions applied.
+    Returns the set of affected non-terminals, whether a regex concatenation happened, and the grammar with the substitutions applied.
 }
-tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol target) {
+tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol target) {
     if(target notin productions) return <{}, productions>;
 
+    didMergeRegexes = false;
     targetProds = productions[target];
     if({p:convProd(_, subParts, _)} := targetProds) {
         targetSource = convProdSource(p);
@@ -150,18 +154,20 @@ tuple[set[Symbol], ProdMap] substituteSequence(ProdMap productions, Symbol targe
                 
                 affected += def;
                 productions[def] -= s;
-                productions[def] += concatenateRegexes(
+                concatenated = concatenateRegexes(
                     convProd(lDef, newParts, {targetSource, convProdSource(s)})
                 );
+                productions[def] += concatenated;
+                if(size(concatenated.parts) < size(newParts)) didMergeRegexes = true;
             }
         }
 
         if(canRemove)  productions = delete(productions, target);
 
-        return <affected, productions>;
+        return <affected, didMergeRegexes, productions>;
     }
     
-    return <{}, productions>;
+    return <{}, false, productions>;
 }
 
 @doc {
@@ -181,10 +187,40 @@ Regex wrapScopes(Regex regex, Scopes scopes) {
             case concatenation(h, t): return concatenation(prefixScopes(h), prefixScopes(t));
             case alternation(o1, o2): return alternation(prefixScopes(o1), prefixScopes(o2));
             case \multi-iteration(r): return \multi-iteration(prefixScopes(r));
-            case cached(r, a, s): return cached(prefixScopes(r), a, s);
+            case cached(r, a, s): return prefixScopes(r); // Note that we remove the internal caches, since they are no longer correct and we don't need the anyhow
             default: return regex;
         }
     }
 
-    return liftScopes(mark({scopeTag(scopes)}, prefixScopes(regex)));
+
+    // This only prefixes the regex, not the cached PSNFAs
+    prefixedRegexScopes = prefixScopes(regex);
+
+    // Prefixing the PSNFAs like this is not fully safe, since it assumes all scopes currently in the main transitions to originate from scopes in the main expression (not in prefixes/suffixes).
+    // This is not always the case by definition, but is the case in rascal since prefix/suffixes are more limited
+    // And moreover, TM doesn't support scopes in prefixes/suffixes. Hence it's safe for us to make this assumption
+    regexNFA = regexToPSNFA(regex);
+    <prefixStates, mainStates, suffixStates> = getPSNFApartition(regexNFA);
+    mainCharTransitions = {t | t:<from, character(_, _), to> <- regexNFA.transitions, from in mainStates};
+
+    TagsClass modifyTags(TagsClass tc) = regex::Tags::merge(
+            visit (tc) {
+                case scopeTag(s) => scopeTag([*scopes, *s])
+            },
+            {{scopeTag(scopes)}}
+        );
+
+    scopedNFA = <
+        regexNFA.initial,
+        {
+            <from, character(cc, modifyTags(tc)), to> | <from, character(cc, tc), to> <- mainCharTransitions
+        } + {
+            trans | trans <- regexNFA.transitions - mainCharTransitions
+        },
+        regexNFA.accepting,
+        ()
+    >;
+
+    return cached(mark({scopeTag(scopes)}, prefixedRegexScopes), scopedNFA, true);
 }
+

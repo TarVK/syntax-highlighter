@@ -1,4 +1,5 @@
 module regex::PSNFACombinators
+extend regex::PSNFA;
 
 import ParseTree;
 import String;
@@ -7,23 +8,19 @@ import IO;
 
 import regex::util::GetCombinations;
 import regex::util::GetDisjointCharClasses;
-import regex::util::AnyCharClass;
+import regex::util::charClass;
 import regex::Tags;
 import regex::NFA;
 import regex::NFASimplification;
 import regex::PSNFA;
+import regex::PSNFATypes;
 
-data State = simple(str name)
-           | stateLabel(str name, State state)
-           | statePair(State a, State b)
-           | stateSet(set[State] states);
-
-TransSymbol anyChar = character(anyCharClass(), {{}});
+TransSymbol anyChar() = character(anyCharClass(), {{}});
 
 @doc {
     A PSNFA with a completely empty language
 }
-NFA[State] neverPSNFA() = <simple("never"), {}, {}>;
+NFA[State] neverPSNFA() = <simple("never"), {}, {}, ()>;
 
 @doc {
     A PSNFA matching the language consisting of the empty string with any prefix and suffix
@@ -31,12 +28,13 @@ NFA[State] neverPSNFA() = <simple("never"), {}, {}>;
 NFA[State] emptyPSNFA() = <
     simple("empty-prefix"), 
     {
-        <simple("empty-prefix"), anyChar, simple("empty-prefix")>,
+        <simple("empty-prefix"), anyChar(), simple("empty-prefix")>,
         <simple("empty-prefix"), matchStart(), simple("empty-main")>,
         <simple("empty-main"), matchEnd(), simple("empty-suffix")>,
-        <simple("empty-suffix"), anyChar, simple("empty-suffix")>
+        <simple("empty-suffix"), anyChar(), simple("empty-suffix")>
     },
-    {simple("empty-suffix")}
+    {simple("empty-suffix")},
+    ()
 >;
 
 
@@ -46,13 +44,14 @@ NFA[State] emptyPSNFA() = <
 NFA[State] alwaysPSNFA() = <
     simple("always-prefix"), 
     {
-        <simple("always-prefix"), anyChar, simple("always-prefix")>,
+        <simple("always-prefix"), anyChar(), simple("always-prefix")>,
         <simple("always-prefix"), matchStart(), simple("always-main")>,
         <simple("always-main"), matchEnd(), simple("always-suffix")>,
-        <simple("always-main"), anyChar, simple("always-main")>,
-        <simple("always-suffix"), anyChar, simple("always-suffix")>
+        <simple("always-main"), anyChar(), simple("always-main")>,
+        <simple("always-suffix"), anyChar(), simple("always-suffix")>
     },
-    {simple("always-suffix")}
+    {simple("always-suffix")},
+    ()
 >;
 
 @doc {
@@ -62,13 +61,14 @@ NFA[State] charPSNFA(str char) = charPSNFA([range(charAt(char, 0), charAt(char, 
 NFA[State] charPSNFA(CharClass char) = <
     simple("char-prefix"), 
     {
-        <simple("char-prefix"), anyChar, simple("char-prefix")>,
+        <simple("char-prefix"), anyChar(), simple("char-prefix")>,
         <simple("char-prefix"), matchStart(), simple("char-main0")>,
         <simple("char-main0"), character(char, {{}}), simple("char-main1")>,
         <simple("char-main1"), matchEnd(), simple("char-suffix")>,
-        <simple("char-suffix"), anyChar, simple("char-suffix")>
+        <simple("char-suffix"), anyChar(), simple("char-suffix")>
     },
-    {simple("char-suffix")}
+    {simple("char-suffix")},
+    ()
 >;
 
 @doc {
@@ -88,7 +88,8 @@ NFA[State] unionPSNFA(NFA[State] n1, NFA[State] n2) = <
     } + {
         <stateLabel("union-2", state), epsilon(), simple("union-final")> | state <- n2.accepting
     },
-    {simple("union-final")}
+    {simple("union-final")},
+    ()
 >;
 
 @doc {
@@ -161,15 +162,11 @@ NFA[State] negativeLookaheadPSNFA(NFA[State] n, NFA[State] lookahead) {
         + {<matchEnd(), statePair(sNew, laNew)> 
             | <matchEnd(), sNew> <- sTrans, <matchStart(), laNew> <- laTrans};
 
-    if(<laInitial, laTransitions, laAccepting> := lookahead) {
-        laNoEndTransitions = {<from, on == matchEnd() ? epsilon() : on, to> | <from, on, to> <- laTransitions};
-        tagIndependent = replaceTagsClasses(<laInitial, laNoEndTransitions, laAccepting>, {{}});
-        invertedLookahead = invertPSNFA(tagIndependent, {{}});
-        return productPSNFA(n, invertedLookahead, combine);
-    }
-
-    // Shouldn't be reachable
-    return n;
+    <laInitial, laTransitions, laAccepting, _> = lookahead;
+    laNoEndTransitions = {<from, on == matchEnd() ? epsilon() : on, to> | <from, on, to> <- laTransitions};
+    tagIndependent = replaceTagsClasses(<laInitial, laNoEndTransitions, laAccepting, ()>, {{}});
+    invertedLookahead = invertPSNFA(tagIndependent, {{}});
+    return productPSNFA(n, invertedLookahead, combine);
 }
 
 
@@ -188,15 +185,11 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
         + {<matchEnd(), statePair(sNew, lb)> | <matchEnd(), sNew> <- sTrans};
 
     
-    if(<lbInitial, lbTransitions, lbAccepting> := lookbehind) {
-        lbNoStartTransitions = {<from, on == matchStart() ? epsilon() : on, to> | <from, on, to> <- lbTransitions};
-        tagIndependent = replaceTagsClasses(<lbInitial, lbNoStartTransitions, lbAccepting>, {{}});
-        invertedLookbehind = invertPSNFA(tagIndependent, {{}});
-        return productPSNFA(n, invertedLookbehind, combine);
-    }
-
-    // Shouldn't be reachable
-    return n;
+    <lbInitial, lbTransitions, lbAccepting, _> = lookbehind;
+    lbNoStartTransitions = {<from, on == matchStart() ? epsilon() : on, to> | <from, on, to> <- lbTransitions};
+    tagIndependent = replaceTagsClasses(<lbInitial, lbNoStartTransitions, lbAccepting, ()>, {{}});
+    invertedLookbehind = invertPSNFA(tagIndependent, {{}});
+    return productPSNFA(n, invertedLookbehind, combine);
 }
 
 @doc {
@@ -205,7 +198,7 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
 }
 NFA[State] invertPSNFA(NFA[State] n, TagsClass universe) {
     NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(n, universe));
-    NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting>;
+    NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting, ()>;
     return removeUnreachable(dfaInverted);
 }
 
@@ -248,7 +241,7 @@ NFA[State] strongSubtractPSNFA(NFA[State] n, NFA[State] subtract)
 @doc {
     Constructs a PSNFA matching one or more repititions of the n PSNFA, considering only valid overlap of prefix and suffix
 
-    Use a simplified DFA as input (without dead-end states) to prevent unnecessary expnential blow up
+    Use a simplified DFA as input (without dead-end states) to prevent unnecessary exponential blow up
 }
 NFA[State] iterationPSNFA(NFA[State] n) {
     State initial = stateSet({n.initial});
@@ -260,7 +253,7 @@ NFA[State] iterationPSNFA(NFA[State] n) {
     set[State] queue = {initial};
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
-
+        
         if(stateSet(states) := state) {
             trans = {<from, on, to> | <from, on, to> <- n.transitions, from in states};
 
@@ -277,8 +270,8 @@ NFA[State] iterationPSNFA(NFA[State] n) {
                     toOptions := {<onTC, to> | <character(onCC, onTC), to> <- n.transitions[from], onCC in ccOr}, 
                     size(toOptions)>0};
 
-                allStatesTransition = size(states - stateCharTransitions<0>)==0;
-                if(!allStatesTransition) continue;
+                allStatesDoTransition = size(states - stateCharTransitions<0>)==0;
+                if(!allStatesDoTransition) continue;
 
                 newTransitions += {<
                         character(cc, ({{}} | merge(it, tc) | tc <- tcTo<0>)), 
@@ -296,9 +289,11 @@ NFA[State] iterationPSNFA(NFA[State] n) {
                 newTransitions += {<matchEnd(), stateSet(states - {from} + {to})> | <from, matchEnd(), to> <- trans};
 
             // Match loop transitions
-            newTransitions += {<epsilon(), stateSet(states - {fromPrefix, fromMain} + {toMain, toSuffix})>, <epsilon(), stateSet(states - {fromMain} + {toMain, toSuffix})> | <fromPrefix, matchStart(), toMain> <- trans, <fromMain, matchEnd(), toSuffix> <- trans};
+            newTransitions += {
+                <epsilon(), stateSet(states - {fromPrefix, fromMain} + {toMain, toSuffix})>, 
+                <epsilon(), stateSet(states - {fromMain} + {toMain, toSuffix})> 
+                | <fromPrefix, matchStart(), toMain> <- trans, <fromMain, matchEnd(), toSuffix> <- trans};
 
-            // println(<states, newTransitions>);
             for(<sym, to> <- newTransitions) {
                 transitions += <state, sym, to>;
                 if(to in found) continue;
@@ -310,7 +305,7 @@ NFA[State] iterationPSNFA(NFA[State] n) {
 
     accepting = {state | state:stateSet(states) <- found, all(s <- states, s in n.accepting)};
 
-    return <initial, transitions, accepting>;   
+    return <initial, transitions, accepting, ()>;
 }
 
 @doc {
@@ -326,7 +321,8 @@ NFA[State] tagsPSNFA(NFA[State] n, Tags tags) {
         } + {
             trans | trans <- n.transitions, !(trans in mainCharTransitions)
         },
-        n.accepting
+        n.accepting,
+        ()
     >;
 }
 
@@ -335,12 +331,14 @@ NFA[State] tagsPSNFA(NFA[State] n, Tags tags) {
 @doc {
     Turns the PSNFA containing sets of states into a PSNFA with State instances, to be reusable in other PSNFA combinators
 }
-NFA[State] relabelSetPSNFA(NFA[set[State]] nfa) = mapStates(nfa, State (set[State] states) { return stateSet(states); });
+NFA[State] relabelSetPSNFA(NFA[set[State]] n) = mapStates(n, State (set[State] states) { return stateSet(states); });
 
 @doc {
     Turns the PSNFA containing int states into a PSNFA with State instances, to be reusable in other PSNFA combinators
 }
-NFA[State] relabelIntPSNFA(NFA[int] nfa) = mapStates(nfa, State (int state) { return simple("<state>"); });
+NFA[State] relabelIntPSNFA(NFA[int] n) = mapStates(n, State (int state) { return simple("<state>"); });
+
+
 
 @doc {
     Retrieves the standard concat/lookahead/lookbehind transitions
@@ -399,7 +397,7 @@ NFA[State] productPSNFA(
 
     accepting = {state | state:statePair(s1, s2) <- found, s1 in n1.accepting, s2 in n2.accepting};
 
-    return <initial, transitions, accepting>;   
+    return <initial, transitions, accepting, ()>;
 }
 
 @doc {
@@ -412,5 +410,6 @@ NFA[&T] replaceTagsClasses(NFA[&T] n, TagsClass tc) = <
     } + {
         <from, on, to> | <from, on, to> <- n.transitions, character(_, _) !:= on
     },
-    n.accepting
+    n.accepting,
+    ()
 >;

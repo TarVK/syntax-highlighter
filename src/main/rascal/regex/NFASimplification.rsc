@@ -1,37 +1,76 @@
 module regex::NFASimplification
 
 import Set;
-import regex::NFA;
 import IO;
 
+import regex::NFA;
+import regex::PSNFA;
+import regex::Tags;
+import regex::util::expandEpsilon;
 
 
 @doc {
-    Removes duplicate states, ensuring the input and output NFAs are language-equivalent
+    Minimizes the given NFA using a DFA minimization algorithm, nad gets rid of unreachable/dead states.
 }
-NFA[set[&T]] removeDuplicates(NFA[&T] nfa) {
-    rel[set[&K], TransSymbol, set[&K]] mapTransitions(rel[&K, TransSymbol, &K] transitions, set[set[&K]] classes) {
-        stateMap = (s: g | g <- classes, s <- g);
-        return {<stateMap[from], on, stateMap[to]> | <from, on, to> <- transitions};
+NFA[set[&T]] minimize(NFA[&T] nfa) {
+    TagsClass universe = {*tc | <_, character(_, tc), _> <- nfa.transitions};
+    dfa = convertPSNFAtoDFA(removeUnreachable(nfa), universe);
+    minimizedDFA = minimizeDFA(dfa);
+
+    flattenedMinimizedDFA = mapStates(minimizedDFA, set[&T] (set[set[&T]] states) {
+        return {*state | state <- states};
+    });
+
+    return removeUnreachable(flattenedMinimizedDFA);
+}
+
+@doc {
+    Minimizes the given DFA using a DFA minimization algorithm, but does not get rid of unreachable/dead states.
+    Hence this requires the input to be a valid DFA!
+}
+NFA[set[&T]] minimizeDFA(NFA[&T] dfa) {
+    
+    p = partition(dfa);
+    stateMap = (state:states | states <- p, state <- states);
+
+    initial = stateMap[dfa.initial];
+    transitions = {<stateMap[from], on, stateMap[to]> | <from, on, to> <- dfa.transitions};
+    accepting = {states | states <- p, any(state <- states, state in dfa.accepting)};
+
+    return <initial, transitions, accepting, ()>;
+}
+
+set[set[&T]] partition(NFA[&T] n) {
+    // Implementation of Hopcroft's algorithm: https://en.wikipedia.org/wiki/DFA_minimization#Hopcroft's_algorithm
+    reverseEdges = n.transitions<2, 1, 0>;
+
+    set[set[&T]] P = {getStates(n) - n.accepting, n.accepting};
+    set[set[&T]] W = P;
+
+    while (size(W) > 0) {
+        <A, W> = takeOneFrom(W);
+
+        inComing = reverseEdges[A];
+        transSymbols = inComing<0>;
+        for(transSymbol <- transSymbols) {
+            X = inComing[transSymbol];
+            for(set[&T] Y <- P) {
+                intersect = (X & Y);
+                assymDifference = Y - X;
+                if(size(intersect)>0 && size(assymDifference)>0) {
+                    P = (P - {Y}) + {intersect} + {assymDifference};
+                    if (Y in W)
+                        W = (W - {Y}) + {intersect} + {assymDifference};
+                    else if (size(intersect) < size(assymDifference))
+                        W += {intersect};
+                    else
+                        W += {assymDifference};
+                }
+            }
+        }
     }
 
-    states = nfa.transitions<0> + nfa.transitions<2> + {nfa.initial};    
-    set[set[&T]] bisimilarClasses = partition(nfa.transitions, 
-        {states - {nfa.initial} - nfa.accepting, {nfa.initial}, nfa.accepting});
-
-    // Reverse edges, and perform another partition pass
-    revTrans = mapTransitions(nfa.transitions<2, 1, 0>, bisimilarClasses);
-    initialBisimilarClass = getOneFrom({g | g <- bisimilarClasses, nfa.initial in g});
-    acceptingBisimilarClasses = {g | g <- bisimilarClasses, size(g & nfa.accepting)>0};
-    set[set[set[&T]]] revBisimilarClasses = partition(revTrans, 
-        {bisimilarClasses - {initialBisimilarClass} - acceptingBisimilarClasses, {initialBisimilarClass}, acceptingBisimilarClasses});
-    classes = {{*r | r <- c} | c <- revBisimilarClasses};
-    
-
-    initial = getOneFrom({g | g <- classes, nfa.initial in g});
-    transitions = mapTransitions(nfa.transitions, classes);
-    accepting = {g | g <- classes, any(s <- g, s in nfa.accepting)};
-    return <initial, transitions, accepting>;
+    return P;
 }
 
 set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPartition) {
@@ -71,58 +110,12 @@ set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPa
     return classes;
 }
 
-@doc {
-    Relabels all states of the given NFA to a numeric one
-}
-NFA[int] relabel(NFA[&T] nfa) {
-    maxID = 0; 
-    set[&T] found = {};
-    set[&T] queue = {nfa.initial};
-    map[&T, int] labels = ();
-
-    while(size(queue)>0) {
-        <state, queue> = takeOneFrom(queue);
-
-        if(state in found) continue;
-        found += {state};
-
-        labels[state] = maxID;
-        maxID += 1;
-
-        queue += nfa.transitions[state]<1>;
-    }
-
-    int mapState(&T state) {
-        if (state in labels) return labels[state];
-        maxID += 1;
-        return maxID-1;
-    }
-
-    return mapStates(nfa, mapState);
-}
-
-@doc {
-    Obtains an isometric NFA with each state remapped
-}
-NFA[&K] mapStates(NFA[&T] nfa, &K(&T) mapState) {
-    states = getStates(nfa);
-
-    map[&T, &K] stateMapping = ();
-    for(state <- states)
-        stateMapping[state] = mapState(state);
-
-    return <
-        stateMapping[nfa.initial],
-        {<stateMapping[from], sym, stateMapping[to]> | <from, sym, to> <- nfa.transitions},
-        {stateMapping[state] | state <- nfa.accepting}
-    >;
-}
 
 @doc {
     Removes all epsilon transitions
 }
-NFA[set[&T]] removeEpsilon(NFA[&T] nfa) {
-    initial = expandEpsilon(nfa, {nfa.initial});
+NFA[set[&T]] removeEpsilon(NFA[&T] n) {
+    set[&T] initial = expandEpsilon(n, {n.initial});
     rel[set[&T], TransSymbol, set[&T]] transitions = {};
     set[set[&T]] found = {initial};
 
@@ -135,40 +128,40 @@ NFA[set[&T]] removeEpsilon(NFA[&T] nfa) {
     }
 
     while(size(queue)>0) {
-        <stateSet, queue> = takeOneFrom(queue);
+        <setOfStates, queue> = takeOneFrom(queue);
 
-        for(state <- stateSet, <sym, to> <- nfa.transitions[state]) {
+        for(state <- setOfStates, <sym, to> <- n.transitions[state]) {
             if(sym == epsilon()) continue;
 
-            toSet = expandEpsilon(nfa, {to});
+            toSet = expandEpsilon(n, {to});
             init(toSet);
-            transitions += <stateSet, sym, toSet>;
+            transitions += <setOfStates, sym, toSet>;
         }
     }
 
-    accepting = {stateSet | stateSet <- found && size(stateSet & nfa.accepting)>0};
+    accepting = {setOfStates | setOfStates <- found && size(setOfStates & n.accepting)>0};
 
-    return <initial, transitions, accepting>;
+    return <initial, transitions, accepting, ()>;
 }
 
 @doc {
     Removes all states from the NFA that are not reachable from initial state to accepting state
 }
-NFA[&T] removeUnreachable(NFA[&T] nfa) {
+NFA[&T] removeUnreachable(NFA[&T] n) {
     // Forward search
-    set[&T] queue = {nfa.initial};
+    set[&T] queue = {n.initial};
     set[&T] reachableInitial = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
-        toStates = nfa.transitions[state]<1>;
+        toStates = n.transitions[state]<1>;
         newToStates = toStates - reachableInitial;
         reachableInitial += newToStates;
         queue += newToStates;
     }
 
     // Backward search
-    revTransitions = nfa.transitions<2, 1, 0>;
-    queue = nfa.accepting;
+    revTransitions = n.transitions<2, 1, 0>;
+    queue = n.accepting;
     set[&T] reachableAccepting = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
@@ -178,12 +171,13 @@ NFA[&T] removeUnreachable(NFA[&T] nfa) {
         queue += newFromStates;
     }
 
-    return filterStates(nfa, reachableInitial & reachableAccepting);
+    return filterStates(n, reachableInitial & reachableAccepting);
 }
-NFA[&T] filterStates(NFA[&T] nfa, set[&T] states) {
+NFA[&T] filterStates(NFA[&T] n, set[&T] states) {
     return <
-        nfa.initial,
-        {<from, on, to> | <from, on, to> <- nfa.transitions, from in states, to in states},
-        {s | s <- nfa.accepting, s in states}
+        n.initial,
+        {<from, on, to> | <from, on, to> <- n.transitions, from in states, to in states},
+        {s | s <- n.accepting, s in states},
+        ()
     >;
 }

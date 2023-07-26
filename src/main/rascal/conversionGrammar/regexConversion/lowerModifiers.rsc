@@ -1,5 +1,7 @@
 module conversionGrammar::regexConversion::lowerModifiers
 
+import IO;
+
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
 import regex::Regex;

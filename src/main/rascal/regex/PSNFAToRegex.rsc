@@ -78,7 +78,7 @@ NFA[&T] replaceSelfLoopsByRegex(NFA[&T] n, &T state, bool allowIn, bool allowOut
         }
     }
 
-    return <n.initial, transitions, n.accepting>;
+    return <n.initial, transitions, n.accepting, ()>;
 }
 
 @doc {
@@ -114,7 +114,7 @@ NFA[&T] replaceStateByRegex(NFA[&T] n, &T state) {
         }
     }
 
-    out = <n.initial, transitions, n.accepting>;
+    out = <n.initial, transitions, n.accepting, ()>;
     for(from <- changedFrom)
         out = combineOutTransitions(out, from);
     return out;
@@ -140,7 +140,7 @@ NFA[&T] combineOutTransitions(NFA[&T] n, &T state) {
         transitions += <state, regexp(newRegex), to>;
     }
 
-    return <n.initial, transitions, n.accepting>;
+    return <n.initial, transitions, n.accepting, ()>;
 }
 
 bool augmentable(TransSymbol symb) = (regexp(_) := symb) || (TransSymbol::character(_) := symb);

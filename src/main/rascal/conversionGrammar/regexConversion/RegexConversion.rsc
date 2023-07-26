@@ -38,9 +38,11 @@ ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
         // If no more pure regex rules apply, try sequence substitution which could kick-off new regex rules
         // We don't perform sequence substituion right away, since it may unneccessarily increase the amount of work by duplicating symbols
         if(changed || first) {
-            productions = tentativeProductions; // Only update productions, if regex changes were made
-            for(sym <- productions<0>, sym != grammar.\start) 
-                <_, tentativeProductions> = substituteSequence(tentativeProductions, sym);
+            productions = tentativeProductions; // Only update productions if regex changes were made
+            for(sym <- productions<0>, sym != grammar.\start) {
+                <_, merged, tentativeProductions> = substituteSequence(tentativeProductions, sym);
+                if(merged) productions = tentativeProductions;
+            }
             changed = true;
         }
 

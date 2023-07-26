@@ -1,4 +1,5 @@
 module regex::Regex
+extend regex::RegexTypes;
 
 import lang::rascal::grammar::definition::Characters;
 import lang::rascal::format::Escape;
@@ -7,35 +8,16 @@ import String;
 import IO;
 
 import regex::util::GetDisjointCharClasses;
-import regex::util::AnyCharClass;
+import regex::util::charClass;
 import regex::RegexSyntax;
 import regex::Tags;
 import util::List;
+import regex::RegexTypes;
 import Scope;
 
-data Regex = never()
-           | empty()
-           | always()
-           | character(list[CharRange] ranges)
-           | lookahead(Regex r, Regex lookahead)
-           | lookbehind(Regex r, Regex lookbehind)
-           | \negative-lookahead(Regex r, Regex lookahead)
-           | \negative-lookbehind(Regex r, Regex lookbehind)
-           | concatenation(Regex head, Regex tail)
-           | alternation(Regex opt1, Regex opt2)
-           | \multi-iteration(Regex r) // 1 or more
-           | subtract(Regex r, Regex removal)
-           | mark(Tags tags, Regex r)
-           // Additional extended syntax, translatable into the core
-           | concatenation(list[Regex] parts)
-           | alternation(list[Regex] options)
-           | iteration(Regex r) // 0 ore more
-           | optional(Regex r)
-           | \exact-iteration(Regex r, int amount)
-           | \min-iteration(Regex r, int min)
-           | \max-iteration(Regex r, int max)
-           | \min-max-iteration(Regex r, int min, int max);
-data ScopeTag = scopeTag(Scopes scopes);
+// Would prefer to not import this here, see if we can get around this
+import conversionGrammar::RegexCache;
+
 
 //     Reduction
 // ---------------------
@@ -202,21 +184,6 @@ str stringify(Regex regex) {
         case Regex::mark(n, r): return "(\<<stringify(n)>\><stringify(r)>)";
     }
     return "";
-}
-str stringify(CharClass cc) {
-    hasMin = any(range(s, e) <- cc, s <= 1 && 1 <= e);
-    hasMax = any(range(s, e) <- cc, s <= 0x10FFFF && 0x10FFFF <= e);
-    negate = hasMin && hasMax;
-    if (negate) cc = fComplement(cc);
-
-    str chars = "";
-    for(range(f, t)<-cc) {
-        from = makeCharClassChar(f);
-        to = makeCharClassChar(t);
-        if(from == to) chars += from;
-        else chars += from+"-"+to;
-    }
-    return negate ? (size(cc)==0 ? "." : "![<chars>]") : "[<chars>]";
 }
 
 str stringify(Tags t) = stringify([stringify(scopes) | scopeTag(scopes) <- t], ",");

@@ -1,11 +1,15 @@
 module regex::RegexToPSNFA
 
 import IO;
-import regex::Regex;
+import regex::RegexTypes;
 import regex::NFA;
 import regex::PSNFA;
+import regex::PSNFATypes;
 import regex::PSNFACombinators;
 import regex::NFASimplification;
+
+// Would prefer to not import this here, see if we can get around this
+import conversionGrammar::RegexCache;
 
 @doc {
     Converts the given regex to a NFA with an equivalent language
@@ -32,17 +36,30 @@ NFA[State] regexToPSNFA(Regex regex) {
             rdfa = removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(rnfa, {})));
             n = iterationPSNFA(rdfa);
         }
-        case cached(psnfa, exp): return psnfa;
+        default: throw "Unsupported regex: <regex>";
     }
 
-    return simplify(n);
+    simplified = simplify(n);
+    return simplified;
 }
 
 NFA[State] simplify(NFA[State] n) {
-    simplified = removeDuplicates(removeEpsilon(removeUnreachable(n)));
-    // simplified = removeEpsilon(removeUnreachable(n));
-    return relabelIntPSNFA(relabel(simplified));
+    // println("-1");
+    // simplified1 = removeUnreachable(n);
+    // println("-2");
+    // simplified2 = removeEpsilon(simplified1);
+    // println("-3");
+    // simplified3 = removeDuplicates(simplified2);
+    // println("-4");
+
+    // // simplified = removeDuplicates(removeEpsilon(removeUnreachable(n)));
+    // // simplified = removeEpsilon(removeUnreachable(n));
+    // return relabelIntPSNFA(relabel(simplified3));
     // return mapStates(simplified, State (set[set[State]] states) {
     //     return stateSet({*S | S <- states});
     // });
+
+    // simplified = minimize(removeUnreachable(n));
+    simplified = minimize(n);
+    return relabelIntPSNFA(relabel(simplified));
 }

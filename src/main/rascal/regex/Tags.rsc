@@ -91,6 +91,7 @@ set[TagsClassRegion] getDisjointTagsClasses(set[TagsClass] inClasses) {
 
 str stringify(TagsClass tc) = stringify(["{<stringify([t | t <- tags], ";")>}" | tags <- tc], ",");
 
+// A quick test
 void main(){
     Tags t1 = {1};
     Tags t2 = {2};

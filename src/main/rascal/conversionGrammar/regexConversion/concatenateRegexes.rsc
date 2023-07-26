@@ -1,10 +1,12 @@
 module conversionGrammar::regexConversion::concatenateRegexes
 
 import List;
+import IO;
 
 import conversionGrammar::ConversionGrammar;
 import conversionGrammar::regexConversion::liftScopes;
 import regex::Regex;
+import regex::PSNFA;
 
 @doc {
     Tries to apply the concatenation rule:
@@ -46,8 +48,8 @@ ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
         if(size(regexes)>0) {
             if([r] := regexes)
                 newParts += regexp(r);
-            else
-                newParts += regexp(liftScopes(concatenation(regexes)));
+            else 
+                newParts += regexp(liftScopes(reduceConcatenation(concatenation(regexes))));
             regexes = [];
         }
     }
@@ -61,6 +63,5 @@ ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
         }
     }
     flush();
-
     return convProd(symb, newParts, {convProdSource(p)});
 }

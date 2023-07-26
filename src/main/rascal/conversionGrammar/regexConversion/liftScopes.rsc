@@ -29,6 +29,7 @@ import regex::PSNFACombinators;
 }
 Regex liftScopes(Regex regex) {
     <cachedRegex, psnfa, hasScope> = cachedRegexToPSNFAandContainsScopes(regex);
+    cachedRegex = removeInnerRegexCache(cachedRegex);
     
     liftableScopesSet = findLiftableScopes(cachedRegex);
     if(size(liftableScopesSet)>0) {

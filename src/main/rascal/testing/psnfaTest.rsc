@@ -12,6 +12,7 @@ import regex::PSNFATools;
 import regex::NFASimplification;
 import regex::RegexToPSNFA;
 import regex::PSNFAToRegex;
+import Visualize;
 
 NFA[State] nfaTest() {
     // regex = parseRegexReduced("([a-n]\>a)+");
@@ -41,8 +42,8 @@ NFA[State] nfaTest() {
 NFA[State] simplifyTest() {
     regex = parseRegexReduced("-(something|somethingElse|more|stuff)");
     n = regexToPSNFA(regex);
-    m = relabelSetPSNFA(removeEpsilon(<n.initial, {<from, (on==matchStart() || on==matchEnd()) ? epsilon() : on, to> | <from, on, to><-n.transitions}, n.accepting>));
-    k = <simple("in"), {<simple("in"), epsilon(), m.initial>} + {<f, epsilon(), simple("fi")> | f <- m.accepting} + m.transitions, {simple("fi")}>;
+    m = relabelSetPSNFA(removeEpsilon(<n.initial, {<from, (on==matchStart() || on==matchEnd()) ? epsilon() : on, to> | <from, on, to><-n.transitions}, n.accepting, ()>));
+    k = <simple("in"), {<simple("in"), epsilon(), m.initial>} + {<f, epsilon(), simple("fi")> | f <- m.accepting} + m.transitions, {simple("fi")}, ()>;
     return transitionsToRegex(k);
 }
 
@@ -77,12 +78,25 @@ NFA[State] difference(str regex1, str regex2) {
     return simplify(differencePSNFA(nfa1, nfa2));
 }
 
+tuple[NFA[State], NFA[State]] minimizeTest() { 
+    // This test only makes sense if minimization is disabled in the regexToPSNFA function
+    
+    regex = parseRegexReduced("([a-o]\>[a-z]{3}!\>ok)*");
+    // regex = parseRegexReduced("h(o|e)i");
+    nfa = regexToPSNFA(regex); 
+
+    minimized = minimize(nfa);
+
+    return <nfa,  relabelIntPSNFA(relabel(minimized))>;
+}
+
 NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(removeDuplicates(removeEpsilon(removeUnreachable(n)))));
 
 void main() {
-    nfa = nfaTest();
+    nfa = minimizeTest();
 
-    nfaText = visualizePSNFA(relabel(nfa));
-    loc pos = |project://syntax-highlighter/outputs/nfa.txt|;
-    writeFile(pos, "<nfaText>");
+    // nfaText = visualizePSNFA(relabel(nfa));
+    // loc pos = |project://syntax-highlighter/outputs/nfa.txt|;
+    // writeFile(pos, "<nfaText>");
+    visualize(insertPSNFADiagrams(nfa));
 }

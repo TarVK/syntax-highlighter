@@ -2,9 +2,10 @@ module conversionGrammar::RegexCache
 
 extend regex::RegexToPSNFA;
 
-import regex::Regex;
+import regex::RegexTypes;
 import regex::RegexToPSNFA;
 import regex::NFA;
+import regex::PSNFATypes;
 import regex::PSNFACombinators;
 
 // Create a new regex constructor an related functions
@@ -23,6 +24,15 @@ value removeRegexCache(value anything) =
     visit(anything) {
         case Regex::cached(exp, _, _) => exp
     };
+
+@doc {
+    Removes the cache from sub-regexes, but keeps the outer cache
+}
+value removeInnerRegexCache(value anything) 
+    = top-down-break visit(anything) {
+        case Regex::cached(exp, dfa, scoped) => cached(removeRegexCache(exp), dfa, scoped)
+    };
+
 
 @doc {
     Checks whether the given regular expression contains a scope
@@ -49,9 +59,9 @@ tuple[Regex, NFA[State]] cachedContainsScopes(Regex regex) = cachedRegexToPSNFAa
     Retrieves the PSNFA of the given regular expression, whether the expression contains any scopes, and a regular expression with this data cached into it. 
 }
 tuple[Regex, NFA[State], bool] cachedRegexToPSNFAandContainsScopes(Regex regex) {
-    if (cached(regex, nfa, hasScope) := regex) return <regex, nfa, hasScope>;
+    if (cached(regex, n, hasScope) := regex) return <regex, n, hasScope>;
 
-    nfa = regexToPSNFA(regex);
+    n = regexToPSNFA(regex);
     hasScope = containsScopes(regex);
-    return <cached(regex, nfa, hasScope), nfa, hasScope>;
+    return <cached(regex, n, hasScope), n, hasScope>;
 }

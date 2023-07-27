@@ -19,6 +19,8 @@ data Regex = never()
            | subtract(Regex r, Regex removal)
            | mark(Tags tags, Regex r)
            // Additional extended syntax, translatable into the core
+           | eol()
+           | sol()
            | concatenation(list[Regex] parts)
            | alternation(list[Regex] options)
            | iteration(Regex r) // 0 ore more

@@ -34,6 +34,9 @@ Regex reduce(Regex inp) {
 
         case Regex::optional(r) => alternation(r, empty())
 
+        case Regex::eol() => eolRegex()
+        case Regex::sol() => solRegex()
+
         case Regex::\exact-iteration(r, amount) => repeat(r, amount)
 
         case Regex::\min-iteration(r, 0) => alternation(\multi-iteration(r), empty())
@@ -46,7 +49,6 @@ Regex reduce(Regex inp) {
         case Regex::\min-max-iteration(_, min, max) => never() when min > max
         case Regex::\min-max-iteration(r, min, max) => 
             concatenation(repeat(r, min), expandMaxIteration(r, max-min))
-
     }
 }
 Regex repeat(Regex r, 0) = empty();
@@ -66,6 +68,34 @@ Regex reduceConcatenation(Regex::concatenation([part])) = part;
 Regex reduceConcatenation(Regex::concatenation([first, second, *rest])) 
     = (concatenation(first, second) | concatenation(it, part) | part <- rest);
 
+@doc {
+    A regular expression representing the end of a line
+}
+Regex eolRegex() = alternation(
+    \negative-lookahead(empty(), Regex::character(anyCharClass())), // EOF (no more characters)
+    lookahead(
+        empty(),
+        alternation(
+            Regex::character([range(10, 10)]),  // \n
+            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
+        )
+    )
+);
+
+@doc {
+    A regular expression representing the  start of a line
+}
+Regex solRegex() = alternation(
+    \negative-lookbehind(empty(), Regex::character(anyCharClass())), // SOF (no more characters)
+    lookbehind(
+        empty(),
+        alternation(
+            Regex::character([range(10, 10)]),  // \n
+            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
+        )
+    )
+);
+
 //       Parsing
 // ------------------
 Regex parseRegexReduced(str text) = reduce(parseRegex(text));
@@ -78,6 +108,8 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
         case (RegexCST)`$0`: return never();
         case (RegexCST)`$e`: return empty();
         case (RegexCST)`$1`: return always();
+        case (RegexCST)`$$`: return eol();
+        case (RegexCST)`^`: return sol();
 
         case (RegexCST)`<RawChar char>`: {
             code = charAt("<char>", 0);
@@ -160,6 +192,8 @@ str stringify(Regex regex) {
         case Regex::never(): return "$0";
         case Regex::empty(): return "$e";
         case Regex::always(): return "$1";
+        case Regex::eol(): return "$$";
+        case Regex::sol(): return "^";
         case Regex::character(cc): return stringify(cc);
         case Regex::lookahead(r, la): return "(<stringify(r)>)\>(<stringify(la)>)";
         case Regex::lookbehind(r, lb): return "(<stringify(lb)>)\<(<stringify(r)>)";

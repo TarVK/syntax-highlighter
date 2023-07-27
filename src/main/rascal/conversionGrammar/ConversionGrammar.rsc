@@ -39,6 +39,8 @@ data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-termi
                 | notFollow(ConvSymbol sym, ConvSymbol follow)      // Matching sym only if not followed by follow
                 | precede(ConvSymbol sym, ConvSymbol precede)       // Matching sym only if preceded by precede
                 | notPrecede(ConvSymbol sym, ConvSymbol precede)    // Matching sym only if not preceded by precede
+                | atEndOfLine(ConvSymbol sym)                       // Matching sym only if it's at the end of the line
+                | atStartOfLine(ConvSymbol sym)                     // Matching sym only if it's at the start of the line
                 | regexp(Regex regex);                              // Terminal
 
 // Allow sources to be specified within an expression, to track how a regular expression was obtained
@@ -180,6 +182,8 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termS
                     case \precede(s2): res = precede(res, rec(s2, [], []));
                     case \not-follow(s2): res = notFollow(res, rec(s2, [], []));
                     case \not-precede(s2): res = notPrecede(res, rec(s2, [], []));
+                    case \begin-of-line(): res = atStartOfLine(res);
+                    case \end-of-line(): res = atEndOfLine(res);
                     default: {
                         warnings += unsupportedCondition(c, prod);
                     }
@@ -255,12 +259,50 @@ Maybe[Symbol] convSymbolToSymbol(ConvSymbol inp) {
                 return just(\conditional(sym, {\not-precede(precedeSym)}));
             return mSym;
         }
+        case atEndOfLine(cSym): {
+            if(just(sym) := convSymbolToSymbol(cSym)) 
+                return just(\conditional(sym, {\end-of-line()}));
+            return nothing();
+        }
+        case atStarrtOfLine(cSym): {
+            if(just(sym) := convSymbolToSymbol(cSym))
+                return just(\conditional(sym, {\begin-of-line()}));
+            return nothing();
+        }
         case regexp(regex): return regexToSymbol(removeCache(reduce(regex)));
     }
     return nothing();
 }
 Maybe[Symbol] regexToSymbol(Regex inp) {
+    eolR = eolRegex();
+    solR = solRegex();
+    
     switch(inp) {
+        // Special cases that lead to slightly easier to read grammars
+        case alternation(\multi-iteration(r), Regex::empty()): {
+            mRSym = regexToSymbol(r);
+            if(just(rSym) := mRSym)
+                return just(\iter-star(rSym));
+            return nothing();
+        }
+        case alternation(Regex::empty(), \multi-iteration(r)): {
+            mRSym = regexToSymbol(r);
+            if(just(rSym) := mRSym)
+                return just(\iter-star(rSym));
+            return nothing();
+        }
+        case concatenation(r, eolR): {
+            if(just(rSym) := regexToSymbol(r))
+                return just(\conditional(rSym, {\end-of-line()}));
+            return nothing();
+        }
+        case concatenation(solR, r): {
+            if(just(rSym) := regexToSymbol(r))
+                return just(\conditional(rSym, {\begin-of-line()}));
+            return nothing();
+        }
+
+        // Normal cases
         case never(): return nothing();
         case Regex::empty(): return just(\empty());
         case always(): return just(\iter-start(complement(\char-class([]))));
@@ -309,19 +351,6 @@ Maybe[Symbol] regexToSymbol(Regex inp) {
                 return just(headSym);
             }
             return mTailSym;
-        }
-        // Special alternation case for iter-star
-        case alternation(\multi-iteration(r), Regex::empty()): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(\iter-star(rSym));
-            return nothing();
-        }
-        case alternation(Regex::empty(), \multi-iteration(r)): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(\iter-star(rSym));
-            return nothing();
         }
         case alternation(opt1, opt2): {
             mOpt1Sym = regexToSymbol(opt1);

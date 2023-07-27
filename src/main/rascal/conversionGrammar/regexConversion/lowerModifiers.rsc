@@ -28,6 +28,8 @@ ConvProd lowerModifiers(p:convProd(symb, parts, _)) {
         case precede(regexp(a), regexp(b)) => regexp(liftScopes(lookbehind(a, b)))
         case notPrecede(regexp(a), regexp(b)) => regexp(liftScopes(\negative-lookbehind(a, b)))
         case delete(regexp(a), regexp(b)) => regexp(liftScopes(subtract(a, b)))
+        case atEndOfLine(regexp(a)) => regexp(liftScopes(concatenation(a, eolRegex())))
+        case atStartOfLine(regexp(a)) => regexp(liftScopes(concatenation(solRegex(), a)))
     };
     if(newParts==parts) return p;
     return convProd(symb, newParts, {convProdSource(p)});

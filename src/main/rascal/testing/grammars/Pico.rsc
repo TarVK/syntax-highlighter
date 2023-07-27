@@ -38,5 +38,5 @@ layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
    | @category="Comment" "%" ![%]+ "%"
-//    | @category="Comment" "%%" ![\n]* $
+   | @category="Comment" "%%" ![\n]* $
    ;

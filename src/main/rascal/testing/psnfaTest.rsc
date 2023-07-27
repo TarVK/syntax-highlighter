@@ -30,11 +30,13 @@ NFA[State] nfaTest() {
     // regex = parseRegexReduced("(\<keyword\>sh.*it|(\<string\>stuff))");
     // regex = parseRegexReduced("[a-z]!\<[a-z]+!\>[a-z]");
     // regex = parseRegexReduced("(\<h\>.*)h(\<t\>.*)");
-    regex = parseRegexReduced("((\<cg1\>.{3})\<(\<cg2\>h)h)*");
+    // regex = parseRegexReduced("((\<cg1\>.{3})\<(\<cg2\>h)h)*");
     // regex = parseRegexReduced("(\<cg1\>.|.)*b");
     // regex = parseRegexReduced("((\<t\>a)!\>(b|a+))*");
     // regex = parseRegexReduced("a*!\>b");
     // regex = parseRegexReduced("(\<t\>.)\\a");
+    // regex = parseRegexReduced("^test$$");
+    regex = parseRegexReduced("(test$$)hoi");
     return regexToPSNFA(regex); 
     // return removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(regexToPSNFA(regex), {}))); 
 }
@@ -93,7 +95,7 @@ tuple[NFA[State], NFA[State]] minimizeTest() {
 NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(removeDuplicates(removeEpsilon(removeUnreachable(n)))));
 
 void main() {
-    nfa = minimizeTest();
+    nfa = nfaTest();
 
     // nfaText = visualizePSNFA(relabel(nfa));
     // loc pos = |project://syntax-highlighter/outputs/nfa.txt|;

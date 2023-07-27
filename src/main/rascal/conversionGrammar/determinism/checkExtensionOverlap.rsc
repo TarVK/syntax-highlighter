@@ -23,7 +23,7 @@ Maybe[NFA[State]] checkExtensionOverlap(Regex re) {
     // The language followed by any non-empty word
     extension = getExtensionNFA(concatPSNFA(nfa, charPSNFA(anyCharClass())));
     
-    overlap = productPSNFA(nfa, extension);
+    overlap = productPSNFA(nfa, extension, true);
     if(!isEmpty(overlap)) {
         simplified = relabelSetPSNFA(minimize(overlap));
         return just(simplified);

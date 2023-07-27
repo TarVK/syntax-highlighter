@@ -6,6 +6,8 @@ syntax RegexCST
     | neverCST: "$0"
     | emptyCST: "$e"
     | alwaysCST: "$1"
+    | EOL: "$$"
+    | SOL: "^"
     | multiIterationCST: RegexCST "+"
     | iterationCST: RegexCST "*"
     | minIterationCST: RegexCST "{" Num min "," "}"
@@ -52,4 +54,4 @@ syntax Num = [0-9]+;
 lexical Char
 	= "\\" [\[\]\-bfnrt] 
 	| ![\[\]\-];
-lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?$.\\];
+lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?$^.\\];

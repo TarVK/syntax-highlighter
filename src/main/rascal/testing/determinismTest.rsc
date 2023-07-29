@@ -26,17 +26,17 @@ import testing::grammars::PicoImproved;
 
 void main() {
     // loc pos = |project://syntax-highlighter/outputs/deterministicGrammar.bin|;
-    <cWarnings, conversionGrammar> = toConversionGrammar(#A);
-    conversionGrammar = convertToRegularExpressions(conversionGrammar);
+    loc inputPos = |project://syntax-highlighter/outputs/regexGrammar.bin|;
+    inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  inputPos);
+
     <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar);
 
     conversionGrammar = stripConvSources(conversionGrammar);
     stdGrammar = fromConversionGrammar(conversionGrammar);
 
-    warnings = cWarnings + dWarnings;
     visualize(insertPSNFADiagrams(<
-        grammar(#A),
+        fromConversionGrammar(inputGrammar),
         stdGrammar,
-        warnings
+        dWarnings
     >));
 }

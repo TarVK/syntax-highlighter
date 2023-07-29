@@ -42,6 +42,7 @@ data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-termi
                 | atEndOfLine(ConvSymbol sym)                       // Matching sym only if it's at the end of the line
                 | atStartOfLine(ConvSymbol sym)                     // Matching sym only if it's at the start of the line
                 | regexp(Regex regex);                              // Terminal
+// Note that after regex conversion is performed, all modifiers are gone. Hence only `symb` and `regexp` is left in the grammar.
 
 // Allow sources to be specified within an expression, to track how a regular expression was obtained
 data Regex = regexSource(Regex r, set[ConvProd] prods);

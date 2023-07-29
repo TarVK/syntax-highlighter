@@ -1,4 +1,4 @@
-module conversionGrammar::regexConversion::RegexConversion
+module conversion::regexConversion::RegexConversion
 
 import Set;
 import Map;
@@ -7,12 +7,12 @@ import util::Maybe;
 import Relation;
 import IO;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::unionRegexes;
-import conversionGrammar::regexConversion::concatenateRegexes;
-import conversionGrammar::regexConversion::substituteRegexes;
-import conversionGrammar::regexConversion::lowerModifiers;
-import conversionGrammar::regexConversion::repeatRegexes;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::unionRegexes;
+import conversion::regexConversion::concatenateRegexes;
+import conversion::regexConversion::substituteRegexes;
+import conversion::regexConversion::lowerModifiers;
+import conversion::regexConversion::repeatRegexes;
 import regex::RegexToPSNFA;
 import regex::Regex;
 import regex::PSNFATools;

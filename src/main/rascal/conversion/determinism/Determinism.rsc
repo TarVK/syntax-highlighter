@@ -1,4 +1,4 @@
-module conversionGrammar::determinism::Determinism
+module conversion::determinism::Determinism
 
 import Relation;
 import Set;
@@ -6,9 +6,9 @@ import Map;
 
 import Warning;
 import regex::PSNFA;
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::determinism::improveAlternativesOverlap;
-import conversionGrammar::determinism::checkExtensionOverlap;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::determinism::improveAlternativesOverlap;
+import conversion::determinism::checkExtensionOverlap;
 
 data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
              | alternativesOverlapFix(Symbol source, ProdExtensions extensions)

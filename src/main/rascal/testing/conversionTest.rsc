@@ -5,7 +5,8 @@ import ParseTree;
 
 import testing::grammars::LambdaJSnew;
 import testing::grammars::JS;
-import conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::toConversionGrammar;
 
 void main() {
     // grammar = toConversionGrammar(#Program);

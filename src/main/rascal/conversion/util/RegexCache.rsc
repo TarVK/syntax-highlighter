@@ -1,4 +1,4 @@
-module conversionGrammar::RegexCache
+module conversion::util::RegexCache
 
 extend regex::RegexToPSNFA;
 

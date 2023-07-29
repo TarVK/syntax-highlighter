@@ -1,4 +1,4 @@
-module conversionGrammar::regexConversion::substituteRegexes
+module conversion::regexConversion::substituteRegexes
 
 import Set;
 import Map;
@@ -7,11 +7,11 @@ import util::Maybe;
 import IO;
 
 import Scope;
-import conversionGrammar::RegexCache;
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::liftScopes;
-import conversionGrammar::regexConversion::concatenateRegexes;
-import conversionGrammar::regexConversion::lowerModifiers;
+import conversion::util::RegexCache;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::liftScopes;
+import conversion::regexConversion::concatenateRegexes;
+import conversion::regexConversion::lowerModifiers;
 import regex::Regex;
 import regex::PSNFA;
 import regex::Tags;

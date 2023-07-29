@@ -1,9 +1,9 @@
-module conversionGrammar::regexConversion::lowerModifiers
+module conversion::regexConversion::lowerModifiers
 
 import IO;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::liftScopes;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::liftScopes;
 import regex::Regex;
 
 @doc {

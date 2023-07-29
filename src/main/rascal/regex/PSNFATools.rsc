@@ -15,7 +15,7 @@ import regex::PSNFACombinators;
 import regex::NFA;
 
 // Would prefer to not import this here, see if we can get around this
-import conversionGrammar::RegexCache;
+import conversion::util::RegexCache;
 
 @doc {
     Checks whether the two given NFAs define the same language

@@ -1,10 +1,10 @@
-module conversionGrammar::regexConversion::concatenateRegexes
+module conversion::regexConversion::concatenateRegexes
 
 import List;
 import IO;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::liftScopes;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::liftScopes;
 import regex::Regex;
 import regex::PSNFA;
 

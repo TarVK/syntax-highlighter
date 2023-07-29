@@ -7,9 +7,10 @@ import ValueIO;
 
 import Visualize;
 import regex::PSNFA;
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::RegexConversion;
-import conversionGrammar::determinism::Determinism;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::fromConversionGrammar;
+import conversion::regexConversion::RegexConversion;
+import conversion::determinism::Determinism;
 
 // syntax A = "okay" B
 //          | "somethings" C;

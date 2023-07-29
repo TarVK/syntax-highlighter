@@ -1,11 +1,11 @@
-module conversionGrammar::regexConversion::liftScopes
+module conversion::regexConversion::liftScopes
 
 import Set;
 import List;
 import IO;
 
 import Scope;
-import conversionGrammar::RegexCache;
+import conversion::util::RegexCache;
 import regex::Tags;
 import regex::Regex;
 import regex::PSNFA;

@@ -6,9 +6,11 @@ import ParseTree;
 import ValueIO;
 
 import Visualize;
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::RegexConversion;
-import conversionGrammar::RegexCache;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::toConversionGrammar;
+import conversion::conversionGrammar::fromConversionGrammar;
+import conversion::regexConversion::RegexConversion;
+import conversion::util::RegexCache;
 import regex::PSNFA;
 
 // syntax A = @token="b" B "a" B "i"

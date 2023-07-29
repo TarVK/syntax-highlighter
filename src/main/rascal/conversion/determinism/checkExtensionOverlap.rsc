@@ -1,9 +1,9 @@
-module conversionGrammar::determinism::checkExtensionOverlap
+module conversion::determinism::checkExtensionOverlap
 
 import util::Maybe;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::RegexCache;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::RegexCache;
 import regex::Regex;
 import regex::PSNFA;
 import regex::PSNFACombinators;

@@ -16,7 +16,7 @@ import regex::RegexTypes;
 import Scope;
 
 // Would prefer to not import this here, see if we can get around this
-import conversionGrammar::RegexCache;
+import conversion::util::RegexCache;
 
 
 //     Reduction

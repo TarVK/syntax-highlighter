@@ -1,18 +1,18 @@
-module conversionGrammar::determinism::improveAlternativesOverlap
+module conversion::determinism::improveAlternativesOverlap
 
 import List;
 import Map;
 import util::Maybe;
 import IO;
 
-import conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::ConversionGrammar;
 import regex::Regex;
 import regex::PSNFA;
 import regex::PSNFATools;
 import regex::PSNFACombinators;
 import regex::NFASimplification;
 import regex::util::charClass;
-import conversionGrammar::RegexCache;
+import conversion::util::RegexCache;
 
 alias ProdsOverlaps = set[ProdsOverlap];
 alias ProdsOverlap = tuple[

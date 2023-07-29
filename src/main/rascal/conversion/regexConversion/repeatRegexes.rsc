@@ -1,15 +1,15 @@
-module conversionGrammar::regexConversion::repeatRegexes
+module conversion::regexConversion::repeatRegexes
 
 import Set;
 import util::Maybe;
 import IO;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::liftScopes;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::liftScopes;
 import regex::Regex;
 import regex::Tags;
 import regex::PSNFATools;
-import conversionGrammar::RegexCache;
+import conversion::util::RegexCache;
 import Scope;
 
 @doc {

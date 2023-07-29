@@ -1,4 +1,4 @@
-module conversionGrammar::regexConversion::unionRegexes
+module conversion::regexConversion::unionRegexes
 
 import Set;
 import Relation;
@@ -7,10 +7,10 @@ import List;
 import IO;
 import util::List;
 
-import conversionGrammar::ConversionGrammar;
-import conversionGrammar::regexConversion::liftScopes;
-import conversionGrammar::regexConversion::concatenateRegexes;
-import conversionGrammar::RegexCache;
+import conversion::conversionGrammar::ConversionGrammar;
+import conversion::regexConversion::liftScopes;
+import conversion::regexConversion::concatenateRegexes;
+import conversion::util::RegexCache;
 import regex::Regex;
 import regex::PSNFACombinators;
 import regex::PSNFATools;

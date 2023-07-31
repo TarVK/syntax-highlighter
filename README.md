@@ -5,10 +5,10 @@ Code for generating syntax highlighters from context free grammars
 
 Short-term todo:
 - [x] Add sol and eol regex support (relatively common to have eol for comments)
-- [ ] Add dynamic symbol expansion to deal with non-determinism in certain cases
+- [x] Add dynamic symbol expansion to deal with non-determinism in certain cases
 - [ ] Add production exit determinism check (knowing whether a production group is only exited if nothing more can should match)
-- [ ] Deal with grammar structure assumptions after regex conversion:
-    - [ ] Modifiers (lookarounds/etc) not being resolved in the grammar after regex conversion
-    - [ ] Every production should start with a regular expression
+- [x] Deal with grammar structure assumptions after regex conversion:
+    - [x] Modifiers (lookarounds/etc) not being resolved in the grammar after regex conversion
+    - [ ] Every production should start with a regex, or be directly left-recursive
 - [ ] Add alternatives common prefix check for determinism (to deal with if/else statements)
 

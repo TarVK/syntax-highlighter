@@ -72,17 +72,17 @@ import testing::grammars::Pico;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/regexGrammar.bin|;
-    <warnings, conversionGrammar> = toConversionGrammar(#A);
-    conversionGrammar = convertToRegularExpressions(conversionGrammar);
+    <lWarnings, conversionGrammar> = toConversionGrammar(#A);
+    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
 
-    conversionGrammar = removeInnerRegexCache(stripConvSources(conversionGrammar));
     stdGrammar = fromConversionGrammar(conversionGrammar);
 
-    visualize(insertPSNFADiagrams(<
+    warnings = lWarnings + rWarnings;
+    visualize(insertPSNFADiagrams(removeInnerRegexCache(stripConvSources(<
         grammar(#A),
-        stdGrammar
-    >));
+        stdGrammar, 
+        warnings
+    >))));
 
     writeBinaryValueFile(pos, conversionGrammar);
-    if(size(warnings)>0) println(warnings);
 }

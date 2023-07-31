@@ -13,15 +13,17 @@ import conversion::regexConversion::concatenateRegexes;
 import conversion::regexConversion::substituteRegexes;
 import conversion::regexConversion::lowerModifiers;
 import conversion::regexConversion::repeatRegexes;
+import conversion::regexConversion::checkModifiers;
 import regex::RegexToPSNFA;
 import regex::Regex;
 import regex::PSNFATools;
+import Warning;
 
 
 @doc {
     Combines productions into regular expressions in the given grammar
 }
-ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
+WithWarnings[ConversionGrammar] convertToRegularExpressions(ConversionGrammar grammar) {
     rel[Symbol, ConvProd] loweredModifierProductions = {
         <def, lowerModifiers(prod)> 
         | <def, prod> <- grammar.productions};
@@ -49,7 +51,8 @@ ConversionGrammar convertToRegularExpressions(ConversionGrammar grammar) {
         first = false;
     }
 
-    return convGrammar(\start, toRel(productions));
+    outGrammar = convGrammar(\start, toRel(productions));
+    return checkModifiers(outGrammar);
 }
 
 @doc {

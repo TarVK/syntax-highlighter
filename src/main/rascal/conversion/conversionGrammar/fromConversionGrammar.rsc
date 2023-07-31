@@ -5,6 +5,7 @@ import util::Maybe;
 import ParseTree;
 import String;
 
+import Visualize; // For the annotate constructor
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::RegexCache;
 import regex::Regex;

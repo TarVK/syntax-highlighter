@@ -3,6 +3,7 @@ module conversion::util::RegexCache
 extend regex::RegexToPSNFA;
 
 import regex::RegexTypes;
+import regex::Regex;
 import regex::RegexToPSNFA;
 import regex::NFA;
 import regex::PSNFATypes;
@@ -20,7 +21,7 @@ Regex removeCache(Regex regex) =
     visit(regex) {
         case cached(exp, _, _) => exp
     };
-value removeRegexCache(value anything) = 
+&T removeRegexCache(&T anything) = 
     visit(anything) {
         case Regex::cached(exp, _, _) => exp
     };
@@ -28,7 +29,7 @@ value removeRegexCache(value anything) =
 @doc {
     Removes the cache from sub-regexes, but keeps the outer cache
 }
-value removeInnerRegexCache(value anything) 
+&T removeInnerRegexCache(&T anything) 
     = top-down-break visit(anything) {
         case Regex::cached(exp, dfa, scoped) => cached(removeRegexCache(exp), dfa, scoped)
     };

@@ -6,7 +6,7 @@ syntax Declarations  = "declare" {IdType ","}* decls ";" ;
 syntax IdType = idtype: Id id ":" Type t;
 
 syntax Statement 
-  = assign: () !>> StatementKW Id var ":="  Expression val 
+  = assign: Id var ":="  Expression val 
   | cond: "if" Expression cond "then" {Statement ";"}*  thenPart "else" {Statement ";"}* elsePart "fi"
   | cond: "if" Expression cond "then" {Statement ";"}*  thenPart "fi"
   | loop: "while" Expression cond "do" {Statement ";"}* body "od"
@@ -32,7 +32,7 @@ syntax Expression
   ;
 
 lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
-lexical Natural = [0-9]+ !>> [0-9];
+lexical Natural = [0-9]+ !>> [a-z0-9];
 lexical String = "\"" ![\"]*  "\"";
 
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];

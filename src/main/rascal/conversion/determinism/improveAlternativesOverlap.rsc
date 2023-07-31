@@ -2,6 +2,7 @@ module conversion::determinism::improveAlternativesOverlap
 
 import List;
 import Map;
+import Set;
 import util::Maybe;
 import IO;
 
@@ -63,13 +64,14 @@ tuple[set[ConvProd], ProdsOverlaps, ProdExtensions]
                     lookaheadLengths[b],
                     grammar,
                     maxLookaheadLength);
-                if(just(newRa, newRaLALength, newRb, newRbLALength) := fix) {
-                    lookaheadLengths[ra] = newRaLALength;
-                    lookaheadLengths[rb] = newRbLALength;
-                    prods -= a;
-                    prods -= b;
-                    prods += convProd(aDef, [regexp(newRa), *aRest], as);
-                    prods += convProd(bDef, [regexp(newRb), *bRest], bs);
+                if(just(<newRa, newRaLALength, newRb, newRbLALength>) := fix) {
+                    newA = convProd(aDef, [regexp(newRa), *aRest], as);
+                    newB = convProd(bDef, [regexp(newRb), *bRest], bs);
+                    lookaheadLengths[newA] = newRaLALength;
+                    lookaheadLengths[newB] = newRbLALength;
+                    originalParts[newA] = originalParts[a];
+                    originalParts[newB] = originalParts[b];
+                    prods = prods - a - b + newA + newB;
 
                     // Recompute everything with the newly added lookahead(s)
                     continue outer;
@@ -114,7 +116,7 @@ Maybe[tuple[
     // Define all valid suffix length combinations of ra and rb, in a semi-arbitrary order that prioritizes short lookaheads
     int abs(int v) = v < 0 ? -v : v;
     lengthCombinations = sort(
-        ([raMinLookaheadLength..maxLength] * [rbMinLookaheadLength..maxLength]) 
+        ([raMinLookaheadLength..maxLength+1] * [rbMinLookaheadLength..maxLength+1]) 
             // Prevent considering the case where neither lookahead is extended
             - [raMinLookaheadLength, rbMinLookaheadLength],
         // TODO: this ordering could affect "reponsiveness" of a grammar, so it would be good for this to be tweakable as a parameter
@@ -126,7 +128,7 @@ Maybe[tuple[
     Maybe[Regex] getExpanded(Regex r, list[ConvSymbol] parts, int length) {
         if(length==0) return just(r);
 
-        expansion = expandSymbolsToRegex(parts, grammar, length, {});
+        expansion = expandSymbolsToRegex(parts, grammar, length);
         if(just(expansionRegex) := expansion) {
             <expanded, _> = cachedRegexToPSNFA(lookahead(r, mark({determinismTag()}, expansionRegex)));
             return just(expanded);
@@ -138,46 +140,94 @@ Maybe[tuple[
         if(
             just(expandedA) := getExpanded(ra, partsA, aLength) 
             && just(expandedB) := getExpanded(rb, partsB, bLength)
-        ) {
-            if(nothing() := getOverlap(expandedA, expandedB)) 
-                return just(<expandedA, aLength, expandedB, bLength>);
-        }
+            && nothing() := getOverlap(expandedA, expandedB)
+        ) 
+            return just(<expandedA, aLength, expandedB, bLength>);
     }
 
     return nothing();
 }
 
-@doc {
-    Tries to expand some of the non-terminal symbols to at most length expressions, or potentially fewer if left-recursive rules or the EOF is reached. 
-}
-Maybe[Regex] expandSymbolsToRegex(ConvSymbol \start, ConversionGrammar grammar, int length)
-    = expandSymbolsToRegex([\start], grammar, length, []);
-Maybe[Regex] expandSymbolsToRegex(list[ConvSymbol] parts, ConversionGrammar grammar, int length, set[ConvSymbol] encountered) {
-    if(length==0) return nothing(); // The length was reached, we're done
-    if([first, *rest] := parts) {
-        if(regexp(r) := first) {
-            if(just(tail) := expandSymbolsToRegex(rest, grammar, length-1, {}));
-                return just(concatenation(r, tail));
-            return just(r);
-        } else if(symb(ref, _) := first) {
-            prods = grammar.productions[ref];
+Maybe[Regex] expandSymbolsToRegex(list[ConvSymbol] parts, ConversionGrammar grammar, int length) {
+    seqOptions = expandSymbols(parts, grammar, length);
 
-            looped = ref in encountered; // We might have a left-recursive non-terminal loop
-            if(looped) return nothing(); // We can't create any extended prefix, so we just pretend the length was reached
+    Maybe[Regex] combineRegex(set[list[Regex]] seqOptions) {
+        if(size(seqOptions)==0) return nothing();
+        if([] in seqOptions) return nothing(); // If there's an empty option, all other lookahead alternations become redudant, since the empty will match those too.
 
-            options = [
-                expandSymbolsToRegex([*newParts, *parts], grammar, length, {*encountered, ref})
-                | convProd(_, newParts, _) <- prods
-            ];
-            if(nothing() in options) return nothing(); // We can't create any extended prefix (without excluding valid options), so we just pretend the length was reached
-
-            return just(reduceAlternation(alternation([r | just(r) <- options])));
+        map[Regex, set[list[Regex]]] index = ();
+        for([first, *rest] <- seqOptions) {
+            if(first notin index) index[first] = {};
+            index[first] += rest;
         }
-        else throw <"Unexpected modifier. All modifiers should be resolved using regex conversion first", first>;
-    } else {
-        // Apparently there was a case where the length couldn't be reached, hence we expect a EOF here (no more characters)
-        return just(\negative-lookahead(empty(), character(anyCharClass()))); 
+
+        list[Regex] options = [];
+        for(first <- index) {
+            if(just(s) := combineRegex(index[first])) 
+                options += concatenation(first, s);
+            else 
+                options += first;
+        }
+
+        // The below code does the same as this: 
+        // return just(reduceAlternation(Regex::alternation(options)));
+        // But this is erroring for seemingly no reason and I don't want to deal with this Rascal shit right now. 
+
+        if([option] := options) return just(option);
+        if([opt1, opt2, *rest] := options) return just((alternation(opt1, opt2) | alternation(it, part) | part <- rest));
+        return nothing();
     }
+
+    return combineRegex(seqOptions);
+}
+
+set[list[Regex]] expandSymbols(list[ConvSymbol] parts, ConversionGrammar grammar, int length) {
+    map[Symbol, bool] nullableMap = ();
+    bool isNullable(Symbol sym) {
+        sym = getWithoutLabel(sym);
+        if (sym in nullableMap) return nullableMap[sym];
+
+        res = false;
+        nullableMap[sym] = res; // Prevent loops caused by (A -> B; B -> A) productions
+        prods = grammar.productions[sym];
+        if (convProd(_, [], _) <- prods) res = true;
+        else res = any(convProd(_, [symb(s, _)], _) <- prods, isNullable(s));
+        nullableMap[sym] = res;
+        return res;
+    }
+
+    set[list[ConvSymbol]] seqQueue = {};
+    set[list[ConvSymbol]] encountered = {};
+    set[list[Regex]] out = {};
+    void addToQueue(list[ConvSymbol] seq) {
+        if (seq in encountered) return;
+        encountered += seq;
+        cutSeq = seq[..length];
+        encountered += cutSeq;
+
+        // Recursively consider all cases where a symbol may be removed, before cutting off the suffix outside of the length
+        if([*p, symb(sym, _), *s] := seq, isNullable(sym)) 
+            addToQueue([*p, *s]);
+
+        seqQueue += cutSeq;
+        if(all(p <- cutSeq, regexp(_) := p)) 
+            out += [r | regexp(r) <- cutSeq];
+    }
+    addToQueue(parts);
+
+    while(size(seqQueue) > 0) {
+        <sequence, seqQueue> = takeOneFrom(seqQueue);
+
+        if([*p, symb(sym, _), *s] := sequence){
+            for(convProd(_, subParts, _) <- grammar.productions[getWithoutLabel(sym)]) {
+                if(size(subParts) == 0) continue; // This already has been considered during add to queue, before cutting off the tail
+                
+                addToQueue([*p, *subParts, *s]);
+            }
+        }
+    }
+
+    return out;
 }
 
 @doc {

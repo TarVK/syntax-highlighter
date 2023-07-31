@@ -12,6 +12,7 @@ import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::determinism::Determinism;
+import conversion::util::RegexCache;
 
 // syntax A = "okay" B
 //          | "somethings" C;
@@ -47,8 +48,14 @@ import conversion::determinism::Determinism;
 //    | @category="Comment" "%%" ![\n]* $
 //    ;
 
+syntax A = B C;
+syntax B = "some"
+         | "something";
+syntax C = "(" C ")"
+         | [0-9];
+
 // import testing::grammars::Pico;
-import testing::grammars::PicoImproved;
+// import testing::grammars::PicoImproved;
 
 void main() {
     // // loc pos = |project://syntax-highlighter/outputs/deterministicGrammar.bin|;
@@ -56,17 +63,18 @@ void main() {
     // inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  inputPos);
 
     
-    <warnings, conversionGrammar> = toConversionGrammar(#A);
-    inputGrammar = conversionGrammar = convertToRegularExpressions(conversionGrammar);
+    <cWarnings, conversionGrammar> = toConversionGrammar(#A);
+    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
+    inputGrammar = conversionGrammar;
 
     <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, 2);
 
-    conversionGrammar = stripConvSources(conversionGrammar);
     stdGrammar = fromConversionGrammar(conversionGrammar);
 
-    visualize(insertPSNFADiagrams(<
+    warnings = cWarnings + rWarnings;
+    visualize(insertPSNFADiagrams(removeInnerRegexCache(stripConvSources(<
         fromConversionGrammar(inputGrammar),
         stdGrammar,
         dWarnings
-    >));
+    >))));
 }

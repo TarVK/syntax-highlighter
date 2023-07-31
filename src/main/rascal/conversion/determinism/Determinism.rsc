@@ -8,11 +8,12 @@ import Warning;
 import regex::PSNFA;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::determinism::improveAlternativesOverlap;
-import conversion::determinism::checkExtensionOverlap;
+import conversion::determinism::improveExtensionOverlap;
 
 data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
              | alternativesOverlapFix(Symbol source, ProdExtensions extensions)
-             | extensionOverlap(ConvProd production, NFA[State] longerMatch);
+             | extensionOverlap(ConvProd production, NFA[State] longerMatch)
+             | extensionOverlapFix(ConvProd production, int length);
 
 @doc {
     Attempts to make the given grammar deterministic with respect to the regular expressions, while keeping the language equivalent
@@ -36,11 +37,14 @@ WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar, int
     grammar = convGrammar(grammar.\start, toRel(productions));
 
     // Check for regex extension self-overlap
-    for(<_, prod:convProd(_, [regexp(re), *_], _)> <- grammar.productions) {
-        if(just(nfa) := checkExtensionOverlap(re)) {
-            warnings += extensionOverlap(prod, nfa);
-        }
+    rel[Symbol, ConvProd] newProds = {};
+    for(<def, prod> <- grammar.productions) {
+        <newProd, nfaError, fixLength> = improveExtensionOverlap(prod, grammar, maxLookaheadLength);
+        if(just(nfa) := nfaError)       warnings += extensionOverlap(prod, nfa);
+        if(just(length) := fixLength)   warnings += extensionOverlapFix(prod, length);
+
+        newProds += <def, newProd>;
     }
 
-    return <warnings, grammar>;
+    return <warnings, convGrammar(grammar.\start, newProds)>;
 }

@@ -131,7 +131,9 @@ str visualizeText(NFA[&T] n, Maybe[str](TransSymbol sym) getLabel) {
 }
 RascalVisGraph toDiagram(NFA[&T] n) = toDiagram(n, Maybe[str](TransSymbol _){ return nothing(); });
 RascalVisGraph toDiagram(NFA[&T] n, Maybe[str](TransSymbol sym) getLabel) {
-    set[RascalVisGraphNode] nodes = {VNode(state, name="<state>") | state <- getStates(n)};
+    set[RascalVisGraphNode] nodes = {VNode(state, name="<state>") | state <- getStates(n) - n.accepting - n.initial}
+                                + {VNode(state, name="<state>", color="green") | state <- n.accepting - n.initial} // TODO: find way to visualize if both accepting and initial
+                                + VNode(n.initial, name="<n.initial>", color="blue");
 
     set[RascalVisGraphEdge] edges = {};
     for(<from, on, to> <- n.transitions)  {

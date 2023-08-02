@@ -56,10 +56,13 @@ NFA[State] transformTest() {
 
 NFA[State] reservationTest() {
     // regex = parseRegexReduced("[a-z]!\<(([a-z]+)\\(hoi|bye))!\>[a-z]");
-    regex1 = "[a-z]!\<[a-z]+!\>[a-z]\\(hoi|bye)";
-    regex2 = "(!\>([a-z]!\<(hoi|bye)))([a-z]!\<([a-z]+)!\>[a-z])";
+    regex1 = "([a-z]!\<[a-z]+!\>[a-z])\\(hoi|bye)";
+    regex2 = "(!\>([a-z]!\<(hoi|bye)!\>[a-z]))([a-z]!\<[a-z]+!\>[a-z])";
+    // regex2 = "(!\>([a-z]!\<(hoi|bye)))([a-z]!\<[a-z]+!\>[a-z])";
 
     return difference(regex1, regex2);
+    // r = parseRegexReduced(regex1);
+    // return regexToPSNFA(r); 
 }
 
 NFA[State] scopeTest() {
@@ -92,10 +95,11 @@ tuple[NFA[State], NFA[State]] minimizeTest() {
     return <nfa,  relabelIntPSNFA(relabel(minimized))>;
 }
 
-NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(removeDuplicates(removeEpsilon(removeUnreachable(n)))));
+// NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(mergeEdges(n, PSNFAMerge))));
+NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(n)));
 
 void main() {
-    nfa = nfaTest();
+    nfa = reservationTest();
 
     // nfaText = visualizePSNFA(relabel(nfa));
     // loc pos = |project://syntax-highlighter/outputs/nfa.txt|;

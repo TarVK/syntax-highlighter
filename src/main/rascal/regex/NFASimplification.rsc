@@ -2,11 +2,13 @@ module regex::NFASimplification
 
 import Set;
 import IO;
+import ParseTree;
 
 import regex::NFA;
 import regex::PSNFA;
 import regex::Tags;
 import regex::util::expandEpsilon;
+import regex::util::GetDisjointCharClasses;
 
 
 @doc {
@@ -180,4 +182,48 @@ NFA[&T] filterStates(NFA[&T] n, set[&T] states) {
         {s | s <- n.accepting, s in states},
         ()
     >;
+}
+
+@doc {
+    Merges edges in the given automaton
+}
+NFA[&T] mergeEdges(NFA[&T] n, set[TransSymbol](set[TransSymbol]) merge) {
+    rel[&T, TransSymbol, &T] newTransitions = {};
+    transitions = n.transitions<0, 2, 1>;
+    for(from <- transitions<0>) {
+        fromTransitions = transitions[from];
+        for(to <- fromTransitions<0>) {
+            fromToTransitions = fromTransitions[to];
+            merged = merge(fromToTransitions);
+            for(on <- merged) {
+                newTransitions += <from, on, to>;
+            }
+        }
+    }
+
+    return <
+        n.initial,
+        newTransitions,
+        n.accepting,
+        ()
+    >;
+}
+
+set[TransSymbol] PSNFAMerge(set[TransSymbol] symbols){
+    disjoint = PSNFADisjoint(symbols)<0>;
+
+    rel[TagClass, TransSymbol] indexedByTC = {<tc, s> | s:character(_, tc) <- disjoint};
+    for(tc <- indexedByTC<0>) {
+        tcSymbols = indexedByTC[tc];
+
+        CharClass union = [];
+        for(s:character(cc, _) <- tcSymbols) {
+            disjoint -= s;
+            union = fUnion(union, cc);
+        }
+
+        disjoint += character(cc, tc);
+    }
+
+    return disjoint;
 }

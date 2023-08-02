@@ -22,6 +22,10 @@ import Warning;
 
 @doc {
     Combines productions into regular expressions in the given grammar
+
+    The guarantee on the output grammar is:
+        - The language is equivalent to that of the input grammar (unless warnings are generated, in which case it's possibly broader)
+        - All modifiers have been removed from the grammar
 }
 WithWarnings[ConversionGrammar] convertToRegularExpressions(ConversionGrammar grammar) {
     rel[Symbol, ConvProd] loweredModifierProductions = {

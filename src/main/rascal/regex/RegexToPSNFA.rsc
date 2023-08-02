@@ -59,7 +59,6 @@ NFA[State] simplify(NFA[State] n) {
     //     return stateSet({*S | S <- states});
     // });
 
-    // simplified = minimize(removeUnreachable(n));
-    simplified = minimize(n);
+    simplified = minimize(removeUnreachable(n));
     return relabelIntPSNFA(relabel(simplified));
 }

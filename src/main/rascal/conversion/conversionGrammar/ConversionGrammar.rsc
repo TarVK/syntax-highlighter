@@ -21,6 +21,7 @@ import Scope;
 import Warning;
 
 data ConversionGrammar = convGrammar(Symbol \start, rel[Symbol, ConvProd] productions);
+alias ProdMap = map[Symbol, set[ConvProd]];
 
 @doc {
     The base production rule data for a conversion grammar:
@@ -31,6 +32,7 @@ data ConversionGrammar = convGrammar(Symbol \start, rel[Symbol, ConvProd] produc
 data ConvProd = convProd(Symbol symb, list[ConvSymbol] parts, set[SourceProd] sources);
 data SourceProd = convProdSource(ConvProd convProd)
                 | origProdSource(Production origProd);
+                
 
 data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-terminal, with the scopes to assign it
                 | delete(ConvSymbol from, ConvSymbol del)           // Deleting one non-terminal from another non-terminal
@@ -43,10 +45,11 @@ data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-termi
                 | regexp(Regex regex);                              // Terminal
 // Note that after regex conversion is performed, all modifiers are gone. Hence only `symb` and `regexp` is left in the grammar.
 
-// Allow sources to be specified within an expression, to track how a regular expression was obtained
-data Regex = regexSource(Regex r, set[ConvProd] prods);
 
-alias ProdMap = map[Symbol, set[ConvProd]];
+
+
+// Allow sources to be specified within an expression, to track how a regular expression was obtained, TODO: 
+// data Regex = regexSource(Regex r, set[ConvProd] prods);
 
 // Warnings that may be produced by conversion
 data Warning = unsupportedCondition(Condition condition, Production inProd)
@@ -118,3 +121,11 @@ bool equalsAfter(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
 }
 Symbol getWithoutLabel(label(_, sym)) = sym;
 default Symbol getWithoutLabel(Symbol sym) = sym;
+
+@doc {
+    Keep the label from the first symbol if present, but use the rest of the second symbol
+}
+Symbol copyLabel(Symbol withLabel, Symbol target) {
+    if(label(x, _) := withLabel) return label(x, getWithoutLabel(target));
+    return target;
+}

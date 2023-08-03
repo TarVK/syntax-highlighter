@@ -64,7 +64,8 @@ import regex::PSNFA;
 //   | nil    :"nil-type"
 //   ;
 
-import testing::grammars::Pico;
+// import testing::grammars::Pico;
+import testing::grammars::PicoImproved;
 
 // syntax A = @scope="smth" "a" B;
 // syntax B = @token="stuff" "b";

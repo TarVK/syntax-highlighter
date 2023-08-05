@@ -7,7 +7,7 @@
     -   Can use parent end as a lookahead to break out of multiple scopes at once
 -   If both "end" matches and a pattern in the scope matches, "end" gets priority:
 
-    -   Can use a negative lookahead of the conjunction of all sub-patterns as the "end" match in order to exit when no more children match
+    -   Can also use a negative lookahead of the conjunction of all sub-patterns as the "end" match in order to exit when no more children match
 
 -   Textmate 2 supports patterns within capture statements:
     <details>

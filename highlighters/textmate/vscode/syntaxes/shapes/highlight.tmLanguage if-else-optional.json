@@ -1,0 +1,75 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "highlight",
+    "patterns": [{ "include": "#stmt" }],
+    "repository": {
+        "if": {
+            "patternComment": "if(#EXP){#STMT}else{#STMT}",
+            "name": "1",
+            "begin": "(?=if\\s*\\()",
+            "end": "\\}",
+            "endCaptures": {
+                "0": { "name": "bracket" }
+            },
+            "patterns": [
+                {
+                    "name": "2",
+                    "begin": "(?=if\\s*\\()",
+                    "end": "(\\})\\s*(else)\\s*(\\{)|(?!(\\})\\s*(else)\\s*(\\{))\\}",
+                    "endCaptures": {
+                        "1": { "name": "bracket" },
+                        "2": { "name": "keyword" },
+                        "3": { "name": "bracket" }
+                    },
+                    "patterns": [
+                        {
+                            "name": "3",
+                            "begin": "(?=if\\s*\\()",
+                            "end": "(\\))\\s*(\\{)",
+                            "endCaptures": {
+                                "1": { "name": "bracket" },
+                                "2": { "name": "bracket" }
+                            },
+                            "patterns": [
+                                {
+                                    "match": "(if)\\s*(\\()",
+                                    "captures": {
+                                        "1": { "name": "keyword" },
+                                        "2": { "name": "bracket" }
+                                    }
+                                }, {
+                                    "name": "4",
+                                    "begin": "(?!(if)\\s*(\\())",
+                                    "end": "(?=(\\))\\s*(\\{))",
+                                    "patterns": [{"include": "#exp"}]
+                                }
+                            ]        
+                        },{
+                            "name": "5",
+                            "begin": "(?!if\\s*\\()",
+                            "end": "(?=(\\})\\s*(else)\\s*(\\{)|(?!(\\})\\s*(else)\\s*(\\{))\\})",
+                            "patterns": [{"include": "#stmt"}]
+                        }
+                    ]
+                }, {
+                    "name": "6",
+                    "begin": "(?!if\\s*\\()",
+                    "end": "(?=\\})",
+                    "patterns": [{"include": "#stmt"}]
+                }
+            ]
+        },
+        "stmt": {
+            "patterns": [
+                { "include": "#if" }, 
+                { "match": "while", "name": "keyword" }
+            ]
+        },
+        "exp": {
+            "patterns": [
+                {"match": "[a-z]+", "name": "variable.parameter"}
+            ]
+        }
+    },
+    "scopeName": "source.highlight"
+}

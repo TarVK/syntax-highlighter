@@ -1,17 +1,75 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "highlight",
-    "patterns": [{ "include": "#a" }],
+    "patterns": [{ "include": "#stmt" }],
     "repository": {
-        "a": {
-            "match": "((a))((b))",
-            "name": "comment",
-            "captures": {
-                "1": { "name": "A" },
-                "2": { "name": "a" },
-                "3": { "name": "B"},
-                "4": { "name": "b"}
-            }
+        "if": {
+            "patternComment": "for( #expcomma ; #expcomma ; #expcomma )",
+            "contentName": "2",
+            "begin": "(?=for\\s*\\()",
+            "end": "\\)",
+            "endCaptures": { "0": { "name": "bracket" }},
+            "patterns": [
+                {
+                    "contentName": "3",
+                    "begin": "(?=for\\s*\\()",
+                    "end": ";",
+                    "endCaptures": {"0": {"name": "semicolon"}},
+                    "patterns": [
+                        {
+                            "contentName": "4",
+                            "begin": "(?=for\\s*\\()",
+                            "end": ";",
+                            "endCaptures": {"0": {"name": "semicolon"}},
+                            "patterns": [
+                                {
+                                    "match": "(for)\\s*\\(()",
+                                    "captures": {
+                                        "1": {"name": "keyword"},
+                                        "2": {"name": "bracket"}
+                                    }
+                                }, {
+                                    "begin": "(?!for\\s*\\()",
+                                    "end": "(?=\\;)",
+                                    "patterns": [{"include": "#expcomma"}]
+                                }
+                            ]  
+                        }, {
+                            "begin": "(?!for\\s*\\()",
+                            "end": "(?=\\;)",
+                            "patterns": [{"include": "#expcomma"}]
+                        }
+                    ]
+                }, {
+                    "begin": "(?!for\\s*\\()",
+                    "end": "(?=\\))",
+                    "patterns": [{"include": "#expcomma"}]
+                }
+            ]
+        },
+        "stmt": {
+            "patterns": [
+                { "include": "#if" }, 
+                { "match": "while", "name": "keyword" },
+                {
+                    "begin": "\\{",
+                    "beginCaptures": {"0": {"name": "bracket"}},
+                    "end": "\\}",
+                    "endCaptures": {"0": {"name": "bracket"}},
+                    "patterns": [{"include": "#stmt"}]
+                }
+            ]
+        },
+        "exp": {
+            "patterns": [
+                {"match": "[a-z]+", "name": "variable.parameter"}
+            ]
+        },
+        "expcomma": {
+            "patterns": [
+                {"include": "#exp"},
+                {"match": ",", "name": "comma"}
+            ]
         }
     },
     "scopeName": "source.highlight"

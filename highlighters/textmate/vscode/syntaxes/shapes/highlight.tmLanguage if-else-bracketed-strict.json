@@ -1,0 +1,75 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "highlight",
+    "patterns": [{ "include": "#stmt" }],
+    "repository": {
+        "if": {
+            "patternComment": "if(#EXP){#STMT}else{#STMT}",
+            "begin": "(?=if\\s*\\()",
+            "end": "\\}",
+            "endCaptures": {
+                "0": { "name": "bracket" }
+            },
+            "patterns": [
+                {
+                    "begin": "(?=if\\s*\\()",
+                    "end": "else",
+                    "endCaptures": {
+                        "0": { "name": "keyword" }
+                    },
+                    "patterns": [
+                        {
+                            "begin": "(?=if\\s*\\()",
+                            "end": "}",
+                            "endCaptures": {
+                                "0": { "name": "bracket" }
+                            },
+                            "patterns": [
+                                {
+                                    "begin": "(if)\\s*(\\()",
+                                    "beginCaptures": {
+                                        "1": {"name": "keyword"},
+                                        "2": {"name": "bracket"}
+                                    },
+                                    "end": "\\)",
+                                    "endCaptures": {
+                                        "0": {"name": "bracket"}
+                                    },
+                                    "patterns": [
+                                        { "include": "#exp" }
+                                    ]
+                                }, {
+                                    "begin": "\\{",
+                                    "beginCaptures": { "0": {"name": "bracket"} },
+                                    "end": "(?=\\})",
+                                    "patterns": [
+                                        {"include": "#stmt"}
+                                    ]
+                                }
+                            ]
+                        }            
+                    ]
+                }, {
+                    "begin": "\\{",
+                    "beginCaptures": { "0": {"name": "bracket"} },
+                    "end": "(?=\\})",
+                    "patterns": [
+                        {"include": "#stmt"}
+                    ]
+                }
+            ]
+        },
+        "stmt": {
+            "patterns": [
+                { "include": "#if" },
+                { "match": "while", "name": "keyword" }
+            ]
+        },
+        "exp": {
+            "patterns": [
+                {"match": "[a-z]+", "name": "variable.parameter"}
+            ]
+        }
+    },
+    "scopeName": "source.highlight"
+}

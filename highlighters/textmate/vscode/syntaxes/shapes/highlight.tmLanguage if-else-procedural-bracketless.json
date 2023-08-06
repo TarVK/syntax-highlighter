@@ -1,0 +1,64 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "highlight",
+    "patterns": [{ "include": "#stmt" }],
+    "repository": {
+        "if": {
+            "patternComment": "if(#EXP){#STMT}else{#STMT}",
+            "name": "1",
+            "begin": "(?=if\\s*\\()",
+            "end": "else",
+            "endCaptures": {
+                "0": { "name": "keyword" }
+            },
+            "patterns": [
+                {
+                    "name": "2",
+                    "begin": "(?=if\\s*\\()",
+                    "end": "\\)",
+                    "endCaptures": {
+                        "0": { "name": "bracket" }
+                    },
+                    "patterns": [
+                        {
+                            "match": "(if)\\s*(\\()",
+                            "captures": {
+                                "1": { "name": "keyword" },
+                                "2": { "name": "bracket" }
+                            }
+                        }, {
+                            "name": "3",
+                            "begin": "(?!if\\s*\\()",
+                            "end": "(?=\\))",
+                            "patterns": [{"include": "#exp"}]
+                        }
+                    ]
+                }, {
+                    "name": "4",
+                    "begin": "(?!if\\s*\\()",
+                    "end": "(?=else)",
+                    "patterns": [{"include": "#stmt"}]
+                }
+            ]
+        },
+        "stmt": {
+            "patterns": [
+                { "include": "#if" }, 
+                { "match": "while", "name": "keyword" },
+                {
+                    "begin": "\\{",
+                    "beginCaptures": {"0": {"name": "bracket"}},
+                    "end": "\\}",
+                    "endCaptures": {"0": {"name": "bracket"}},
+                    "patterns": [{"include": "#stmt"}]
+                }
+            ]
+        },
+        "exp": {
+            "patterns": [
+                {"match": "[a-z]+", "name": "variable.parameter"}
+            ]
+        }
+    },
+    "scopeName": "source.highlight"
+}

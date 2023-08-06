@@ -158,4 +158,6 @@ public data RascalVisGraphEdge = VEdge(
 @doc {
     Rascal-vis grammar augmentation, text annotations will be vshown
 }
-data Symbol = annotate(Symbol sym, set[value] annotations);
+data Symbol = annotate(Symbol sym, set[value] annotations)
+            // A custom symbol type, useful for grammar transformations with different semantics to the ones from the build-in symbols
+            | custom(str typeName, Symbol sym);

@@ -20,23 +20,23 @@ import regex::NFASimplification;
     Overlap between matches can still happen however, since this does not necessarily cause ambiguity if the following symbols make it so only one of them is valid.  E.g. `/(some|something)/` followed by `/thing/` is not ambiguous and can only match in one way. But when encountering "something" by itself, the first regex choosing alternative "something" would be wrong. and not allow for a valid total match. Hence this grammar wouldn't be deterministic.  
 }
 tuple[
-    // The new production
-    ConvProd, 
+    // The new expression (which may be identical to the old)
+    Regex, 
     // The unresolved overlap if any
     Maybe[NFA[State]], 
     // THe expansion depth to fix overlap, if any
     Maybe[int]
-] improveExtensionOverlap(ConvProd prod,  ConversionGrammar grammar, int maxLookaheadLength) {
-    if(convProd(lDef, [regexp(re), *rest], sources) := prod && just(overlap) := doesSelfOverlap(re)) {
-        if(just(<fixedRe, fixLength>) := fixOverlap(re, rest, grammar, maxLookaheadLength)) {
-            return <convProd(lDef, [regexp(fixedRe), *rest], sources), nothing(), just(fixLength)>;
+] improveExtensionOverlap(Regex re, list[ConvSymbol] follow,  ConversionGrammar grammar, int maxLookaheadLength) {
+    if(just(overlap) := doesSelfOverlap(re)) {
+        if(just(<fixedRe, fixLength>) := fixOverlap(re, follow, grammar, maxLookaheadLength)) {
+            return <fixedRe, nothing(), just(fixLength)>;
         } else {
             simplified = relabelSetPSNFA(minimize(overlap));
-            return <prod, just(simplified), nothing()>;
+            return <re, just(simplified), nothing()>;
         }
     }
 
-    return <prod, nothing(), nothing()>;
+    return <re, nothing(), nothing()>;
 }
 
 Maybe[tuple[Regex, int]] fixOverlap(Regex re, list[ConvSymbol] parts, ConversionGrammar grammar, int maxLength) {

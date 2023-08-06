@@ -149,6 +149,12 @@ Due to usage of regex, it is possible that styling is only applied once some syn
     A -> X A
     A -> Y A
     ```
+- Optionalize concatenation regex when possible:
+    ```
+    A -> X Y A
+    =>
+    A -> X Y? A
+    ```
 - Split body concatenation regexes when possible:
     ```
     A -> X Y Z A

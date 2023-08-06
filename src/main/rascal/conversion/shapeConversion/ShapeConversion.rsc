@@ -7,6 +7,7 @@ import Relation;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::shapeConversion::deduplicateProductions;
+import conversion::shapeConversion::combineConsecutiveSymbols;
 import Warning;
 
 
@@ -28,7 +29,13 @@ import Warning;
         - Every symbol at least has the empty production
 }
 WithWarnings[ConversionGrammar] convertToShape(ConversionGrammar grammar) {
-    <warnings, grammar> = makePrefixedRightRecursive(grammar);
+    <rWarnings, grammar> = makePrefixedRightRecursive(grammar);
     grammar = deduplicateProductions(grammar);
-    return <warnings, grammar>;
+
+    return <rWarnings, grammar>;
+
+    // <cWarnings, grammar> = combineConsecutiveSymbols(grammar);
+    // grammar = deduplicateProductions(grammar);
+
+    // return <rWarnings + cWarnings, grammar>;
 }

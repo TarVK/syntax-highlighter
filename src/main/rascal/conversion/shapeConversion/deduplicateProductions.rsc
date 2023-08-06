@@ -5,6 +5,7 @@ import util::Maybe;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::shapeConversion::util::getComparisonProds;
 import conversion::util::RegexCache;
 
 @doc {
@@ -42,7 +43,7 @@ ConversionGrammar deduplicateProductions(ConversionGrammar grammar) {
 
 rel[Symbol, ConvProd] replaceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {
     replaceByProds = prods[replaceBySym];
-    combined = combineEqual(replaceByProds, replaceBySym, {replaceSym, replaceBySym}, true);
+    combined = combineEqual(replaceByProds, replaceBySym, {replaceSym, replaceBySym});
 
     filteredProds = {p | p:<def, _> <- prods, def != replaceSym && def != replaceBySym};
     replacedProds = {
@@ -61,40 +62,19 @@ rel[Symbol, ConvProd] replaceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceS
     return replacedProds + {<replaceBySym, prod> | prod <- combined};
 }
 
-set[ConvProd] combineEqual(set[ConvProd] prods, Symbol targetSym, set[Symbol] equalSyms, bool keepLabel) {
-    list[ConvSymbol] subParts(list[ConvSymbol] parts) {
-        Maybe[ConvSymbol] last = nothing();
-        list[ConvSymbol] out = [];
-        for(part <- parts) {
-            if(symb(sym, scopes) := part) {
-                pureSym = getWithoutLabel(sym);
-                if(pureSym in equalSyms) 
-                    part = symb(keepLabel ? copyLabel(sym, targetSym) : targetSym, scopes);
-
-                if(just(part) !:= last) 
-                    out += part;
-
-                last = just(part);
-            } else {
-                last = just(part);
-                out += part;
-            }
-        }
-        return out;
-    }
-
-    return {
-        convProd(keepLabel ? copyLabel(def, targetSym) : targetSym, subParts(parts), sources) 
+set[ConvProd] combineEqual(set[ConvProd] prods, Symbol targetSym, set[Symbol] equalSyms) 
+    = {
+        convProd(
+            copyLabel(def, targetSym), 
+            combineConsecutive(replaceSymbols(parts, equalSyms, targetSym, true)),
+            sources
+        ) 
         | convProd(def, parts, sources) <- prods
     };
-}
 
 bool areEquivalent(Symbol a, set[ConvProd] prodsA, Symbol b, set[ConvProd] prodsB) {
-    set[ConvProd] removeSources(set[ConvProd] prods) 
-        = {convProd(d, p, {}) | convProd(d, p, _) <- prods};
-
-    subbedA = (combineEqual(prodsA, a, {a, b}, false));
-    subbedB = (combineEqual(prodsB, a, {a, b}, false));
+    subbedA = getComparisonProds(prodsA, {a, b});
+    subbedB = getComparisonProds(prodsB, {a, b});
 
     return subbedA == subbedB;
 }

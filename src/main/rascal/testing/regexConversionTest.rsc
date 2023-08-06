@@ -64,11 +64,23 @@ import regex::PSNFA;
 //   | nil    :"nil-type"
 //   ;
 
+
+
+syntax A = {EXP ","}+;
+syntax EXP = Name
+           | EXP "+" EXP;
+lexical Name = [a-zA-Z]+ !>> [a-zA-Z];
+
+layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+
+lexical WhitespaceAndComment 
+   = [\ \t\n\r]
+   | @category="Comment" "%" ![%]+ "%"
+   | @category="Comment" "%%" ![\n]* $
+   ;
+
 // import testing::grammars::Pico;
 import testing::grammars::PicoImproved;
-
-// syntax A = @scope="smth" "a" B;
-// syntax B = @token="stuff" "b";
 
 
 void main() {

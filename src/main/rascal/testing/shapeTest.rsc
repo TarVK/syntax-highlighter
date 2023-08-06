@@ -37,12 +37,13 @@ lexical String = "\"" ![\"]*  "\"";
 
 keyword StatementKW = "if" | "while";
 
-layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
-lexical WhitespaceAndComment 
-   = [\ \t\n\r]
-   | @category="Comment" "%" ![%]+ "%"
-   | @category="Comment" "%%" ![\n]* $
-   ;
+layout Layout = [\ \t\n\r]?;
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @category="Comment" "%" ![%]+ "%"
+//    | @category="Comment" "%%" ![\n]* $
+//    ;
 
 
 void main() {

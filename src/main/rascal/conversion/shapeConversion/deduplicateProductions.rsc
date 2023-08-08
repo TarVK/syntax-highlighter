@@ -6,6 +6,7 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::util::getComparisonProds;
+import conversion::shapeConversion::util::compareProds;
 import conversion::util::RegexCache;
 
 @doc {
@@ -72,9 +73,5 @@ set[ConvProd] combineEqual(set[ConvProd] prods, Symbol targetSym, set[Symbol] eq
         | convProd(def, parts, sources) <- prods
     };
 
-bool areEquivalent(Symbol a, set[ConvProd] prodsA, Symbol b, set[ConvProd] prodsB) {
-    subbedA = getComparisonProds(prodsA, {a, b});
-    subbedB = getComparisonProds(prodsB, {a, b});
-
-    return subbedA == subbedB;
-}
+bool areEquivalent(Symbol a, set[ConvProd] prodsA, Symbol b, set[ConvProd] prodsB)
+    = equals(prodsA, prodsB, {a, b});

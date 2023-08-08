@@ -7,12 +7,14 @@ import IO;
 import util::Maybe;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::shapeConversion::util::overlapsAlternation;
 import conversion::shapeConversion::util::compareProds;
 import conversion::shapeConversion::util::getComparisonProds;
 import conversion::util::RegexCache;
 import Scope;
 import Warning;
 import Visualize;
+import regex::PSNFATools;
 
 data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd source);
 
@@ -43,6 +45,7 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
             warnings += newWarnings;
         }
 
+        // TODO: get rid of this, once stable
         i += 1;
         if(i > 2) break;
     } while (prevGrammar != grammar);
@@ -53,156 +56,165 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
 WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, parts, sources), ConversionGrammar grammar) {
     list[Warning] warnings = [];
 
-    set[set[Symbol]] addedBroadenings = {};
+    bool modified = false;
+    Maybe[tuple[Symbol, Scopes]] prevSymbol = nothing();
+    Maybe[Regex] spacerRegex = nothing();
+    void flush() {
+        if(just(<sym, scopes>) := prevSymbol) 
+            outParts += symb(sym, scopes);
+        prevSymbol = nothing();
 
-    list[ConvSymbol] newParts = [];
-
-    set[tuple[Symbol, Scopes]] nonTerminals = {};
-    void flushNonTerminals() {
-        if({} := nonTerminals)
-            ;
-        else if({<ref, scopes>} := nonTerminals)
-            newParts += symb(ref, scopes);
-        else {
-            symbols = {getWithoutLabel(s) | <s, _> <- nonTerminals};
-            set[Symbol] flatSymbols = {};
-            for(symbol <- symbols) {
-                if(custom("union", \alt(ps)) := symbol) flatSymbols += ps;
-                else flatSymbols += symbol;
-            }
-            definingSet = getDefiningSet(flatSymbols, grammar);
-
-            scopeOpts = {scopes | <_, scopes> <- nonTerminals};
-            addedBroadenings += {flatSymbols};
-            if(size(scopeOpts)>1) 
-                warnings += incompatibleScopesForUnion(nonTerminals, prod);
-
-
-            if({ref} := definingSet)
-                newParts += symb(ref, getOneFrom(scopeOpts));
-            else
-                newParts += symb(unionSym(definingSet), getOneFrom(scopeOpts));
-        }
-        nonTerminals = {};
+        if(just(r) := spacerRegex)
+            outParts += regexp(r);
+        spacerRegex = nothing();
     }
 
+    list[ConvSymbol] outParts = [];
     for(part <- parts) {
         if(symb(ref, scopes) := part) {
-            nonTerminals += <ref, scopes>;
-        } else {
-            flushNonTerminals();
-            newParts += part;
-        }
-    }
-    flushNonTerminals();
+            if (just(<prevRef, prevScopes>) := prevSymbol) {
+                if(prevScopes != scopes)
+                    warnings += incompatibleScopesForUnion({<rf, scopes>, <prevRef, prevScopes>}, prod);
 
-    if(size(addedBroadenings)==0) return <[], grammar>;
+                modified = true;
+                <newWarnings, grammar, newSymbol> = combineSymbols(ref, prevRef, spacerRegex, prod, grammar);
+                warnings += newWarnings;
+                prevSymbol = just(<copyLabel(prevRef, newSymbol), scopes>);
+                spacerRegex = nothing();
+            } else {
+                prevSymbol = just(<ref, scopes>);
+            }
+        } else if(regexp(regex) := part) {
+            bool normalRegex = true;
+            if(acceptsEmpty(regex), just(<A, _>) := prevSymbol) {
+                // Let A X B be a sequence of symbols in parts, where X represents regex
+                // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
+                // They only apply at once, if X overlaps with an alternation of A
+
+                overlaps = overlapsAlternation(A, regex, grammar);
+                if(overlaps) {
+                    spacerRegex = just(regex);
+                    normalRegex = false;
+                }
+            }
+
+            if(normalRegex) {
+                flush();
+                outParts += part;
+            }
+        } else outParts += part;
+    }
+    flush();
+
+    if(!modified) return <warnings, grammar>;
 
     pureDef = getWithoutLabel(lDef);
     grammar.productions -= {<pureDef, prod>};
-    grammar.productions += {<pureDef, convProd(lDef, newParts, {convProdSource(prod)})>};
-
-    for(broadening <- addedBroadenings) {
-        grammar = addBroadening(broadening, grammar);
-    }
+    grammar.productions += {<pureDef, convProd(lDef, outParts, {convProdSource(prod)})>};
+    
     return <warnings, grammar>;
 }
 
-ConversionGrammar addBroadening(set[Symbol] symbols, ConversionGrammar grammar) {
-    sym = unionSym(symbols);
 
-    alreadyExists = size(grammar.productions[sym])>0;
-    if(alreadyExists) return grammar;
-
+tuple[list[Warning], ConversionGrammar, Symbol] combineSymbols(
+    Symbol ref, 
+    Symbol prevRef, 
+    Maybe[Regex] spacerRegex, 
+    ConvProd source,
+    ConversionGrammar grammar
+) { 
     list[Warning] warnings = [];
-
-    set[ConvProd] newProds = {};
-    for(sourceSym <- symbols) {
-        prods = grammar.productions[getWithoutLabel(sourceSym)];
-
-        for(prod:convProd(lDef, parts, sources) <- prods) {
-            list[ConvSymbol] newParts;
-            if(size(parts) == 0) {
-                // Empty productions should be copied literally without adding recursion
-                newParts = parts;
-            } else {
-                end = size(parts);
-                for(i <- reverse([0..end])) {
-                    if(symb(ref, _) := parts[i]) {
-                        contains = false;
-                        if(custom("union", \alt(ps)) := ref) 
-                            contains = ps <= symbols;
-                        else
-                            contains = getWithoutLabel(ref) in symbols;
-
-                        if(contains){
-                            end = i;
-                            continue;
-                        }
-                    }
-
-                    break;
-                }
-
-                newParts = parts[..end] + symb(sym, []); // Exclude all final symbols that are included in this sym
-            }
-            
-            isNew = !any(convProd(_, p, _) <- newProds, p == newParts);
-            if(isNew)
-                newProds += convProd(copyLabel(lDef, sym), newParts, {convProdSource(prod)});
-        }
+    void logConflicts(rel[ConvSymbol, ConvSymbol] conflicts) {
+        for(<symb(ref1, scopes1), symb(ref2, scopes2)> <- conflicts)
+            warnings += incompatibleScopesForUnion(
+                {<ref1, scopes1>, <ref2, scopes2>}, p);
     }
 
-    grammar.productions += {<sym, prod> | prod <- newProds};
-    return grammar;
+    // Retrieve data for comparison (including the regular expression if specified)
+    pureRef = getWithoutLabel(ref);
+    purePrevRef = getWithoutLabel(prevRef);
+
+    refProds = grammar.productions[pureRef];
+    refCompProds = getComparisonProds(refProds, {pureRef, purePrevRef});
+
+    prevRefProds = grammar.productions[purePrevRef];
+    prevRefCompProds = getComparisonProds(prevRefProds, {pureRef, purePrevRef});
+
+    set[ConvProd] regexCompProds = just(r) := spacerRegex
+        ? {convProd(self(), [regexp(r), self()], {convProdSource(source)})}
+        : {};
+
+    // Check if one set of productions is already contained in the other
+    Maybe[tuple[Symbol, set[ConvProd]]] superset = nothing();
+
+    bool refIncluded = isSubset(refCompProds, prevRefCompProds + regexCompProds);
+    bool prevRefIncluded = isSubset(prevRefCompProds, refCompProds + regexCompProds);
+    bool regexIncludedInRef = isSubset(regexCompProds, refCompProds);
+    bool regexIncludedInPrevRef = isSubset(regexCompProds, prevRefCompProds);
+
+    if(refIncluded && regexIncludedInPrevRef) 
+        superset = just(<purePrevRef, prevRefProds>);
+    else if(prevRefIncluded && regexIncludedInRef) 
+        superset = just(<pureRef, refProds>);
+
+    if(just(<supersetRef, supersetProds>) := superset) {
+        return <warnings, grammar, supersetRef>;
+    }
+
+    // If a regular expression was added, or neither production set is a superset of the other, create a new union set of all these productions
+    set[Symbol] defParts = {};
+    set[Regex] expressions = {};
+    set[ConvProd] prods = {};
+    if(!refIncluded) {
+        defParts += pureRef;
+        prods += refProds;
+    }
+    if(!prevRefIncluded) {
+        defParts += purePrevRef;
+        prods += prevRefProds;
+    }
+    regexIncluded = regexIncludedInRef && !refIncluded || regexIncludedInPrevRef && !prevRefIncluded;
+    if(!regexIncluded && just(r) := spacerRegex) {
+        expressions += r;
+        prods += regexCompProds;
+    }
+
+    newSym = unionSym(defParts, expressions);
+    bool alreadyCreated = size(grammar.productions[newSym])>0;
+    println(<refIncluded, prevRefIncluded, regexIncludedInRef, regexIncludedInPrevRef, regexCompProds, size(prods), alreadyCreated>);
+    if(alreadyCreated) return <warnings, grammar, newSym>;
+    
+    
+    rel[Symbol, ConvProd] mergedProds = {};
+    for(p:convProd(lDef, parts, _) <- prods) {
+        // <newParts, conflicts> = combineConsecutiveIgnoreScopes(
+        //     [*parts, symb(newSym, [])], 
+        //     inSetEquals({pureRef, purePrevRef, self(), newSym}, newSym)
+        // );
+        // logConflicts(conflicts);
+        newParts = size(parts) == 0 ? [] : [*parts, symb(newSym, [])];
+
+        mergedProds += {<newSym, convProd(copyLabel(lDef, newSym), newParts, {convProdSource(p)})>};
+    }
+
+    grammar.productions += mergedProds;
+    return <warnings, grammar, newSym>;
 }
 
 @doc {
-    Gets the set of symbols whose productions together include all productions present within the union of the productions of all provided symbols
+    A symbol that captures all relevant data of a derived union of multiple symbols.
+    This flattens out any nested union symbols in order to remove irrelevant structural information.
+    A custom symbol is used for better visualizations in Rascal-vis, but the regular expressions can only be stored as annotations.
 }
-set[Symbol] getDefiningSet(set[Symbol] symbols, ConversionGrammar grammar) {
-    set[tuple[Symbol, set[ConvProd]]] symbolProds = {<sym, getComparisonProds(grammar.productions[sym])> | sym <- symbols};
-
-    stable = false;
-    while(!stable) {
-        stable = true;
-
-        for(p:<sym, prods> <- symbolProds) {
-            rest = symbolProds - p;
-            restProds = {*prods | <_, prods> <- rest};
-
-            restIncludesProds = prods <= restProds;
-            println(removeRegexCache(<prods, restProds>));
-            if(restIncludesProds) {
-                symbolProds = rest;
-                stable = false;
-                break;
-            }
-        }
+Symbol unionSym(set[Symbol] parts, set[Regex] expressions) {
+    // Flatten out any nested unionWSyms
+    while({custom("union", annotate(\alt(iParts), annotations)), *rest} := parts) {
+        for(regexProd(exp) <- annotations)
+            expressions += exp;
+        parts = rest + iParts;
     }
 
-    return symbolProds<0>;
+    // Create the new symbol
+    return custom("union", annotate(\alt(parts), {regexProd(r) | r <- expressions}));
 }
-
-
-Symbol unionSym(set[Symbol] parts) = custom("union", \alt(parts));
-
-// Symbol unionSym(set[Symbol] parts) {
-//     set[Symbol] flatParts = {};
-//     for(p <- parts) {
-//         if(custom("union", \alt(ups)) := p)
-//             flatParts += ups;
-//         else
-//             flatParts += p;
-//     }
-
-//     return custom("union", \alt(flatParts));
-// }
-
-
-tuple[
-    
-    list[Warning] warnings
-] combineSymbols(set[tuple[Symbol, Scopes]] symbols) {
-
-}
+data RegexProd = regexProd(Regex);

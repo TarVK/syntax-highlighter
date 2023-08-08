@@ -2,6 +2,7 @@ module conversion::shapeConversion::util::getComparisonProds
 
 import ParseTree;
 import IO;
+import util::Maybe;
 
 import conversion::conversionGrammar::ConversionGrammar;
 
@@ -58,18 +59,43 @@ list[ConvSymbol] replaceSymbols(list[ConvSymbol] parts, set[Symbol] replace, Sym
 @doc {
     Combines multiple consecutive symbols if they are equivalent
 }
-list[ConvSymbol] combineConsecutive(list[ConvSymbol] parts) = visit(parts) {
-    case [*p, symb(ref, scopes), symb(ref, scopes), *s] => 
-        combineConsecutive([*p, symb(ref, scopes), *s])
+list[ConvSymbol] combineConsecutive(list[ConvSymbol] parts) 
+    = combineConsecutive(parts, refEquals);
+list[ConvSymbol] combineConsecutive(list[ConvSymbol] parts, Maybe[Symbol] (Symbol a, Symbol b) equals) 
+    = visit(parts) {
+    case [*p, symb(ref, scopes), symb(ref2, scopes), *s] => 
+        combineConsecutive([*p, symb(newSym, scopes), *s], equals)
+        when just(newSym) := equals(ref, ref2)
 };
+
+Maybe[Symbol] refEquals(Symbol a, Symbol b) 
+    = getWithoutLabel(a) == getWithoutLabel(b)
+        ? just(a)
+        : nothing();
+
+@doc {
+    A retriever for an equivalence function that determines two symbols are equal if both (unlabeled) symbols occur in the given set
+}
+Maybe[Symbol](Symbol a, Symbol b) inSetEquals(set[Symbol] opts, Symbol turnInto) 
+    = Maybe[Symbol] (Symbol a, Symbol b) {
+        return getWithoutLabel(a) in opts && getWithoutLabel(b) in opts 
+            ? just(copyLabel(a, turnInto))
+            : nothing();
+    };
 
 
 @doc {
     Combines multiple consecutive symbols if they are equivalent except for the scopes. Also returns the set of incompatible scopes if encountered.
 }
-tuple[list[ConvSymbol], rel[ConvSymbol, ConvSymbol]] combineConsecutiveIgnoreScopes(list[ConvSymbol] parts) {
-    if([*p, a:symb(ref, scopes), b:symb(ref, scopes2), *s] := parts) {
-        <parts, problems> = combineSymbolsIgnoreScopes([*p, symb(ref, scopes), *s]);
+tuple[list[ConvSymbol], rel[ConvSymbol, ConvSymbol]] combineConsecutiveIgnoreScopes(list[ConvSymbol] parts)
+    = combineConsecutiveIgnoreScopes(parts, refEquals);
+tuple[list[ConvSymbol], rel[ConvSymbol, ConvSymbol]] combineConsecutiveIgnoreScopes(
+    list[ConvSymbol] parts,
+    Maybe[Symbol] (Symbol a, Symbol b) equals
+) {
+    if([*p, a:symb(ref, scopes), b:symb(ref2, scopes2), *s] := parts, 
+        just(newSym) := equals(ref, ref2)) {
+        <parts, problems> = combineConsecutiveIgnoreScopes([*p, symb(newSym, scopes), *s], equals);
         if(scopes != scopes2)
             problems += <a, b>;
         return <parts, problems>;

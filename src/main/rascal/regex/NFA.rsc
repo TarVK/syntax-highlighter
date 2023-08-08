@@ -58,7 +58,14 @@ bool contains(CharClass ranges, int char) {
     Checks whether the given NFA's language is empty
 }
 bool isEmpty(NFA[&T] n) {
-    added = {n.initial};
+    reachable = getReachableStates(n);
+    accepts = size(n.accepting & reachable)>0;
+    return !accepts;
+}
+set[&T] getReachableStates(NFA[&t] n)
+    = getReachableStates(n, {n.initial});
+set[&T] getReachableStates(NFA[&t] n, set[&T] from) {
+    added = from;
     reached = added;
     while(size(added)>0) {
         newAdded = {};
@@ -72,9 +79,8 @@ bool isEmpty(NFA[&T] n) {
         }
         added = newAdded;
     }
-    
-    accepts = size(n.accepting & reached)>0;
-    return !accepts;
+
+    return reached;
 }
 
 

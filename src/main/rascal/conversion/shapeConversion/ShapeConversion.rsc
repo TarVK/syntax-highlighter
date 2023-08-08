@@ -32,10 +32,10 @@ WithWarnings[ConversionGrammar] convertToShape(ConversionGrammar grammar) {
     <rWarnings, grammar> = makePrefixedRightRecursive(grammar);
     grammar = deduplicateProductions(grammar);
 
-    return <rWarnings, grammar>;
+    // return <rWarnings, grammar>;
 
-    // <cWarnings, grammar> = combineConsecutiveSymbols(grammar);
-    // grammar = deduplicateProductions(grammar);
+    <cWarnings, grammar> = combineConsecutiveSymbols(grammar);
+    grammar = deduplicateProductions(grammar);
 
-    // return <rWarnings + cWarnings, grammar>;
+    return <rWarnings + cWarnings, grammar>;
 }

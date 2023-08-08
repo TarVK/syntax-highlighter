@@ -49,6 +49,13 @@ NFA[State] differencePSNFA(NFA[State] a, NFA[State] b) {
 }
 
 @doc {
+    Checks whether the given regex/nfa accepts an empty string, in some context
+}
+bool acceptsEmpty(Regex r) = acceptsEmpty(regexToPSNFA(r));
+bool acceptsEmpty(NFA[State] n) 
+    = !isEmpty(productPSNFA(emptyPSNFA(), n, true));
+
+@doc {
     Creates a NFA that accepts all the original words, as well as any extensions of those words
 }
 NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());

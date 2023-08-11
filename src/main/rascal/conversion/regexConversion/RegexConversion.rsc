@@ -35,6 +35,10 @@ WithWarnings[ConversionGrammar] convertToRegularExpressions(ConversionGrammar gr
     productions = Relation::index(loweredModifierProductions);
     Symbol \start = grammar.\start;
 
+    // Get rid of empty productions immediately
+    for(sym <- productions<0>, {p:convProd(_, [], _)} := productions[sym], sym != grammar.\start) 
+        <_, _, productions> = substituteSequence(productions, sym);
+
     bool changed = true;
     bool first = true;
     ProdMap tentativeProductions = productions;

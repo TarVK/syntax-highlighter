@@ -66,18 +66,18 @@ import regex::PSNFA;
 
 
 
-syntax A = {EXP ","}+;
-syntax EXP = Name
-           | EXP "+" EXP;
-lexical Name = [a-zA-Z]+ !>> [a-zA-Z];
+// syntax A = {EXP ","}+;
+// syntax EXP = Name
+//            | EXP "+" EXP;
+// lexical Name = [a-zA-Z]+ !>> [a-zA-Z];
 
-layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 
-lexical WhitespaceAndComment 
-   = [\ \t\n\r]
-   | @category="Comment" "%" ![%]+ "%"
-   | @category="Comment" "%%" ![\n]* $
-   ;
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @category="Comment" "%" ![%]+ "%"
+//    | @category="Comment" "%%" ![\n]* $
+//    ;
 
 // import testing::grammars::Pico;
 import testing::grammars::PicoImproved;

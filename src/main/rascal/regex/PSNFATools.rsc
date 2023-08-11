@@ -37,6 +37,20 @@ bool equals(Regex a, Regex b) {
     return equals(aNFA, bNFA);
 }
 
+
+@doc {
+    Checks whether the language of sub is a subset of the langauge of super
+}
+bool isSubset(Regex sub, Regex super) 
+    = isSubset(regexToPSNFA(sub), regexToPSNFA(super));
+bool isSubset(NFA[State] sub, NFA[State] super) {
+    if (sub == super) return true;
+    
+    inSubNotSuper = subtractPSNFA(sub, super);
+    return isEmpty(inSubNotSuper);
+}
+
+
 @doc {
     Computes the difference between the two PSNFAs, which includes all words in one and not the other
 }

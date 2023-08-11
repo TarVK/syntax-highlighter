@@ -47,8 +47,6 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
         }
     }
 
-    println(classMap);
-
     return classes;
 }
 alias ClassMap = map[Symbol, set[Symbol]];
@@ -98,9 +96,8 @@ bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMa
         if(regexp(ra) := pa) {
             if(regexp(rb) := pb) {
                 if(!equals(ra, rb)) return false;
-            } else {
+            } else 
                 return false;
-            }
         } else if(symb(symA, scopesA) := pa) {
             if(symb(symB, scopesB) := pb) {
                 if(scopesA != scopesB) return false;
@@ -109,9 +106,8 @@ bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMa
                 classA = symA in classMap ? classMap[symA] : {symA};
                 classB = symB in classMap ? classMap[symB] : {symB};
                 if(classA != classB) return false;
-            } else {
+            } else 
                 return false;
-            }
         }
     }
 

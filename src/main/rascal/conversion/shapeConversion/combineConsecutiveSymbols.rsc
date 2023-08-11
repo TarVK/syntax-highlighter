@@ -8,6 +8,7 @@ import util::Maybe;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::util::overlapsAlternation;
+import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::compareProds;
 import conversion::shapeConversion::util::getComparisonProds;
 import conversion::util::RegexCache;
@@ -37,26 +38,31 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
     list[Warning] warnings = [];
 
     prevGrammar = grammar;
-    i = 0;
+    // i = 0;
     do{
+        subsets = getSubsetSymbols(grammar, true);
         prevGrammar = grammar;
         for(<sym, prod> <- grammar.productions) {
-            <newWarnings, grammar> = combineConsecutiveSymbols(prod, grammar);
+            <newWarnings, grammar> = combineConsecutiveSymbols(prod, grammar, subsets);
             warnings += newWarnings;
         }
 
-        // TODO: get rid of this, once stable
-        i += 1;
-        if(i > 2) break;
+        // i += 1;
+        // if(i > 4) break;
     } while (prevGrammar != grammar);
 
     return <warnings, grammar>;
 }
 
-WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, parts, sources), ConversionGrammar grammar) {
+/**
+    Note that we don't hve to prove that the subset relation is maintained when merging symbols. It might be maintained, or it might not be maintained. Regardless of this, if the relation is not maintained during merges, we still get the output we're after. We use the subset relation to determine whether a merge correctly maintains all tokenizations that are present in the spec. If more tokenizations are added because of a merge, we don't necessarily have to maintain those during subsequent merges, so we do not care if the subset relation now gives a false positive w.r.t. to the current grammar. We only care about the subset relation ensuring that it's correct w.r.t. the input specification, which it will be because the grammar is only ever broadened. 
+*/
+
+WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, parts, sources), ConversionGrammar grammar, rel[Symbol, Symbol] subsets) {
     list[Warning] warnings = [];
 
     bool modified = false;
+    bool addedSymbol = false;
     Maybe[tuple[Symbol, Scopes]] prevSymbol = nothing();
     Maybe[Regex] spacerRegex = nothing();
     void flush() {
@@ -71,14 +77,23 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
 
     list[ConvSymbol] outParts = [];
     for(part <- parts) {
+        // If a symbol was added, we will have to wait for the new subsets to be calculated in order to know how to continue merging
+        if(addedSymbol) {
+            flush();
+            outParts += part;
+            continue;
+        }
+
+
         if(symb(ref, scopes) := part) {
             if (just(<prevRef, prevScopes>) := prevSymbol) {
                 if(prevScopes != scopes)
                     warnings += incompatibleScopesForUnion({<rf, scopes>, <prevRef, prevScopes>}, prod);
 
                 modified = true;
-                <newWarnings, grammar, newSymbol> = combineSymbols(ref, prevRef, spacerRegex, prod, grammar);
-                warnings += newWarnings;
+                <grammar, newSymbol, addedSymbol> = combineSymbols(
+                    ref, prevRef, spacerRegex, prod, grammar, subsets
+                );
                 prevSymbol = just(<copyLabel(prevRef, newSymbol), scopes>);
                 spacerRegex = nothing();
             } else {
@@ -115,42 +130,33 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
     return <warnings, grammar>;
 }
 
-
-tuple[list[Warning], ConversionGrammar, Symbol] combineSymbols(
+tuple[ConversionGrammar, Symbol, bool] combineSymbols(
     Symbol ref, 
     Symbol prevRef, 
     Maybe[Regex] spacerRegex, 
     ConvProd source,
-    ConversionGrammar grammar
+    ConversionGrammar grammar,
+    rel[Symbol, Symbol] subsets
 ) { 
-    list[Warning] warnings = [];
-    void logConflicts(rel[ConvSymbol, ConvSymbol] conflicts) {
-        for(<symb(ref1, scopes1), symb(ref2, scopes2)> <- conflicts)
-            warnings += incompatibleScopesForUnion(
-                {<ref1, scopes1>, <ref2, scopes2>}, p);
-    }
-
     // Retrieve data for comparison (including the regular expression if specified)
     pureRef = getWithoutLabel(ref);
     purePrevRef = getWithoutLabel(prevRef);
 
     refProds = grammar.productions[pureRef];
-    refCompProds = getComparisonProds(refProds, {pureRef, purePrevRef});
 
     prevRefProds = grammar.productions[purePrevRef];
-    prevRefCompProds = getComparisonProds(prevRefProds, {pureRef, purePrevRef});
-
-    set[ConvProd] regexCompProds = just(r) := spacerRegex
-        ? {convProd(self(), [regexp(r), self()], {convProdSource(source)})}
-        : {};
 
     // Check if one set of productions is already contained in the other
     Maybe[tuple[Symbol, set[ConvProd]]] superset = nothing();
 
-    bool refIncluded = isSubset(refCompProds, prevRefCompProds + regexCompProds);
-    bool prevRefIncluded = isSubset(prevRefCompProds, refCompProds + regexCompProds);
-    bool regexIncludedInRef = isSubset(regexCompProds, refCompProds);
-    bool regexIncludedInPrevRef = isSubset(regexCompProds, prevRefCompProds);
+    bool refIncluded = <pureRef, purePrevRef> in subsets;
+    bool prevRefIncluded = <purePrevRef, pureRef> in subsets;
+
+    bool regexIncluded(Symbol sym) = just(r) := spacerRegex
+        ? containsProd(sym, convProd(sym, [regexp(r), symb(sym, [])], {}), grammar, subsets)
+        : true;
+    bool regexIncludedInRef = regexIncluded(pureRef);
+    bool regexIncludedInPrevRef = regexIncluded(purePrevRef);
 
     if(refIncluded && regexIncludedInPrevRef) 
         superset = just(<purePrevRef, prevRefProds>);
@@ -158,7 +164,7 @@ tuple[list[Warning], ConversionGrammar, Symbol] combineSymbols(
         superset = just(<pureRef, refProds>);
 
     if(just(<supersetRef, supersetProds>) := superset) {
-        return <warnings, grammar, supersetRef>;
+        return <grammar, supersetRef, false>;
     }
 
     // If a regular expression was added, or neither production set is a superset of the other, create a new union set of all these productions
@@ -169,36 +175,30 @@ tuple[list[Warning], ConversionGrammar, Symbol] combineSymbols(
         defParts += pureRef;
         prods += refProds;
     }
-    if(!prevRefIncluded) {
+    if(!(prevRefIncluded && !refIncluded)) {
         defParts += purePrevRef;
         prods += prevRefProds;
     }
-    regexIncluded = regexIncludedInRef && !refIncluded || regexIncludedInPrevRef && !prevRefIncluded;
-    if(!regexIncluded && just(r) := spacerRegex) {
+    bool regexIncluded = regexIncludedInRef && !refIncluded || regexIncludedInPrevRef && !prevRefIncluded;
+    if(!regexIncluded && just(r) := spacerRegex)
         expressions += r;
-        prods += regexCompProds;
-    }
 
     newSym = unionSym(defParts, expressions);
+
     bool alreadyCreated = size(grammar.productions[newSym])>0;
-    println(<refIncluded, prevRefIncluded, regexIncludedInRef, regexIncludedInPrevRef, regexCompProds, size(prods), alreadyCreated>);
-    if(alreadyCreated) return <warnings, grammar, newSym>;
+    if(alreadyCreated) return <grammar, newSym, false>;
     
+    if(!regexIncluded && just(r) := spacerRegex)
+        prods += {convProd(newSym, [regexp(r), symb(newSym, [])], {convProdSource(source)})};
     
     rel[Symbol, ConvProd] mergedProds = {};
     for(p:convProd(lDef, parts, _) <- prods) {
-        // <newParts, conflicts> = combineConsecutiveIgnoreScopes(
-        //     [*parts, symb(newSym, [])], 
-        //     inSetEquals({pureRef, purePrevRef, self(), newSym}, newSym)
-        // );
-        // logConflicts(conflicts);
         newParts = size(parts) == 0 ? [] : [*parts, symb(newSym, [])];
-
         mergedProds += {<newSym, convProd(copyLabel(lDef, newSym), newParts, {convProdSource(p)})>};
     }
 
     grammar.productions += mergedProds;
-    return <warnings, grammar, newSym>;
+    return <grammar, newSym, true>;
 }
 
 @doc {
@@ -215,6 +215,15 @@ Symbol unionSym(set[Symbol] parts, set[Regex] expressions) {
     }
 
     // Create the new symbol
-    return custom("union", annotate(\alt(parts), {regexProd(r) | r <- expressions}));
+    return custom("union", annotate(\alt(parts), {regexProd(removeRegexCache(r)) | r <- expressions}));
 }
 data RegexProd = regexProd(Regex);
+
+
+
+bool containsProd(
+    Symbol sym, 
+    ConvProd prod,
+    ConversionGrammar grammar,
+    rel[Symbol, Symbol] subsets
+) = any(sProd <- grammar.productions[getWithoutLabel(sym)], prodIsSubset(prod, sProd, subsets, true));

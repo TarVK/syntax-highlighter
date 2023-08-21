@@ -19,145 +19,270 @@ import Scope;
 rel[Symbol, Symbol] getSubsetSymbols(ConversionGrammar grammar)
     = getSubsetSymbols(grammar, true);
 rel[Symbol, Symbol] getSubsetSymbols(ConversionGrammar grammar, bool rightRecursive) {
-    symbols = grammar.productions<0>;
-    rel[Symbol, Symbol] subsets = {<a, b> | a <- symbols, b <- symbols};
-
-    map[Symbol, set[Symbol]] dependents = index({
-        <dependency, dependent> 
-        | <dependent, convProd(_, parts, _)> <- grammar.productions,
-          symb(dependency, _) <- parts});
     map[Symbol, set[ConvProd]] prods = index(grammar.productions);
 
-    set[Symbol] checkSymbols = symbols;
-    while(size(checkSymbols) > 0) {
-        set[Symbol] newCheckSymbols = {};
+    // Note that in all calculations we exclude the self-subset checks, since these are inherently met.
 
-        for(e:<a, b> <- subsets) {
-            if(!(a in checkSymbols)) continue; // If the lhs of the subset entry is not in the checkSymbols, nothing that might affect previous conclusions has changed
-            if(a == b) continue; // Always a subset of itself
+    // Collect all dependency constraints, such that for an any entry `<a, b>`, we know `L(a)` is a subset of `L(b)` if the constraint is met
+    println("start-get-dependencies");
+    symbols = grammar.productions<0>;
+    map[tuple[Symbol, Symbol], DependencyConstraints] constraints = (
+        <a, b>: simplify(constraints)
+        | a <- symbols, b <- symbols,
+        a != b,
+        just(constraints) := getSubsetDependencies(a, b, prods, rightRecursive)
+    );
+    println("end-get-dependencies");
 
-            if(isNotSubset(a, b, subsets, prods, rightRecursive)){
-                subsets -= e;
+    // Initialize the possible subsets based on the initial constraints
+    rel[Symbol, Symbol] subsets = {
+        <a, b> 
+        | a <- symbols, b <- symbols,
+        <a, b> in constraints || a == b
+    };
 
-                // When the subset relation is removed, only other symbols with productions including this dependency might be affected. 
-                if(a in dependents)
-                    newCheckSymbols += dependents[a];
+    // Keep track of the subset relations that might need updating
+    rel[Symbol, Symbol] checks = subsets - {<a, a> | a <- symbols};
+    map[tuple[Symbol, Symbol], set[tuple[Symbol, Symbol]]] allDependencies = (
+        <a, b>: {}
+        | a <- symbols, b <- symbols
+    );
+    map[tuple[Symbol, Symbol], set[tuple[Symbol, Symbol]]] allDependents = (
+        <a, b>: {}
+        | a <- symbols, b <- symbols
+    );
+
+    // Keep removing elements from the subsets until stable
+    while(size(checks)>0) {
+        set[tuple[Symbol, Symbol]] newChecks = {};
+        for(subset <- checks) {
+            println(subset);
+
+            // Checks if the constraints are still met
+            if(just(dependencies) := getConstraintDependencies(constraints[subset], subsets)) {
+                // If the constraints are still met, update the dependencies
+                oldDependencies = allDependencies[subset];
+                if(oldDependencies == dependencies) continue;
+
+                allDependencies[subset] = dependencies;
+                for(dependency <- oldDependencies) allDependents[dependency] -= subset;
+                for(dependency <- dependencies) allDependents[dependency] += subset;
+            } else {
+                // If the constraints are no longer met, we remove it from the subset and check the possibly affected subset
+                subsets -= {subset};
+                newChecks += allDependents[subset];
+                oldDependencies = allDependencies[subset];
+                for(dependency <- oldDependencies) allDependents[dependency] -= subset;
             }
         }
 
-        checkSymbols = newCheckSymbols;
+        checks = newChecks;
     }
 
     return subsets;
 }
 
-bool isNotSubset(Symbol sub, Symbol super, rel[Symbol, Symbol] subsets, map[Symbol, set[ConvProd]] prods, bool rightRecursive) {
+
+@doc {
+    Retrieves what subset dependencies are required for symbol `sub` to define a language that's a subset of the language of symbol `super`. If nothing is returned, `sub` can never be a subset of `super`
+}
+Maybe[DependencyConstraints] getSubsetDependencies(Symbol sub, Symbol super, map[Symbol, set[ConvProd]] prods, bool rightRecursive) {
     set[ConvProd] subProds = prods[sub];
     set[ConvProd] superProds = prods[super];
 
+    set[DependencyConstraints] requirements = {};
     for(prod <- subProds){
-        bool hasProd = any(
-            superProd <- superProds, 
-            prodIsSubset(prod, superProd, subsets, rightRecursive)
-        );
-        if(!hasProd) {
-            return true;
+        set[DependencyConstraints] options = {};
+        for(superProd <- superProds) {
+            if(just(constraints) := getSubprodDependencies(prod, superProd, rightRecursive))
+                options += constraints;
         }
+
+        if(size(options)==0) return nothing();
+
+        requirements += disjunction(options);
     }
 
-    return false;
+    return just(conjunction(requirements));
 }
 
-bool prodIsSubset(convProd(_, subParts, _), convProd(_, superParts, _), rel[Symbol, Symbol] subsets, bool rightRecursive) {
+Maybe[DependencyConstraints] getSubprodDependencies(
+    convProd(_, subParts, _), 
+    convProd(_, superParts, _), 
+    bool rightRecursive
+) {
+    set[DependencyConstraints] constraints = {};
+
     subSize = size(subParts);
     superSize = size(superParts);
     superI = 0;
-    for(subI <- [0..subSize]) {
+    subI = 0;
+    while(subI < subSize) {
         pSub = subParts[subI];
-        if(superI >= superSize) return false;
+        if(superI >= superSize) return nothing();
         pSuper = superParts[superI];
 
         if(regexp(rSub) := pSub) {
-            if(regexp(_) !:= pSuper && !rightRecursive) return false;
-            while(regexp(_) !:= pSuper){
-                superI += 1;
-                if(superI >= superSize) return false;
-                pSuper = superParts[superI];
-            }
-
             if(regexp(rSuper) := pSuper) {
-                if(!isSubset(rSub, rSuper)) return false;
-            } 
+                if(!isSubset(rSub, rSuper)) return nothing();
+            } else 
+                return nothing();
             superI += 1;
         } else if(symb(symSub, scopesSub) := pSub) {
             if(rightRecursive) {
                 bool matches = false;
-                while(!matches, symb(symSuper, scopesSuper) := pSuper) {
-                    matches = scopesSub == scopesSuper 
-                            && <getWithoutLabel(symSub), getWithoutLabel(symSuper)> in subsets;
-                    if(!matches) {
-                        superI += 1;
-                        if(superI >= superSize) return false;
-                        pSuper = superParts[superI];
-                    }
+
+                list[tuple[Symbol, Scopes]] superSymbolSeq = [];
+                while(symb(symSuper, scopesSuper) := pSuper) {
+                    superSymbolSeq += <symSuper, scopesSuper>;
+                    superI += 1;
+                    if(superI >= superSize) break;
+                    pSuper = superParts[superI];
                 }
-                if(!matches) return false;
+                if(size(superSymbolSeq)==0) return nothing();
+
+                list[tuple[Symbol, Scopes]] subSymbolSeq = [<symSub, scopesSub>];
+                while(subI+1 < subSize && symb(nSymSub, nScopesSub) := subParts[subI+1]) {
+                    subSymbolSeq += <nSymSub, nScopesSub>;
+                    subI += 1;
+                }
+
+                DependencyConstraints getConstraint(
+                    list[tuple[Symbol, Scopes]] subSymbolSeq, 
+                    list[tuple[Symbol, Scopes]] superSymbolSeq
+                ) {
+                    if([] == subSymbolSeq) return trueConstr();
+                    if([] == superSymbolSeq) return falseConstr();
+
+                    if(
+                        [<subFirst, subFirstScopes>, *subSymbolSeqRest] := subSymbolSeq,
+                        [<superFirst, superFirstScopes>, *superSymbolSeqRest] := superSymbolSeq
+                    ) {
+                        if(subFirstScopes == superFirstScopes)
+                            return disjunction({
+                                conjunction({
+                                    subset(
+                                        getWithoutLabel(subFirst), 
+                                        getWithoutLabel(superFirst)
+                                    ), 
+                                    getConstraint(subSymbolSeqRest, superSymbolSeq)
+                                }),
+                                getConstraint(subSymbolSeq, superSymbolSeqRest)
+                            });
+                        else
+                            return getConstraint(subSymbolSeq, superSymbolSeqRest);
+                    }
+
+                    return falseConstr();
+                }
+
+                constraint = getConstraint(subSymbolSeq, superSymbolSeq);
+                if(constraint == falseConstr()) return nothing();
+                constraints += constraint;
             } else {
                 if(symb(symSuper, scopesSuper) := pSuper) {
-                    if(scopesSub != scopesSuper) return false;
-                    if(<
+                    if(scopesSub != scopesSuper) return nothing();
+                    constraints += subset(
                         getWithoutLabel(symSub), 
                         getWithoutLabel(symSuper)
-                        > notin subsets) return false;
+                    );
                 } else 
-                    return false;
+                    return nothing();
                 superI += 1;
             }
         } else 
             throw "Unexpected symbol, only non-terminals and regular expressions are allowed, found: <pSub>";
+
+        subI += 1;
     }
 
     while(superI < superSize) {
         pSuper = superParts[superI];
         if(regexp(r) := pSuper) {
-            if(!acceptsEmpty(r)) return false;
+            if(!acceptsEmpty(r)) return nothing();
         } else if(symb(symSuper, _) := pSuper) {
-            if(!rightRecursive) return false;
+            if(!rightRecursive) return nothing();
         }
         superI += 1;        
     }
 
-    return true;
+    return just(conjunction(constraints));
 }
 
-// list[ConvSymbol] mergeSubsetEqual(list[ConvSymbol] parts, rel[Symbol, Symbol] subsets) {
-//     Maybe[tuple[Symbol, Scopes]] prevSuper = nothing();
-//     list[ConvSymbol] newParts = [];
+@doc {
+    Checks whether the constraints are met by the given subset relationship,
+    and if so, returns all the subbsets that were used for this.
+}
+Maybe[rel[Symbol, Symbol]] getConstraintDependencies(DependencyConstraints constraints, rel[Symbol, Symbol] subsets) {
+    switch(constraints) {
+        case subset(a, b): return <a, b> in subsets ? just({<a, b>}) : nothing();
+        case conjunction(conConstraints): {
+            rel[Symbol, Symbol] dependencies = {};
+            for(constraint <- conConstraints) {
+                if(just(newDependencies) := getConstraintDependencies(constraint, subsets))
+                    dependencies += newDependencies;
+                else
+                    return nothing();
+            }
+            return just(dependencies);
+        }
+        case disjunction(disConstraints): {
+            for(constraint <- disConstraints) {
+                if(just(dependencies) := getConstraintDependencies(constraint, subsets))
+                    return just(dependencies);
+            }
+            return nothing();
+        }
+        case trueConstr(): return just({});
+        case falseConstr(): return nothing();
+    }
+    return nothing();
+}
 
-//     void flush() {
-//         if(just(<sym, scopes>) := prevSuper) 
-//             newParts += symb(sym, scopes);
-//         prevSuper = nothing();
-//     }
-//     for(part <- parts) {
-//         if(symb(ref, scopes) := part) {
-//             if(just(<super, scopes>) := prevSuper) {
-//                 if(<ref, super> in subsets)
-//                     prevSuper = just(<super, scopes>);
-//                 else if(<super, ref> in subsets)
-//                     prevSuper = just(<ref, scopes>);
-//                 else {
-//                     flush();
-//                     prevSuper = just(<ref, scopes>);
-//                 }
-//             } else 
-//                 prevSuper = just(<ref, scopes>);
-//         } else {
-//             flush();
-//             newParts += part;
-//         }
-//     }
-//     flush();
+data DependencyConstraints 
+    = subset(Symbol a, Symbol b)
+    | conjunction(set[DependencyConstraints])
+    | disjunction(set[DependencyConstraints])
+    | trueConstr()
+    | falseConstr();
 
-//     return newParts;
-// }
+// DependencyConstraints simplify(DependencyConstraints constraints) = constraints;
+DependencyConstraints simplify(DependencyConstraints constraints) = visit(constraints) {
+    case subset(a, a) => trueConstr()
+    case conjunction(terms): {
+        set[DependencyConstraints] newTerms = {};
+        for(term <- terms) {
+            if(conjunction(subTerms) := term) newTerms += subTerms;
+            else if(trueConstr() := term) ;
+            else if(falseConstr() := term) insert falseConstr();
+            else newTerms += term;
+        }
+        if({} := newTerms) insert trueConstr();
+        if({term} := newTerms) insert term;
+        insert conjunction(newTerms);
+    }
+    case disjunction(terms): {
+        set[DependencyConstraints] newTerms = {};
+        for(term <- terms) {
+            if(disjunction(subTerms) := term) newTerms += subTerms;
+            else if(falseConstr() := term) ;
+            else if(trueConstr() := term) insert trueConstr();
+            else newTerms += term;
+        }
+        if({} := newTerms) insert falseConstr();
+        if({term} := newTerms) insert term;
+        insert disjunction(newTerms);
+    }
+};
+
+// Utility method that can be used by other code
+@doc {
+    Checks wheter the first production's language is a subset of the seconds' knowing the given subset relationship. If true is returned, this guarantees one is a subset of the other, if false is returned it's unknown. 
+}
+bool prodIsSubset(ConvProd sub, ConvProd super, rel[Symbol, Symbol] subsets, bool rightRecursive) {
+    if(just(constraints) := getSubprodDependencies(sub, super, rightRecursive)) {
+        if(just(_) := getConstraintDependencies(constraints, subsets))
+            return true;
+    }
+    return false;
+}

@@ -7,7 +7,7 @@ import Scope;
 
 data Regex = never()
            | empty()
-           | always()
+           | always() // Actually is equivalent to  alternation(empty(), \multi-iteration(character([range(1,0x10FFFF)])))
            | character(list[CharRange] ranges)
            | lookahead(Regex r, Regex lookahead)
            | lookbehind(Regex r, Regex lookbehind)

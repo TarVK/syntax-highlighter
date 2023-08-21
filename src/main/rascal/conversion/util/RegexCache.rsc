@@ -50,6 +50,10 @@ bool containsScopes(Regex regex) {
 }
 tuple[Regex, NFA[State]] cachedRegexToPSNFA(Regex regex) = cachedRegexToPSNFAandContainsScopes(regex)<0, 1>;
 
+@doc {
+    Retrieves only the input regex, but already caches the PSNFA and contains scopes data into there for later use
+}
+Regex getCachedRegex(Regex regex) = cachedRegexToPSNFAandContainsScopes(regex)<0>;
 
 @doc {
     Checks whether the given regular expression contains a scope, and retrieves a regular expression with this data cached into it. 

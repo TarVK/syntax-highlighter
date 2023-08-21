@@ -59,7 +59,7 @@ Regex expandMaxIteration(Regex r, 0) = empty();
 Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternation(concatenation(r, it), empty()) | _ <- [1..max]);
 
 Regex reduceAlternation(Regex::alternation([])) = never();
-Regex reduceAlternation(Regex::alternation([opt])) = opt;
+Regex reduceAlternation(Regex::alternation([option])) = option;
 Regex reduceAlternation(Regex::alternation([opt1, opt2, *rest])) 
     = (alternation(opt1, opt2) | alternation(it, part) | part <- rest);
 

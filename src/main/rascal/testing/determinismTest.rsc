@@ -12,6 +12,7 @@ import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::determinism::Determinism;
+import conversion::shapeConversion::ShapeConversion;
 import conversion::util::RegexCache;
 
 // syntax A = "okay" B
@@ -48,11 +49,97 @@ import conversion::util::RegexCache;
 //    | @category="Comment" "%%" ![\n]* $
 //    ;
 
-syntax A = B C;
-syntax B = "some"
-         | "something";
-syntax C = "(" C ")"
-         | [0-9];
+// syntax A = Stmt*;
+// syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" Stmt
+//             | iff: "if" "(" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = brac: "(" Exp ")"
+//            | plus: Exp "+" Exp
+//            | id: Id
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// lexical Natural = [0-9]+ !>> [a-z0-9];
+
+
+// syntax A = Stmt;
+// syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" Stmt
+//             | iff: "if" "(" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = plus: Exp "+" Exp
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// lexical Natural = [0-9]+ !>> [a-z0-9];
+
+
+// syntax A = Stmt*;
+// syntax Stmt = forIn: "for" "(" Id "in" Exp ")" Stmt "else" Stmt
+//             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = brac: "(" Exp ")"
+//            | plus: Exp "+" Exp
+//            | id: Id \ KW
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// keyword KW = "for";
+// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// lexical Natural = [0-9]+ !>> [a-z0-9];
+
+
+// syntax A = Stmt*;
+// syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt
+//             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = brac: "(" Exp ")"
+//            | plus: Exp "+" Exp
+//            | id: Id
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// lexical Natural = [0-9]+ !>> [a-z0-9];
+
+
+syntax A = Stmt*;
+syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt
+            | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
+            | assign: Id "=" Exp;
+syntax Exp = id: Id
+           | "(" Exp ")";
+layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+
+// syntax A = Stmt;
+// syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt
+//             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt;
+//             // | assign: Id "=" Exp;
+// syntax Exp = id: Id;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+
+// syntax A = "b"? >> "(" B "c"? >> ("("|"[") C "d" D
+//          | "e"? E "d" D
+//          | "k";
+// syntax B = "(|"? A "|)"
+//          | "(" B ")";
+// syntax C = "(|"? A "|)"
+//          | "[" C "]";
+// syntax D = "{" D "}"
+//          | ;
+// syntax E = "\<" E "\>"
+//          | ;
+
+// syntax A = "b"? >> "(" B "c" >> ("("|"[") C "d" D
+//          | "e" E "d" D
+//          | "k";
+// syntax B = "(|"? A "|)"
+//          | "(" B ")";
+// syntax C = "(|" A "|)"
+//          | "[" C "]";
+// syntax D = "{" D "}"
+//          | ;
+// syntax E = "\<" E "\>"
+//          | ;
 
 // import testing::grammars::Pico;
 // import testing::grammars::PicoImproved;
@@ -64,17 +151,20 @@ void main() {
 
     
     <cWarnings, conversionGrammar> = toConversionGrammar(#A);
-    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
     inputGrammar = conversionGrammar;
+    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
+    
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
 
+    inputGrammar = conversionGrammar;
     <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, 2);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
 
-    warnings = cWarnings + rWarnings;
+    warnings = cWarnings + rWarnings + sWarnings + dWarnings;
     visualize(insertPSNFADiagrams(removeInnerRegexCache(stripConvSources(<
         fromConversionGrammar(inputGrammar),
         stdGrammar,
-        dWarnings
+        warnings
     >))));
 }

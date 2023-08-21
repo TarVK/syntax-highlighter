@@ -116,6 +116,9 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
     didMergeRegexes = false;
     targetProds = productions[target];
     if({p:convProd(_, subParts, _)} := targetProds) {
+        containsSelf = any(symb(s, _) <- subParts, getWithoutLabel(s)==target);
+        if(containsSelf) break;
+
         targetSource = convProdSource(p);
         set[Symbol] affected = {};
         canRemove = true;

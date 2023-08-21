@@ -11,13 +11,16 @@ import conversion::shapeConversion::util::overlapsAlternation;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::compareProds;
 import conversion::shapeConversion::util::getComparisonProds;
+import conversion::shapeConversion::unionSym;
 import conversion::util::RegexCache;
+import regex::PSNFATools;
+import regex::Regex;
 import Scope;
 import Warning;
 import Visualize;
-import regex::PSNFATools;
 
-data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd source);
+/** Scopes can't be applied due to difference in scopes merging */
+data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd production);
 
 @doc {
     Combines all two (or more) consecutive non-terminal symbols together into their own symbol, which allows matching  of either. Assuming all rules are right-recursive, this broadens the language.
@@ -40,12 +43,17 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
     prevGrammar = grammar;
     // i = 0;
     do{
+        println("create subsets");
         subsets = getSubsetSymbols(grammar, true);
+        println("end-subsets");
         prevGrammar = grammar;
         for(<sym, prod> <- grammar.productions) {
+            println("combine");
             <newWarnings, grammar> = combineConsecutiveSymbols(prod, grammar, subsets);
+            println("end-combine");
             warnings += newWarnings;
         }
+
 
         // i += 1;
         // if(i > 4) break;
@@ -88,7 +96,10 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
         if(symb(ref, scopes) := part) {
             if (just(<prevRef, prevScopes>) := prevSymbol) {
                 if(prevScopes != scopes)
-                    warnings += incompatibleScopesForUnion({<rf, scopes>, <prevRef, prevScopes>}, prod);
+                    warnings += incompatibleScopesForUnion({<ref, scopes>, <prevRef, prevScopes>}, prod);
+
+                else if(scopes != [] && just(_) := spacerRegex)
+                    warnings += incompatibleScopesForUnion({<ref, scopes>}, prod);
 
                 modified = true;
                 <grammar, newSymbol, addedSymbol> = combineSymbols(
@@ -100,22 +111,33 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
                 prevSymbol = just(<ref, scopes>);
             }
         } else if(regexp(regex) := part) {
-            bool normalRegex = true;
-            if(acceptsEmpty(regex), just(<A, _>) := prevSymbol) {
-                // Let A X B be a sequence of symbols in parts, where X represents regex
-                // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
-                // They only apply at once, if X overlaps with an alternation of A
+            // bool normalRegex = true;
+            // if(acceptsEmpty(regex), just(<A, _>) := prevSymbol) {
+            //     // Let A X B be a sequence of symbols in parts, where X represents regex
+            //     // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
+            //     // They only apply at once, if X overlaps with an alternation of A
 
-                overlaps = overlapsAlternation(A, regex, grammar);
-                if(overlaps) {
-                    spacerRegex = just(regex);
-                    normalRegex = false;
-                }
-            }
+            //     overlaps = overlapsAlternation(A, regex, grammar);
+            //     if(overlaps) {
+            //         spacerRegex = just(regex);
+            //         normalRegex = false;
+            //     }
+            // }
+            
+            // if(normalRegex) {
+            //     flush();
+            //     outParts += part;
+            // }
 
-            if(normalRegex) {
+            
+            // Let A X B be a sequence of symbols in parts, where X represents regex
+            // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
+            // We know that A can always be skipped if X accepts the empty string without restrictions, hence we merge in this case. If X accepts the empty string with restrictions, we simply hope that the overlap with A is minimal (and we might choose to merge in a later step of the algorithm)
+            if(alwaysAcceptsEmpty(regex), just(<A, _>) := prevSymbol) {
+                spacerRegex = just(regex);
+            } else {
                 flush();
-                outParts += part;
+                outParts += part;    
             }
         } else outParts += part;
     }
@@ -169,7 +191,7 @@ tuple[ConversionGrammar, Symbol, bool] combineSymbols(
 
     // If a regular expression was added, or neither production set is a superset of the other, create a new union set of all these productions
     set[Symbol] defParts = {};
-    set[Regex] expressions = {};
+    set[tuple[Regex, set[SourceProd]]] expressions = {};
     set[ConvProd] prods = {};
     if(!refIncluded) {
         defParts += pureRef;
@@ -181,7 +203,7 @@ tuple[ConversionGrammar, Symbol, bool] combineSymbols(
     }
     bool regexIncluded = regexIncludedInRef && !refIncluded || regexIncludedInPrevRef && !prevRefIncluded;
     if(!regexIncluded && just(r) := spacerRegex)
-        expressions += r;
+        expressions += <r, {}>; // Sources only have to be included if the union symbol is not defined directly
 
     newSym = unionSym(defParts, expressions);
 
@@ -200,25 +222,6 @@ tuple[ConversionGrammar, Symbol, bool] combineSymbols(
     grammar.productions += mergedProds;
     return <grammar, newSym, true>;
 }
-
-@doc {
-    A symbol that captures all relevant data of a derived union of multiple symbols.
-    This flattens out any nested union symbols in order to remove irrelevant structural information.
-    A custom symbol is used for better visualizations in Rascal-vis, but the regular expressions can only be stored as annotations.
-}
-Symbol unionSym(set[Symbol] parts, set[Regex] expressions) {
-    // Flatten out any nested unionWSyms
-    while({custom("union", annotate(\alt(iParts), annotations)), *rest} := parts) {
-        for(regexProd(exp) <- annotations)
-            expressions += exp;
-        parts = rest + iParts;
-    }
-
-    // Create the new symbol
-    return custom("union", annotate(\alt(parts), {regexProd(removeRegexCache(r)) | r <- expressions}));
-}
-data RegexProd = regexProd(Regex);
-
 
 
 bool containsProd(

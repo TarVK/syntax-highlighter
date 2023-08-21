@@ -2,6 +2,8 @@ module conversion::shapeConversion::deduplicateProductions
 
 import Set;
 import util::Maybe;
+import Relation;
+import Map;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
@@ -12,12 +14,14 @@ import conversion::util::RegexCache;
 
 @doc {
     Deduplicates productions by detecting productions that are homomorphic and removing these duplicates.
+    It also removes duplicate productions within the same symbol.
     Assumes all rules in the grammar to be right-recursive, or an empty production
 }
 ConversionGrammar deduplicateProductions(ConversionGrammar grammar) {
     rel[Symbol, ConvProd] productions = grammar.productions;
 
     classes = getEquivalentSymbols(grammar);
+    
     for(class <- classes) {
         if({sym, *eqSyms} := class, grammar.\start notin eqSyms) {
             for(replaceSym <- eqSyms)
@@ -25,7 +29,10 @@ ConversionGrammar deduplicateProductions(ConversionGrammar grammar) {
         }
     }
 
-    return convGrammar(grammar.\start, productions);
+    ProdMap prodMap = index(productions);
+    prodMap = removeDuplicateProds(prodMap, getClassMap(classes));
+
+    return convGrammar(grammar.\start, toRel(prodMap));
 }
 
 rel[Symbol, ConvProd] replaceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {
@@ -58,3 +65,22 @@ set[ConvProd] combineEqual(set[ConvProd] prods, Symbol targetSym, set[Symbol] eq
         ) 
         | convProd(def, parts, sources) <- prods
     };
+
+ProdMap removeDuplicateProds(ProdMap prods, ClassMap classMap) {
+    for(sym <- prods) {
+        set[ConvProd] newSymProds = {};
+
+        symProds = [*prods[sym]];
+        for(i <- [0..size(symProds)]) {
+            prod1 = symProds[i];
+            
+            hasDuplicate = any(prod2 <- symProds[i+1..], prodsEqual(prod1, prod2, classMap, true));
+            if(!hasDuplicate)
+                newSymProds += prod1;
+        }
+
+        prods[sym] = newSymProds;
+    }
+
+    return prods;
+}

@@ -5,11 +5,12 @@ import Relation;
 import Map;
 import List;
 import IO;
-import util::List;
 
+import util::List;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
 import conversion::regexConversion::concatenateRegexes;
+import conversion::util::combineLabels;
 import conversion::util::RegexCache;
 import regex::Regex;
 import regex::PSNFACombinators;
@@ -158,9 +159,7 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
                 sources = {*s | <_, convProd(_, _, s)> <- combine};
                 pb[startIndex] = combinedSymbol;
 
-                labels = [name | <_, convProd(label(name, _), _, _)> <- combine];
-                plainDef = getWithoutLabel(def);
-                labeledDef = size(labels)>0 ? label(stringify(labels, ","), plainDef) : plainDef;
+                labeledDef = combineLabels(def, {sym | <_, convProd(sym, _, _)> <- combine});
                 addToIndex(convProd(labeledDef, pb, sources));
             }
         }

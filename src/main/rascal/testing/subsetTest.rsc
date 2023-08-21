@@ -24,9 +24,9 @@ syntax Stmt = cond: "if" "(" Exp ")"  Stmt
             | stf: Stf;
 syntax Stmt2 = cond: "if" "(" Stf ")"  Stmt2
             | cond: "if" "(" Exp ")"  Stmt2 "else" Stmt2
-            | loop: "while" "(" Stf ")"  Stmt2
+            | loop: "while" "(" Exp ")"  Stmt2
             | block: "{" Stmt2* "}"
-            | stf: Stf;
+            | stf: Exp;
 syntax Exp = id: Id name
             | strcon: String string
             | natcon: Natural natcon
@@ -79,7 +79,7 @@ void main() {
 
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
-    subsets = getSubsetSymbols(conversionGrammar, false);
+    subsets = getSubsetSymbols(conversionGrammar, true);
 
     warnings = cWarnings + rWarnings;
     visualize(insertPSNFADiagrams(removeInnerRegexCache(stripConvSources(<

@@ -117,6 +117,26 @@ bool equalsAfter(a:convProd(_, pa, _), b:convProd(_, pb, _), int index) {
 };
 
 @doc {
+    Replaces all occurences of the given symbol in the grammar, and removes its definitions
+}
+ConversionGrammar replaceSymbol(Symbol replace, Symbol replaceBy, ConversionGrammar grammar) {
+    substitutedProductions = { 
+        <def, convProd(lDef, [
+            symb(sym, scopes) := part 
+                ? getWithoutLabel(sym) == replace
+                    ? symb(copyLabel(sym, replaceBy), scopes)
+                    : part
+                : part
+            | part <- parts
+        ], sources)>
+        | <def, convProd(lDef, parts, sources)> <- grammar.productions,
+        def != replace // Remove the definition of replace, since it will no longer be referenced
+    };
+    grammar.productions = substitutedProductions;
+    return grammar;
+}
+
+@doc {
     Retrieve the raw definition symbol, by getting rid of any potential labels
 }
 Symbol getWithoutLabel(label(_, sym)) = sym;

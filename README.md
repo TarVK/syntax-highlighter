@@ -4,9 +4,10 @@ Code for generating syntax highlighters from context free grammars
 <!-- Reference to the semantic tokenizer: https://github.com/usethesource/rascal-language-servers/blob/52eb86d1b7c83a131816d3e6c9484fee80fe48e2/rascal-lsp/src/main/java/org/rascalmpl/vscode/lsp/util/SemanticTokenizer.java -->
 
 Todo:
-- [ ] Broaden symbols
+- [x] Broaden symbols
 - [ ] Detect nullable loops (E.g. A -> /()|s/ A)
-- [ ] Deal with chains of symbols
+- [x] Deal with chains of symbols
+- [ ] Targeted right-recursion
 - [ ] Check determinism/improve determinism
 - [ ] Translate conversion grammar to highlight grammar
 - [ ] Improve robustness
@@ -87,13 +88,47 @@ A -> X A
 A -> ...x
 ```
 
+## Targeted right-recursion
+Currently, the shape conversion makes every symbol right-recursive. 
+This however is not always desirable, since many grammars will have some header expressions, e.g.:
+```
+Program -> ModuleName Statements*
+```
+
+Now this grammar is turned right recursive and we end up with:
+```
+Program -> ModuleName union<Statements*|Program>
+union<Statements*|Program> -> ...Statements*
+union<Statements*|Program> -> ...Program
+```
+
+We need this right-recursive property (the fact that all behavior of a symbol can be performed 0 or more times) in specific cases to safely perform symbol merging. E.g. when merging `Program Program` to `Program`, we only can ensure that all the original behavior is still included because `Program` can match any symbol 0 or more times, rather than just once (or once or twice). But rather than making every symbol right-recursive, we could also choose to do this more deliberately: `Program Program` could be merged to `many<Program>`. 
+Then we can define `union<A|B>` as the language of both `A`and `B`, without guarantying the multiple matches.
+While `many<A>` will guarantee that `A` becomes right-recursive, allowing an infinite number of matches of all its symbols. 
+
+Hence we would use `many` and `union` in two scenarios:
+- Merging consecutive symbols: `A B` => `many<union<A|B>>`
+- Merging productions: `A -> X B`, `A -> X C` => `A -> X union<B|C>`
+
+Some algebraic properties regarding `union` and `many` that can be used to prevent unnecessary duplication:
+- `union<A|union<B|C>>` = `union<A|B|C>`
+- `union<A|B>` = `union<B|A>`
+- `union<A>` = `A`
+- `many<many<A>>` = `many<A>`
+- `many<union<many<A>|B>>` = `many<union<A|B>>`
+- Note `union<many<A>|B>` != `many<union<A|B>>`
+
+Subset and equivalence checking becomes a bit harder now, since we can't do consecutive symbol merging in those procedures anymore. Instead, the merge consecutive symbols procedure should do multiple passes, such that this is no longer a necessity. It should simply merge symbols directly without concern for subset inclusion. Then afterwards try to simplify, similar to what the defineUnionSymbols procedure currently does
+
 ## Check determinism 
 
 In order to ensure that the syntax-highlighter correctly highlights according to the given grammar, we have to ensure that everything (other than the internals of the regular expressions) is deterministic. The syntax-highlighter won't backtrack on earlier made choices to improve recognition of later tokens. 
 
-There are 3 situations for which determinism has to be checked:
+There are 4 situations for which determinism has to be checked:
 - Variable length matches:
     - A given regular expression may match a word `ps` for `p,s ∈ Σ`, while also matching just `p` on it's own. In this case the syntax highlighter makes a greedy choice between `p` and `ps`, and this choice may not be the one that leads to the correct parse.
+- Internal non-determinism:
+    - A given regular expression may match a given word with a combination of different tags. In this case it's ambiguous, and certainly not deterministic. 
 - Alternatives matches:
     - When matching a non-terminal `A`, it chooses one of all possible alternatives of `A`, depending on whether the first regular expression of each of the alternatives matches. Hence only one of the regular expressions of these alternatives may match at a time, or else the syntax highlighter will make a greedy choice which may not be the one that leads to the correct parse.
 - Terminal matches:

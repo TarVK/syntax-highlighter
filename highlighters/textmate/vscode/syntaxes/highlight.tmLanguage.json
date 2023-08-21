@@ -4,46 +4,40 @@
     "patterns": [{ "include": "#stmt" }],
     "repository": {
         "if": {
-            "patternComment": "for( #expcomma ; #expcomma ; #expcomma )",
-            "contentName": "2",
-            "begin": "(?=for\\s*\\()",
-            "end": "\\)",
-            "endCaptures": { "0": { "name": "bracket" }},
+            "patternComment": "if(#EXP){#STMT}else{#STMT}",
+            "name": "1",
+            "begin": "(?=if\\s*\\()",
+            "end": "else",
+            "endCaptures": {
+                "0": { "name": "keyword" }
+            },
             "patterns": [
                 {
-                    "contentName": "3",
-                    "begin": "(?=for\\s*\\()",
-                    "end": ";",
-                    "endCaptures": {"0": {"name": "semicolon"}},
+                    "name": "2",
+                    "begin": "(?=if\\s*\\()",
+                    "end": "\\)",
+                    "endCaptures": {
+                        "0": { "name": "bracket" }
+                    },
                     "patterns": [
                         {
-                            "contentName": "4",
-                            "begin": "(?=for\\s*\\()",
-                            "end": ";",
-                            "endCaptures": {"0": {"name": "semicolon"}},
-                            "patterns": [
-                                {
-                                    "match": "(for)\\s*\\(()",
-                                    "captures": {
-                                        "1": {"name": "keyword"},
-                                        "2": {"name": "bracket"}
-                                    }
-                                }, {
-                                    "begin": "(?!for\\s*\\()",
-                                    "end": "(?=\\;)",
-                                    "patterns": [{"include": "#expcomma"}]
-                                }
-                            ]  
+                            "match": "(if)\\s*(\\()",
+                            "captures": {
+                                "1": { "name": "keyword" },
+                                "2": { "name": "bracket" }
+                            }
                         }, {
-                            "begin": "(?!for\\s*\\()",
-                            "end": "(?=\\;)",
-                            "patterns": [{"include": "#expcomma"}]
+                            "name": "3",
+                            "begin": "(?!if\\s*\\()",
+                            "end": "(?=\\))",
+                            "patterns": [{"include": "#exp"}]
                         }
                     ]
                 }, {
-                    "begin": "(?!for\\s*\\()",
-                    "end": "(?=\\))",
-                    "patterns": [{"include": "#expcomma"}]
+                    "name": "4",
+                    "begin": "(?!if\\s*\\()",
+                    "end": "(?=else)",
+                    "patterns": [{"include": "#stmt"}]
                 }
             ]
         },
@@ -63,12 +57,6 @@
         "exp": {
             "patterns": [
                 {"match": "[a-z]+", "name": "variable.parameter"}
-            ]
-        },
-        "expcomma": {
-            "patterns": [
-                {"include": "#exp"},
-                {"match": ",", "name": "comma"}
             ]
         }
     },

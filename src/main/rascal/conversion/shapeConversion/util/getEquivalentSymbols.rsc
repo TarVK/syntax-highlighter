@@ -49,7 +49,15 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
 
     return classes;
 }
+
 alias ClassMap = map[Symbol, set[Symbol]];
+map[Symbol, set[Symbol]] getClassMap(set[set[Symbol]] classes) {
+    ClassMap classMap = ();
+    for(class <- classes) 
+        for(sym <- class) 
+            classMap[sym] = class;
+    return classMap;
+}
 
 tuple[
     set[Symbol] contains,

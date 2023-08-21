@@ -8,8 +8,10 @@ import Warning;
 import regex::PSNFA; 
 import regex::Regex;
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::determinism::combineOverlap;
 import conversion::determinism::improveAlternativesOverlap;
 import conversion::determinism::improveExtensionOverlap;
+import conversion::determinism::fixNullableRegexes;
 
 data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
              | alternativesOverlapFix(Symbol source, ProdExtensions extensions)
@@ -24,6 +26,13 @@ data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
 WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar) = makeDeterministic(grammar, 3);
 WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar, int maxLookaheadLength) {
     list[Warning] warnings = [];
+    
+    <nWarnings, grammar> = fixNullableRegexes(grammar);
+    warnings += nWarnings;
+
+    <cWarnings, grammar> = combineOverlap(grammar);
+    warnings += cWarnings;
+    return <warnings, grammar>;
 
     // Check for alternative overlap
     productions = index(grammar.productions);

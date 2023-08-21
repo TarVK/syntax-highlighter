@@ -39,14 +39,19 @@ bool equals(Regex a, Regex b) {
 
 
 @doc {
-    Checks whether the language of sub is a subset of the langauge of super
+    Checks whether the language of sub is a subset of the langauge of super.
+    if moduloTags is specified, the tag data is ignored.
 }
 bool isSubset(Regex sub, Regex super) 
-    = isSubset(regexToPSNFA(sub), regexToPSNFA(super));
-bool isSubset(NFA[State] sub, NFA[State] super) {
+    = isSubset(sub, super, false);
+bool isSubset(Regex sub, Regex super, bool moduloTags) 
+    = isSubset(regexToPSNFA(sub), regexToPSNFA(super), moduloTags);
+bool isSubset(NFA[State] sub, NFA[State] super)
+    = isSubset(sub, super, false);
+bool isSubset(NFA[State] sub, NFA[State] super, bool moduloTags) {
     if (sub == super) return true;
     
-    inSubNotSuper = subtractPSNFA(sub, super);
+    inSubNotSuper = moduloTags ? strongSubtractPSNFA(sub, super) : subtractPSNFA(sub, super);
     return isEmpty(inSubNotSuper);
 }
 
@@ -63,11 +68,18 @@ NFA[State] differencePSNFA(NFA[State] a, NFA[State] b) {
 }
 
 @doc {
-    Checks whether the given regex/nfa accepts an empty string, in some context
+    Checks whether the given regex/nfa accepts an empty string, in some context (I.e. the emtpy string possible with lookahead/behind restrictions)
 }
 bool acceptsEmpty(Regex r) = acceptsEmpty(regexToPSNFA(r));
 bool acceptsEmpty(NFA[State] n) 
     = !isEmpty(productPSNFA(emptyPSNFA(), n, true));
+
+@doc {
+    Checks whether the given regex/nfa accepts an empty string in every context, (I.e. the empty string without any lookahead/behind restrictions)
+}
+bool alwaysAcceptsEmpty(Regex r) = alwaysAcceptsEmpty(regexToPSNFA(r));
+bool alwaysAcceptsEmpty(NFA[State] n)
+    = isSubset(emptyPSNFA(), n);
 
 @doc {
     Creates a NFA that accepts all the original words, as well as any extensions of those words

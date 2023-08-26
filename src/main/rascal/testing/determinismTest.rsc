@@ -49,6 +49,21 @@ import conversion::util::RegexCache;
 //    | @category="Comment" "%%" ![\n]* $
 //    ;
 
+
+syntax A = Stmt*;
+syntax Stmt = iff: "if" "(" Exp ")" Stmt
+            | iff: If "(" Exp ")" Stmt
+            | assign: Id "=" Exp;
+syntax If = @token="if" "if";
+syntax Exp = brac: "(" Exp ")"
+           | plus: Exp "+" Exp
+           | id: Id
+           | nat: Natural;
+layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+lexical Id  = [a-z] !<< ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+lexical KW = "if" | "else";
+lexical Natural = [0-9]+ !>> [a-z0-9];
+
 // syntax A = Stmt*;
 // syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" Stmt
 //             | iff: "if" "(" Exp ")" Stmt
@@ -58,7 +73,8 @@ import conversion::util::RegexCache;
 //            | id: Id
 //            | nat: Natural;
 // layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
-// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// lexical Id  = [a-z] !<< ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// lexical KW = "if" | "else";
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
 
@@ -100,14 +116,15 @@ import conversion::util::RegexCache;
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
 
-syntax A = Stmt*;
-syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt
-            | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
-            | assign: Id "=" Exp;
-syntax Exp = id: Id
-           | "(" Exp ")";
-layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
-lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
+// syntax A = Stmt*;
+// syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt
+//             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = id: Id
+//            | "(" Exp ")";
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// keyword KW = "for";
 
 // syntax A = Stmt;
 // syntax Stmt = forIn: "for" "(" Exp "in" Exp ")" Stmt

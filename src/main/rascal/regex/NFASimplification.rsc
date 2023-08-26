@@ -75,42 +75,42 @@ set[set[&T]] partition(NFA[&T] n) {
     return P;
 }
 
-set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPartition) {
-    tuple[set[&T], set[&T]] split(set[set[&T]] classes, TransSymbol on, set[&T] group) {
-        set[&T] includes = {};
-        set[&T] excludes = {};
+// set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPartition) {
+//     tuple[set[&T], set[&T]] split(set[set[&T]] classes, TransSymbol on, set[&T] group) {
+//         set[&T] includes = {};
+//         set[&T] excludes = {};
 
-        bool hasTrans(&T from, set[&T] to) = size(transitions[from][on] & to)>0;
+//         bool hasTrans(&T from, set[&T] to) = size(transitions[from][on] & to)>0;
 
-        first = getOneFrom(group);
-        firstHas = (g: hasTrans(first, g) | g <- classes);
+//         first = getOneFrom(group);
+//         firstHas = (g: hasTrans(first, g) | g <- classes);
 
-        for(state <- group) {
-            shouldIncude = all(g <- classes, hasTrans(state, g) == firstHas[g]);
-            if (shouldIncude) includes += state;
-            else              excludes += state;
-        }
+//         for(state <- group) {
+//             shouldIncude = all(g <- classes, hasTrans(state, g) == firstHas[g]);
+//             if (shouldIncude) includes += state;
+//             else              excludes += state;
+//         }
 
-        return <includes, excludes>;
-    }
+//         return <includes, excludes>;
+//     }
 
-    set[set[&T]] classes = initPartition;
-    stable = false;
-    while(!stable) {
-        stable = true;
-        for(g <- classes, on <- transitions[g]<0>) {
-            <includes, excludes> = split(classes, on, g);
-            if (size(includes) > 0 && size(excludes) > 0) {
-                classes -= {g};
-                classes += {includes, excludes};
-                stable = false;
-                break;
-            }
-        }
-    }
+//     set[set[&T]] classes = initPartition;
+//     stable = false;
+//     while(!stable) {
+//         stable = true;
+//         for(g <- classes, on <- transitions[g]<0>) {
+//             <includes, excludes> = split(classes, on, g);
+//             if (size(includes) > 0 && size(excludes) > 0) {
+//                 classes -= {g};
+//                 classes += {includes, excludes};
+//                 stable = false;
+//                 break;
+//             }
+//         }
+//     }
 
-    return classes;
-}
+//     return classes;
+// }
 
 
 @doc {
@@ -149,9 +149,11 @@ NFA[set[&T]] removeEpsilon(NFA[&T] n) {
 @doc {
     Removes all states from the NFA that are not reachable from initial state to accepting state
 }
-NFA[&T] removeUnreachable(NFA[&T] n) {
+NFA[&T] removeUnreachable(NFA[&T] n)
+    = removeUnreachable(n, {n.initial}, n.accepting);
+NFA[&T] removeUnreachable(NFA[&T] n, set[&T] initial, set[&T] accepting) {
     // Forward search
-    set[&T] queue = {n.initial};
+    set[&T] queue = initial;
     set[&T] reachableInitial = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
@@ -163,7 +165,7 @@ NFA[&T] removeUnreachable(NFA[&T] n) {
 
     // Backward search
     revTransitions = n.transitions<2, 1, 0>;
-    queue = n.accepting;
+    queue = accepting;
     set[&T] reachableAccepting = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);

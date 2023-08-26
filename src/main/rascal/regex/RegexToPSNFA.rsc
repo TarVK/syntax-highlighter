@@ -44,21 +44,6 @@ NFA[State] regexToPSNFA(Regex regex) {
 }
 
 NFA[State] simplify(NFA[State] n) {
-    // println("-1");
-    // simplified1 = removeUnreachable(n);
-    // println("-2");
-    // simplified2 = removeEpsilon(simplified1);
-    // println("-3");
-    // simplified3 = removeDuplicates(simplified2);
-    // println("-4");
-
-    // // simplified = removeDuplicates(removeEpsilon(removeUnreachable(n)));
-    // // simplified = removeEpsilon(removeUnreachable(n));
-    // return relabelIntPSNFA(relabel(simplified3));
-    // return mapStates(simplified, State (set[set[State]] states) {
-    //     return stateSet({*S | S <- states});
-    // });
-
     simplified = minimize(removeUnreachable(n));
     return relabelIntPSNFA(relabel(simplified));
 }

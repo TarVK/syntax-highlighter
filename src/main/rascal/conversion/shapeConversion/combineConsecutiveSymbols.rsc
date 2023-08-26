@@ -43,14 +43,10 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
     prevGrammar = grammar;
     // i = 0;
     do{
-        println("create subsets");
         subsets = getSubsetSymbols(grammar, true);
-        println("end-subsets");
         prevGrammar = grammar;
         for(<sym, prod> <- grammar.productions) {
-            println("combine");
             <newWarnings, grammar> = combineConsecutiveSymbols(prod, grammar, subsets);
-            println("end-combine");
             warnings += newWarnings;
         }
 

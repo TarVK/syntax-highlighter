@@ -42,10 +42,13 @@ bool PSNFAMatch(LangSymbol input, TransSymbol match) {
 @doc {
     Converts the given PSNFA to a deterministic PSNFA with an equivalent language
 }
+NFA[set[&T]] convertPSNFAtoDFA(NFA[&T] n) 
+    = convertPSNFAtoDFA(n, tagsUniverse(n));
 NFA[set[&T]] convertPSNFAtoDFA(NFA[&T] n, TagsClass tagsUniverse) {
     PSNFAComplement = getPSNFAComplementRetriever(tagsUniverse);
     return convertNFAtoDFA(n, PSNFADisjoint, PSNFAComplement);
 }
+TagsClass tagsUniverse(NFA[&T] n) = {*tagsClass | character(char, tagsClass) <- n.transitions<1>};
 
 rel[TransSymbol, TransSymbol] PSNFADisjoint(set[TransSymbol] symbols) {
     set[tuple[TransSymbol, TransSymbol]] out = {

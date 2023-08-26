@@ -24,15 +24,14 @@ rel[Symbol, Symbol] getSubsetSymbols(ConversionGrammar grammar, bool rightRecurs
     // Note that in all calculations we exclude the self-subset checks, since these are inherently met.
 
     // Collect all dependency constraints, such that for an any entry `<a, b>`, we know `L(a)` is a subset of `L(b)` if the constraint is met
-    println("start-get-dependencies");
     symbols = grammar.productions<0>;
-    map[tuple[Symbol, Symbol], DependencyConstraints] constraints = (
-        <a, b>: simplify(constraints)
-        | a <- symbols, b <- symbols,
-        a != b,
-        just(constraints) := getSubsetDependencies(a, b, prods, rightRecursive)
-    );
-    println("end-get-dependencies");
+    SubtractCache cache = ();
+    map[tuple[Symbol, Symbol], DependencyConstraints] constraints = ();
+    for(a <- symbols, b <- symbols, a != b) {
+        <cache, constrM> = getSubsetDependencies(a, b, prods, rightRecursive, cache);
+        if(just(constr) := constrM)
+            constraints[<a, b>] = simplify(constr);
+    }
 
     // Initialize the possible subsets based on the initial constraints
     rel[Symbol, Symbol] subsets = {
@@ -56,8 +55,6 @@ rel[Symbol, Symbol] getSubsetSymbols(ConversionGrammar grammar, bool rightRecurs
     while(size(checks)>0) {
         set[tuple[Symbol, Symbol]] newChecks = {};
         for(subset <- checks) {
-            println(subset);
-
             // Checks if the constraints are still met
             if(just(dependencies) := getConstraintDependencies(constraints[subset], subsets)) {
                 // If the constraints are still met, update the dependencies
@@ -86,7 +83,13 @@ rel[Symbol, Symbol] getSubsetSymbols(ConversionGrammar grammar, bool rightRecurs
 @doc {
     Retrieves what subset dependencies are required for symbol `sub` to define a language that's a subset of the language of symbol `super`. If nothing is returned, `sub` can never be a subset of `super`
 }
-Maybe[DependencyConstraints] getSubsetDependencies(Symbol sub, Symbol super, map[Symbol, set[ConvProd]] prods, bool rightRecursive) {
+tuple[SubtractCache, Maybe[DependencyConstraints]] getSubsetDependencies(
+    Symbol sub, 
+    Symbol super, 
+    map[Symbol, set[ConvProd]] prods, 
+    bool rightRecursive,
+    SubtractCache cache
+) {
     set[ConvProd] subProds = prods[sub];
     set[ConvProd] superProds = prods[super];
 
@@ -94,24 +97,28 @@ Maybe[DependencyConstraints] getSubsetDependencies(Symbol sub, Symbol super, map
     for(prod <- subProds){
         set[DependencyConstraints] options = {};
         for(superProd <- superProds) {
-            if(just(constraints) := getSubprodDependencies(prod, superProd, rightRecursive))
+            <cache, constraintsM> = getSubprodDependencies(prod, superProd, rightRecursive, cache);
+            if(just(constraints) := constraintsM)
                 options += constraints;
         }
 
-        if(size(options)==0) return nothing();
+        if(size(options)==0) return <cache, nothing()>;
 
         requirements += disjunction(options);
     }
 
-    return just(conjunction(requirements));
+    return <cache, just(conjunction(requirements))>;
 }
 
-Maybe[DependencyConstraints] getSubprodDependencies(
+tuple[SubtractCache, Maybe[DependencyConstraints]] getSubprodDependencies(
     convProd(_, subParts, _), 
     convProd(_, superParts, _), 
-    bool rightRecursive
+    bool rightRecursive,
+    SubtractCache cache
 ) {
     set[DependencyConstraints] constraints = {};
+
+    list[tuple[Regex, Regex]] regexConstraints = [];
 
     subSize = size(subParts);
     superSize = size(superParts);
@@ -119,14 +126,14 @@ Maybe[DependencyConstraints] getSubprodDependencies(
     subI = 0;
     while(subI < subSize) {
         pSub = subParts[subI];
-        if(superI >= superSize) return nothing();
+        if(superI >= superSize) return <cache, nothing()>;
         pSuper = superParts[superI];
 
         if(regexp(rSub) := pSub) {
             if(regexp(rSuper) := pSuper) {
-                if(!isSubset(rSub, rSuper)) return nothing();
+                regexConstraints += <rSub, rSuper>;
             } else 
-                return nothing();
+                return <cache, nothing()>;
             superI += 1;
         } else if(symb(symSub, scopesSub) := pSub) {
             if(rightRecursive) {
@@ -139,7 +146,7 @@ Maybe[DependencyConstraints] getSubprodDependencies(
                     if(superI >= superSize) break;
                     pSuper = superParts[superI];
                 }
-                if(size(superSymbolSeq)==0) return nothing();
+                if(size(superSymbolSeq)==0) return <cache, nothing()>;
 
                 list[tuple[Symbol, Scopes]] subSymbolSeq = [<symSub, scopesSub>];
                 while(subI+1 < subSize && symb(nSymSub, nScopesSub) := subParts[subI+1]) {
@@ -177,17 +184,17 @@ Maybe[DependencyConstraints] getSubprodDependencies(
                 }
 
                 constraint = getConstraint(subSymbolSeq, superSymbolSeq);
-                if(constraint == falseConstr()) return nothing();
+                if(constraint == falseConstr()) return <cache, nothing()>;
                 constraints += constraint;
             } else {
                 if(symb(symSuper, scopesSuper) := pSuper) {
-                    if(scopesSub != scopesSuper) return nothing();
+                    if(scopesSub != scopesSuper) return <cache, nothing()>;
                     constraints += subset(
                         getWithoutLabel(symSub), 
                         getWithoutLabel(symSuper)
                     );
                 } else 
-                    return nothing();
+                    return <cache, nothing()>;
                 superI += 1;
             }
         } else 
@@ -196,17 +203,24 @@ Maybe[DependencyConstraints] getSubprodDependencies(
         subI += 1;
     }
 
+    // Check remainders of the super production
     while(superI < superSize) {
         pSuper = superParts[superI];
         if(regexp(r) := pSuper) {
-            if(!acceptsEmpty(r)) return nothing();
+            if(!acceptsEmpty(r)) return <cache, nothing()>;
         } else if(symb(symSuper, _) := pSuper) {
-            if(!rightRecursive) return nothing();
+            if(!rightRecursive) return <cache, nothing()>;
         }
         superI += 1;        
     }
 
-    return just(conjunction(constraints));
+    // Check the regular expressions only if all other constraints are possible to be met (regex processing can be heavy)
+    for(<rSub, rSuper> <- regexConstraints){
+        <cache, s> = isSubset(rSub, rSuper, cache);
+        if(!s) return <cache, nothing()>;
+    }
+
+    return <cache, just(conjunction(constraints))>;
 }
 
 @doc {
@@ -280,9 +294,17 @@ DependencyConstraints simplify(DependencyConstraints constraints) = visit(constr
     Checks wheter the first production's language is a subset of the seconds' knowing the given subset relationship. If true is returned, this guarantees one is a subset of the other, if false is returned it's unknown. 
 }
 bool prodIsSubset(ConvProd sub, ConvProd super, rel[Symbol, Symbol] subsets, bool rightRecursive) {
-    if(just(constraints) := getSubprodDependencies(sub, super, rightRecursive)) {
+    if(<_, just(constraints)> := getSubprodDependencies(sub, super, rightRecursive, ())) {
         if(just(_) := getConstraintDependencies(constraints, subsets))
             return true;
     }
     return false;
+}
+
+tuple[SubtractCache, bool] prodIsSubset(ConvProd sub, ConvProd super, rel[Symbol, Symbol] subsets, bool rightRecursive, SubtractCache cache) {
+    if(<cache, just(constraints)> := getSubprodDependencies(sub, super, rightRecursive, cache)) {
+        if(just(_) := getConstraintDependencies(constraints, subsets))
+            return <cache, true>;
+    }
+    return <cache, false>;
 }

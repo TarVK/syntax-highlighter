@@ -48,11 +48,8 @@ WithWarnings[ConversionGrammar] combineOverlap(ConversionGrammar grammar) {
             warnings += newWarnings;
         }
 
-        println("Detects");
         <newWarnings, symbols, grammar> = defineUnionSymbols(grammar);
         warnings += newWarnings;
-        println(symbols);
-        break;
     }
     return <warnings, grammar>;
 }
@@ -82,13 +79,11 @@ tuple[
             }; 
 
             if(size(overlap) > 0) {
-                println(<stringify(removeRegexCache(rm)), {stringify(removeRegexCache(ri)) | convProd(_, [regexp(ri), *_], _) <- overlap}>);
                 <newWarnings, grammar> = combineProductions(prod, overlap, grammar, subsets);
                 warnings += newWarnings;
                 stable = false;
                 subsets = getSubsetSymbols(grammar);
 
-                return <warnings, grammar, subsets>;
                 break;
             }
         }
@@ -103,14 +98,7 @@ WithWarnings[ConversionGrammar] combineProductions(
     ConversionGrammar grammar,
     rel[Symbol, Symbol] subsets
 ) {
-    // TODO: reconsider these warnings now that we use overlap rather than subset behavior
-    set[ConvProd] differentTags = {
-        p | p:convProd(_, [regexp(ri), *_], _) <- included,
-        !isSubset(ri, rm) // Note we do not ignore tag data here
-    }; 
-    list[Warning] warnings = size(differentTags)>0 
-        ? [mergeScopeDifferences(<rm, main>, {<ri, p> | p:convProd(_, [regexp(ri), *_], _) <- differentTags})]
-        : [];
+    list[Warning] warnings = [];
 
     allProds = included + {main};
     labels = [name | <_, convProd(label(name, _), _, _)> <- allProds];
@@ -185,8 +173,12 @@ WithWarnings[ConversionGrammar] combineProductions(
         set[tuple[Regex, set[SourceProd]]] mergeRegexes = {};
         set[tuple[Symbol, Scopes]] incompatibleScopes = {};
         set[ConvProd] incompatibleScopesProds = {};
+
+        startIndex = minLength-3;
+        if(startIndex<1) startIndex = 1;
+
         for(prod:convProd(_, sequence, _) <- allShortenedProds) {
-            for(i <- [minLength-3..size(sequence)+until]) {
+            for(i <- [startIndex..size(sequence)+until]) {
                 part = sequence[i];
                 if(symb(sym, scopes) := part) {
                     if(size(scopes) > 0) {
@@ -280,7 +272,7 @@ tuple[
 ) {
     list[Warning] warnings = [];
 
-    if(size(prods)<1) return <warnings, grammar, prods>;
+    if(size(prods)<=1) return <warnings, grammar, prods>;
 
     bool stable = false;
     while(!stable) {
@@ -291,9 +283,10 @@ tuple[
                 symb(innerSym, innerScopes), 
                 regexp(r), 
                 symb(recSym, recScopes)
-            ], _) <- prods,
-            <getWithoutLabel(innerSym), getWithoutLabel(recSym)> in subsets
+            ], _) <- prods
         ) {
+            if(<getWithoutLabel(innerSym), getWithoutLabel(recSym)> notin subsets) continue;
+
             isClosing = any(
                 p2:convProd(_, [*_, _, regexp(c), symb(_, _)], _) <- prods,
                 p2 != p,
@@ -301,7 +294,7 @@ tuple[
             );
 
             // In case this last regex is shared with any other production, we use it as a scope closing identifier instead
-            if (isClosing) continue;
+            if(isClosing) continue;
 
             bool overlaps(Symbol sym) = any(p2:convProd(_, [regexp(r2), *_], _) <- grammar.productions[sym], 
                 p2 != p, 

@@ -102,7 +102,7 @@ A_2 -> (>X_1) A_3 (>X_{k-1}) A_2
 A_2 -> X_{k-1} B_{k-1} (>X_k) A_2
 A_2 -> 
 ...
-A_k -> X_1 B_1 (>X_{2}) A_k
+A_k -> X_1 B_1 (>X_2) A_k
 A_k -> 
 ```
 
@@ -139,6 +139,7 @@ and replace the `\}else\{` lookaheads with `\}else` lookaheads. This way we now 
 ## Technique 3
 A production `A -> X_1 B_1 X_2 B_2 ... X_k B_k X_{k+1} A` can be simulated accurately if:
 - `X_1` does not overlap with any `X_i` for `i ∈ [2..k]`
+- `X_1` does not overlap with any production of `B_i`, for any `i ∈ [1..k]`
 - `X_{i+1}` does not overlap any production of `B_i`, for any `i ∈ [1..k]`
 
 We translate this rule to:
@@ -151,7 +152,7 @@ A_2 -> (>X_1) A_3 X_{k-1} A_2
 A_2 -> (!>X_1) B_{k-1} (>X_k) A_2
 A_2 -> 
 ...
-A_k -> X_1 A_2
+A_k -> X_1 A_k
 A_k -> (!>X_1) B_1 (>X_2) A_k
 A_k -> 
 ```
@@ -172,6 +173,7 @@ STMT_3 -> (!>if\() STMT (>\}else\{) STMT_3
 STMT_3 -> 
 STMT_4 -> if\( STMT_4
 STMT_4 -> (!>if\() EXP (>\)\{) STMT_4
+STMT_4 -> 
 ```
 
 
@@ -187,6 +189,7 @@ STMT_3 -> (!>if\() STMT (>\}else\{|((!>\}else\{)\})) STMT_3
 STMT_3 -> 
 STMT_4 -> if\( STMT_4
 STMT_4 -> (!>if\() EXP (>\)\{) STMT_4
+STMT_4 ->
 ```
 
 ### Applied if/else bracketless example
@@ -206,6 +209,7 @@ STMT_2 -> (!>if\() STMT (>else) STMT_3
 STMT_2 -> 
 STMT_3 -> if\( STMT_3
 STMT_3 -> (!>if\() EXP (>\)) STMT_3
+STMT_3 -> 
 ```
 
 ### Applied for loop example
@@ -229,4 +233,59 @@ STMT_3 -> (!>for\() EXPCOMMA (>;) STMT_3
 STMT_3 ->
 STMT_4 -> for\( STMT_4
 STMT_4 -> (!>for\() EXPCOMMA (>;) STMT_4
+STMT_4 ->
 ```
+
+
+### Observed drawback
+
+This technique doesn't allow for self recursion. E.g. `A -> X A Y A` is problematic. 
+
+
+## Technique 4
+A production `A -> X_1 B_1 X_2 B_2 ... X_k B_k X_{k+1} A` can be simulated accurately if:
+- `X_1` does not overlap with any `X_i` for `i ∈ [2..k]`
+- `X_1` does not overlap with any production of `B_i`, for any `i ∈ [2..k]`
+- `X_{i+1}` does not overlap any production of `B_i`, for any `i ∈ [1..k]`
+
+We translate this rule to:
+```
+A -> (>X_1) A_1 X_{k+1} A
+A_1 -> (>X_1) A_2 X_k A_1
+A_1 -> (!>X_1) B_k (>X_{k+1}) A_1
+A_1 -> 
+A_2 -> (>X_1) A_3 X_{k-1} A_2
+A_2 -> (!>X_1) B_{k-1} (>X_k) A_2
+A_2 -> 
+...
+A_k -> X_1 B_1 (>X_2) A_k
+A_k -> 
+```
+
+
+### Applied for loop example
+
+```
+STMT -> for\( EXPCOMMA ; EXPCOMMA ; EXPCOMMA \) STMT
+EXPCOMMA -> {Expression ","}*
+```
+= {aspects concerning this transformation}
+```
+STMT -> for\( EXPCOMMA ; EXPCOMMA ; EXPCOMMA \)
+```
+=>
+```
+STMT -> (>for\() STMT_2 \)
+STMT_2 -> (>for\() STMT_3 ; STMT_2
+STMT_2 -> (!>for\() EXPCOMMA (>\)) STMT_2
+STMT_2 ->
+STMT_3 -> (>for\() STMT_4 ; STMT_3
+STMT_3 -> (!>for\() EXPCOMMA (>;) STMT_3
+STMT_3 ->
+STMT_4 -> for\( EXPCOMMA (>;) STMT_4
+STMT_4 ->
+```
+
+### Observed drawback
+
+This technique still doesn't allow for all self-recursion, but does allow for slightly more self-recursion. E.g. `A -> X A Y A Z A` is problematic, but `A -> X A Y B Z A` is fine.

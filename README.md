@@ -126,8 +126,8 @@ In order to ensure that the syntax-highlighter correctly highlights according to
 
 There are 4 situations for which determinism has to be checked:
 - Variable length matches:
-    - A given regular expression may match a word `ps` for `p,s ∈ Σ`, while also matching just `p` on it's own. In this case the syntax highlighter makes a greedy choice between `p` and `ps`, and this choice may not be the one that leads to the correct parse.
-- Internal non-determinism:
+    - A given regular expression may match a word `ps` for `p,s ∈ Σ*`, while also matching just `p` on it's own. In this case the syntax highlighter makes a greedy choice between `p` and `ps`, and this choice may not be the one that leads to the correct parse.
+- Internal ambiguity:
     - A given regular expression may match a given word with a combination of different tags. In this case it's ambiguous, and certainly not deterministic. 
 - Alternatives matches:
     - When matching a non-terminal `A`, it chooses one of all possible alternatives of `A`, depending on whether the first regular expression of each of the alternatives matches. Hence only one of the regular expressions of these alternatives may match at a time, or else the syntax highlighter will make a greedy choice which may not be the one that leads to the correct parse.

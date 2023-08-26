@@ -22,7 +22,6 @@ import Warning;
 tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(ConversionGrammar grammar) {
     orGrammar = grammar;
 
-    println("d1");
     set[Symbol] unionSyms = {};
     for(<_, convProd(_, parts, _)> <- grammar.productions) {
         unionSyms += {s | symb(s:custom("union", annotate(\alt(_), _)), _) <- parts};
@@ -30,18 +29,15 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
     }
 
     // First add all union symbols without simplication
-    println("d2");
     undefinedUnionSyms = {sym | sym <- unionSyms, size(grammar.productions[sym])==0};
     for(unionSym <- undefinedUnionSyms) 
         grammar = addUnionSymbol(unionSym, grammar, {}); // Skip subset simplficiation for now
 
     // Then calculate all subsets and perform simplification
-    println("d3");
     subsets = getSubsetSymbols(grammar);
     grammar.productions = {p | p:<s, _> <- grammar.productions, s notin undefinedUnionSyms}; // Remove the previously defined unions, since we can now simplify them more using the subsets
     map[Symbol, set[ConvProd]] prods = Relation::index(grammar.productions);
     set[Symbol] defined = {};
-    println("d4");
     for(unionSym <- undefinedUnionSyms) {
         <newUnion, grammar> = addReducedUnionSymbol(unionSym, grammar, prods, subsets);
 
@@ -50,10 +46,8 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
     }
 
     // The defined union symbols will have two consecutive symbols at the end, we need to remove these
-    println("d5");
     <warnings, grammar> = combineConsecutiveSymbols(grammar);
 
-    println("d6");
     return <warnings, defined, grammar>;
 }
 
@@ -133,14 +127,26 @@ tuple[Symbol, ConversionGrammar] addReducedUnionSymbol(
 }
 set[tuple[Regex, set[SourceProd]]] removeSelfIncludedRegexes(set[tuple[Regex, set[SourceProd]]] regexes) {
     stable = false;
+    SubtractCache cache = ();
     while(!stable) {
         stable = true;
-        for(t:<regex, _> <- regexes) {
-            restUnion = reduceAlternation(alternation([r | <r, _> <- regexes - t]));
-            if(isSubset(regex, restUnion)){
-                regexes -= t;
-                stable = false;
-                break;
+        outer: for(t:<regex, _> <- regexes) {
+
+            // restUnion = reduceAlternation(alternation([r | <r, _> <- regexes - t]));
+            // if(isSubset(regex, restUnion)){
+            //     regexes -= t;
+            //     stable = false;
+            //     break;
+            // }
+
+            // Note, the code above has the potential of catching more cases, but is also less performant
+            for(<rest, _> <- regexes, rest != regex) {
+                <cache, s> = isSubset(regex, rest, cache);
+                if(s) {
+                    regexes -= t;
+                    stable = false;
+                    break outer;
+                }
             }
         }
     }

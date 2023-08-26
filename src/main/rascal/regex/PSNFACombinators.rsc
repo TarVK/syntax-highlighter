@@ -196,6 +196,7 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     Constructs a PSNFA matching all words that were not part of the language of PSNFA n
     - universe: The universe of available tags to consider
 }
+@memo
 NFA[State] invertPSNFA(NFA[State] n, TagsClass universe) {
     NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(n, universe));
     NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting, ()>;
@@ -228,8 +229,7 @@ NFA[State] productPSNFA(NFA[State] n1, NFA[State] n2, bool merge) {
     Constructs a PSNFA matching all words in n, that are not in subtract (unless the tags are different)
 }
 NFA[State] subtractPSNFA(NFA[State] n, NFA[State] subtract) {
-    tagsUniverse = {*tagsClass | character(char, tagsClass) <- n.transitions<1>};
-    return productPSNFA(n, invertPSNFA(subtract, tagsUniverse), false);
+    return productPSNFA(n, invertPSNFA(subtract, tagsUniverse(n)), false);
 }
 
 @doc {

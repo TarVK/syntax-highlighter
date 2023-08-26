@@ -13,6 +13,8 @@ import regex::RegexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
+import regex::NFASimplification;
+import regex::Tags;
 
 // Would prefer to not import this here, see if we can get around this
 import conversion::util::RegexCache;
@@ -54,6 +56,49 @@ bool isSubset(NFA[State] sub, NFA[State] super, bool moduloTags) {
     inSubNotSuper = moduloTags ? strongSubtractPSNFA(sub, super) : subtractPSNFA(sub, super);
     return isEmpty(inSubNotSuper);
 }
+
+@doc {
+    Checks whether the language of sub is a subset of the langauge of super.
+    if moduloTags is specified, the tag data is ignored.
+    Stores part of the computation in the cache, to speed up consecutive checks
+}
+tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, SubtractCache cache) 
+    = isSubset(sub, super, false, cache);
+tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, bool moduloTags, SubtractCache cache) 
+    = isSubset(regexToPSNFA(sub), regexToPSNFA(super), moduloTags, cache);
+tuple[SubtractCache, bool] isSubset(NFA[State] sub, NFA[State] super, SubtractCache cache)
+    = isSubset(sub, super, false, cache);
+tuple[SubtractCache, bool] isSubset(
+    NFA[State] sub, 
+    NFA[State] super, 
+    bool moduloTags, 
+    SubtractCache cache
+) {
+
+    TagsClass universe = moduloTags 
+        ? {{}}
+        : {*tagsClass | character(char, tagsClass) <- sub.transitions<1>};
+    Maybe[TagsClass] cacheUniverse = moduloTags ? nothing() : just(universe);
+
+    NFA[State] inverted;
+    if(<super, cacheUniverse> in cache) {
+        inverted = cache[<super, cacheUniverse>];
+    } else {
+        if(moduloTags)
+            super = replaceTagsClasses(super, {{}});
+
+        inverted = invertPSNFA(super, universe);
+        // inverted = relabelSetPSNFA(minimizeDFA(inverted)); // TODO: check if it matters that inverted's transitions are not complete (but are disjoint, like a DFA)
+        cache[<super, cacheUniverse>] = inverted;
+    }
+    
+    product = productPSNFA(sub, inverted, moduloTags);
+    return <cache, isEmpty(product)>;
+
+    // return <cache, isSubset(sub, super, moduloTags)>;
+}
+alias SubtractCache = map[tuple[NFA[State], Maybe[TagsClass]], NFA[State]];
+
 
 
 @doc {

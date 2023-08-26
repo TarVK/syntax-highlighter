@@ -9,6 +9,7 @@ import regex::PSNFA;
 import regex::Regex;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::determinism::combineOverlap;
+import conversion::determinism::checkDeterminism;
 import conversion::determinism::improveAlternativesOverlap;
 import conversion::determinism::improveExtensionOverlap;
 import conversion::determinism::fixNullableRegexes;
@@ -32,39 +33,8 @@ WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar, int
 
     <cWarnings, grammar> = combineOverlap(grammar);
     warnings += cWarnings;
+
+    warnings += checkDeterminism(grammar);
+
     return <warnings, grammar>;
-
-    // Check for alternative overlap
-    productions = index(grammar.productions);
-    for(sym <- productions<0>) {
-        symProds = productions[sym];
-        <newSymProds, overlaps, extensions> = improveAlternativesOverlap(symProds, grammar, maxLookaheadLength);
-        productions[sym] = newSymProds;
-
-        if(size(overlaps)>0) warnings += alternativesOverlap(sym, overlaps);
-        if(size(extensions)>0) warnings += alternativesOverlapFix(sym, extensions);
-    }
-    grammar = convGrammar(grammar.\start, toRel(productions));
-
-    // Check for regex extension self-overlap
-    rel[Symbol, ConvProd] newProds = {};
-    for(<def, prod:convProd(lDef, parts, sources)> <- grammar.productions) {
-        list[ConvSymbol] newParts = [];
-        for(i <- [0..size(parts)]) {
-            part = parts[i];
-            if(regexp(re) := part) {
-                follow = parts[i+1..];
-
-                <newRe, nfaError, fixLength> = improveExtensionOverlap(re, follow, grammar, maxLookaheadLength);
-                if(just(nfa) := nfaError)       warnings += extensionOverlap(prod, re, nfa);
-                if(just(length) := fixLength)   warnings += extensionOverlapFix(prod, re, length);
-                newParts += regexp(newRe);
-            } else
-                newParts += part;
-        }
-
-        newProds += <def, convProd(lDef, newParts, {convProdSource(prod)})>;
-    }
-
-    return <warnings, convGrammar(grammar.\start, newProds)>;
 }

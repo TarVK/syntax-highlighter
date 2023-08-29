@@ -51,11 +51,15 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
     if(target notin productions) return <{}, productions>;
 
     targetProds = productions[target];
-    if({p:convProd(_, [regexp(regex)], _)} := targetProds) {
+    if(
+        {p:convProd(_, subParts, _)} := targetProds, 
+        size(subParts)>0, 
+        all(part <- subParts, regexp(_) := part)
+    ) {
         targetSource = convProdSource(p);
         set[Symbol] affected = {};
+        canRemove = true;
 
-        productions = delete(productions, target);
         for(def <- productions) {
             prods = productions[def];
             
@@ -68,13 +72,32 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
             for(<s,lDef,parts> <- targetProds) {
                 list[ConvSymbol] newParts = [];
 
-                ConvSymbol sub(Scopes scopes) 
+                ConvSymbol sub(Regex regex, Scopes scopes) 
                     = regexp(size(scopes)>0 ? wrapScopes(regex, scopes) : regex);
                 for(part <- parts) {
-                    newParts += visit(part) {
-                        case symb(target, scopes) => sub(scopes)
-                        case symb(label(_, target), scopes) => sub(scopes)
-                    };
+                    if([regexp(regex)] := subParts) {
+                        newParts += visit(part) {
+                            case symb(target, scopes) => sub(regex, scopes)
+                            case symb(label(_, target), scopes) => sub(regex, scopes)
+                        };
+                    }else{
+                        newPart = [part];
+                        
+                        Maybe[Scopes] scopes = nothing();
+                        if(symb(target, l) := part) scopes = just(l);
+                        else if(symb(label(_, target), l) := part) scopes = just(l);
+                        // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
+                        else visit(part) {
+                            case symb(target, scopes): canRemove = false;
+                            case symb(label(_, target), scopes): canRemove = false;
+                        }
+                        
+                        if(just(l) := scopes) 
+                            newPart = [sub(regex, l), regexp(regex) <- subParts];
+
+                        newParts += newPart;
+                    }
+
                 }
                 
                 affected += def;
@@ -84,6 +107,9 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
                 ));
             }
         }
+
+        if(canRemove)  productions = delete(productions, target);
+
         return <affected, productions>;
     }
     
@@ -140,7 +166,7 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
                     Maybe[Scopes] scopes = nothing();
                     if(symb(target, l) := part) scopes = just(l);
                     else if(symb(label(_, target), l) := part) scopes = just(l);
-                    // If the part isn't a reference to the target but does contain it, the symbol can't be removed
+                    // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
                     else visit(part) {
                         case symb(target, scopes): canRemove = false;
                         case symb(label(_, target), scopes): canRemove = false;

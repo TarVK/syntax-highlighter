@@ -3,6 +3,7 @@ module conversion::conversionGrammar::toConversionGrammar
 import ParseTree;
 import Grammar;
 import Set;
+import util::Maybe;
 import List;
 import String;
 import lang::rascal::grammar::definition::Regular;
@@ -13,6 +14,9 @@ import regex::PSNFATools;
 import regex::Regex;
 import Scope;
 import Warning;
+
+data Warning = unresolvedModifier(ConvSymbol modifier, ConvProd production);
+
 
 @doc {
     Retrieves a conversion grammar that we can operate on to obtain a highlighting grammar
@@ -41,9 +45,9 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
 
             list[ConvSymbol] newParts = [];
             for(orSymb <- parts) {
-                if(<newWarnings, symb> := getConvSymbol(orSymb, p, termScopes, nonTermScopes)){
+                if(<newWarnings, symbols> := getConvSymbol(orSymb, p, termScopes, nonTermScopes)){
                     warnings += newWarnings;
-                    newParts += symb;
+                    newParts += symbols;
                 }
             }
 
@@ -56,11 +60,11 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
     startSymbol = getOneFrom(grammar.starts);
     return <warnings, convGrammar(startSymbol, prods)>;
 }
-WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termScopes, Scopes nonTermScopes) {
+WithWarnings[list[ConvSymbol]] getConvSymbol(Symbol sym, Production prod, Scopes termScopes, Scopes nonTermScopes) {
     list[Warning] warnings = [];
 
-    ConvSymbol rec(Symbol s) = rec(s, termScopes, nonTermScopes);
-    ConvSymbol rec(Symbol s, Scopes termScopes, Scopes nonTermScopes){
+    list[ConvSymbol] rec(Symbol s) = rec(s, termScopes, nonTermScopes);
+    list[ConvSymbol] rec(Symbol s, Scopes termScopes, Scopes nonTermScopes){
         warningsAndResult = getConvSymbol(s, prod, termScopes, nonTermScopes);
         warnings += warningsAndResult.warnings;
         return warningsAndResult.result;
@@ -68,42 +72,76 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, Scopes termS
 
     ConvSymbol getRegex(Regex exp) {
         if(size(termScopes) > 0) exp = mark({scopeTag(termScopes)}, exp);
-        <cachedExp, _, _> = cachedRegexToPSNFAandContainsScopes(exp);
+        cachedExp = getCachedRegex(exp);
         return regexp(cachedExp);
     }
 
-    ConvSymbol res;
+    list[ConvSymbol] res;
     switch(sym) {
-        case \char-class(cc): res = getRegex(character(cc));
-        case \lit(text): res = getRegex(reduceConcatenation(concatenation(
-            [character(c) | c <- getCharRanges(text, false)])));
-        case \cilit(text): res = getRegex(reduceConcatenation(concatenation(
-            [character(c) | c <- getCharRanges(text, true)])));
+        case \char-class(cc): res = [getRegex(character(cc))];
+        case \lit(text): 
+            res = [
+                getRegex(reduceConcatenation(concatenation([
+                    character(cc) | cc <- seq
+                ])))
+                | seq <- getCharRanges(text, false)
+            ];
+        case \cilit(text): 
+            res = [
+                getRegex(reduceConcatenation(concatenation([
+                    character(cc) | cc <- seq
+                ])))
+                | seq <- getCharRanges(text, true)
+            ];
         case \conditional(s, conditions): {
-            res = rec(s);
-            for(c <- conditions) {
-                switch(c) {
-                    // Modifiers should not recieve any scopes
-                    case \delete(s2): res = delete(res, rec(s2, [], []));
-                    case \follow(s2): res = follow(res, rec(s2, [], []));
-                    case \precede(s2): res = precede(res, rec(s2, [], []));
-                    case \not-follow(s2): res = notFollow(res, rec(s2, [], []));
-                    case \not-precede(s2): res = notPrecede(res, rec(s2, [], []));
-                    case \begin-of-line(): res = atStartOfLine(res);
-                    case \end-of-line(): res = atEndOfLine(res);
-                    default: {
-                        warnings += unsupportedCondition(c, prod);
+            parts = rec(s);
+            if([exp] := parts) {
+                Maybe[ConvSymbol] r(Condition condition, Symbol conExp) {
+                    if([conExpOut] := rec(conExp, [], []))
+                        return just(conExpOut);
+                    warnings += unresolvedModifier(condition, prod);
+                    return nothing();
+                }
+
+                for(c <- conditions) {
+                    switch(c) {
+                        // Modifiers should not recieve any scopes
+                        case \delete(s2): if(just(e) := r(c, s2)) exp = delete(exp, e);
+                        case \follow(s2): if(just(e) := r(c, s2)) exp = follow(exp, e);
+                        case \precede(s2): if(just(e) := r(c, s2)) exp = precede(exp, e);
+                        case \not-follow(s2): if(just(e) := r(c, s2)) exp = notFollow(exp, e);
+                        case \not-precede(s2): if(just(e) := r(c, s2)) exp = notPrecede(exp, e);
+                        case \begin-of-line(): exp = atStartOfLine(exp);
+                        case \end-of-line(): exp = atEndOfLine(exp);
+                        default: {
+                            warnings += unsupportedCondition(c, prod);
+                        }
                     }
                 }
+
+                res = [exp];
+            } else {
+                for(c <- conditions) 
+                    warnings += unresolvedModifier(c, prod);
+                res = parts;
             }
         }
         case \start(s): res = rec(s);
-        default: res = symb(sym, nonTermScopes);
+        default: res = [symb(sym, nonTermScopes)];
     }
 
     return <warnings, res>;
 }
-list[CharClass] getCharRanges(str text, bool caseInsensitive) {
+
+@doc {
+    For a given string, retrieves the characterclass list representing it. And splits said list on newline characters such that a newline only ever occurs at the end of a sequence. 
+    E.g.:
+    "ha\nllo"
+    =>
+    [[[range(104,104)], [range(97,97)], [range(10,10)]], 
+    [[range(108,108)], [range(108,108)], [range(111,111)]]]
+}
+list[list[CharClass]] getCharRanges(str text, bool caseInsensitive) {
     CharClass getCharClass(int c) {
         r = [range(c, c)];
         if(caseInsensitive && 97 <= c && c <= 122) { // 97 = a, 122 = z
@@ -112,6 +150,18 @@ list[CharClass] getCharRanges(str text, bool caseInsensitive) {
         }
         return r;
     }
-    return [getCharClass(c) | i <- [0..size(text)], c := charAt(text, i)];
+
+    list[list[int]] sequences = [];
+    list[int] sequence = [];
+    for(i <- [0..size(text)], c := charAt(text, i)){
+        sequence += c;
+        if(c==10) {
+            sequences += [sequence];
+            sequence = [];
+        }
+    }
+    if(size(sequence)>0) sequences += [sequence];
+
+    return [[getCharClass(c) | c <- seq] | seq <- sequences];
 }
 Scopes parseScopes(str scopes) = [split(".", scope) | scope <- split(",", scopes)];

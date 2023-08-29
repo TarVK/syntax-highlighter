@@ -129,7 +129,7 @@ Maybe[tuple[
 
         expansion = expandSymbolsToRegex(parts, grammar, length);
         if(just(expansionRegex) := expansion) {
-            <expanded, _> = cachedRegexToPSNFA(lookahead(r, mark({determinismTag()}, expansionRegex)));
+            expanded = getCachedRegex(lookahead(r, mark({determinismTag()}, expansionRegex)));
             return just(expanded);
         }
         return nothing();

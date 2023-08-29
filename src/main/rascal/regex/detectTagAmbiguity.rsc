@@ -54,9 +54,9 @@ Maybe[NFA[tuple[&T, &T]]()] getAmbiguity(NFA[&T] n, bool isTrim) {
     /*
         Approach taken from (p75): https://www.cambridge.org/core/books/elements-of-automata-theory/B0E8167097AF9B70289FAE66A3147438
 
-        Create the product automaton of `n`, and if there exists a path from initial state to final state that passes a state <q1, g2> where q1!=q2, then there are 2 distinct routes accepting the same word. 
+        Create the product automaton of `n`, and if there exists a path from initial state to final state that passes a state <q1, q2> where q1!=q2, then there are 2 distinct routes accepting the same word. 
 
-        Also if the automaton is not trim (has unrechable/dead states), we also have to check whether there's a path from any state to any other state (not necessarily final/start states) that pass through 2 distinct states. If this is the case, the atuaton is ambiguous. Note that this does not cover the scenario of reaching 2 distinct final states, hence the first step described above is also necessary. 
+        Also if the automaton is not trim (has unreachable/dead states), we also have to check whether there's a path from any state to any other state (not necessarily on the path from start to final states) that pass through 2 distinct states. If this is the case, the automaton is ambiguous. Note that this second step does not cover the scenario of reaching 2 distinct final states, hence the first step described above is also necessary. 
     */
     n2 = productNFA(n, n);
 

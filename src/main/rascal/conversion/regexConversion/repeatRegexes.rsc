@@ -76,16 +76,22 @@ Maybe[set[ConvProd]] repeatRegexes(Symbol sym, set[ConvProd] productions) {
     - Scope lifting
 }
 Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] productions) {
-    if({s:convProd(_, [regexp(fRegex)], _), r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)} := productions,
+    if({
+            s:convProd(_, [regexp(fRegex)], _), 
+            r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)
+        } := productions,
         getWithoutLabel(lSym) == sym, 
-        just(<repeatRegex, tags>) := getScopelessRegex(rRegex)) {
-
+        just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
+        !containsNewline(fRegex),
+        !containsNewline(rRegex)
+    ) {
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
         
         Regex newRegex;
         if(just(<firstRegex, firstTags>) := getScopelessRegex(fRegex), 
             firstTags == tags,
-            equals(repeatRegex, firstRegex)) 
+            equals(repeatRegex, firstRegex)
+        ) 
             newRegex = withTags(\multi-iteration(repeatRegex));
         else             
             newRegex = liftScopes(concatenation(
@@ -114,10 +120,14 @@ Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] production
     ```
 }
 Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
-    if({s:convProd(_, [], _), r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)} := productions,
+    if({
+            s:convProd(_, [], _), 
+            r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)
+        } := productions,
         getWithoutLabel(lSym) == sym, 
-        just(<repeatRegex, tags>) := getScopelessRegex(rRegex)) {
-
+        just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
+        !containsNewline(rRegex)
+    ) {
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
 
         return createNewProd(sym, withTags(alternation(
@@ -145,16 +155,21 @@ Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
     - Scope lifting
 }
 Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productions) {
-    if({s:convProd(_, [regexp(lRegex)], _), r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)} := productions,
+    if({
+            s:convProd(_, [regexp(lRegex)], _), 
+            r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)
+        } := productions,
         getWithoutLabel(lSym) == sym, 
-        just(<repeatRegex, tags>) := getScopelessRegex(rRegex)) {
-
+        just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
+        !containsNewline(rRegex) // Note, the l regex may contain newlines, since it becomes the end of the regex
+    ) { 
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
         
         Regex newRegex;
         if(just(<lastRegex, lastTags>) := getScopelessRegex(lRegex), 
             lastTags == tags,
-            equals(repeatRegex, lastRegex)) 
+            equals(repeatRegex, lastRegex)
+        ) 
             newRegex = withTags(\multi-iteration(repeatRegex));
         else             
             newRegex = liftScopes(concatenation(
@@ -183,9 +198,14 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
     ```
 }
 Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
-    if({s:convProd(_, [], _), r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)} := productions,
+    if({
+            s:convProd(_, [], _), 
+            r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)
+        } := productions,
         getWithoutLabel(lSym) == sym, 
-        just(<repeatRegex, tags>) := getScopelessRegex(rRegex)) {
+        just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
+        !containsNewline(rRegex)
+    ) {
 
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
 
@@ -202,8 +222,8 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
     Tries to apply the both repeat rule: 
     ```
     A -> (<s1> X!) A! 
-    A -> A! (<s2> Y!) 
     A -> Z
+    A -> A! (<s2> Y!) 
     A -/> 
     ```
     => {Repetition-both}
@@ -216,15 +236,19 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
     - Scope lifting
 }
 Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] productions) {
-    if({m:convProd(_, [regexp(mRegex)], _), 
-        p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
-        s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
-    } := productions,
+    if({
+            p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
+            m:convProd(_, [regexp(mRegex)], _), 
+            s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+        } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 
         just(<prefixRegex, prefixTags>) := getScopelessRegex(pRegex),
-        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex)) {
-
+        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex),
+        !containsNewline(pRegex),
+        !containsNewline(mRegex),
+        !containsNewline(sRegex)
+    ) {
         Regex withTags(Tags tags, Regex r) = size(tags)>0 ? mark(tags, r) : r;
         
         Regex getDefault() = 
@@ -282,15 +306,18 @@ Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] production
     ```
 }
 Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
-    if({m:convProd(_, [], _), 
-        p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
-        s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
-    } := productions,
+    if({
+            m:convProd(_, [], _), 
+            p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
+            s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+        } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 
         just(<prefixRegex, prefixTags>) := getScopelessRegex(pRegex),
-        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex)) {
-
+        just(<suffixRegex, suffixTags>) := getScopelessRegex(sRegex),
+        !containsNewline(pRegex),
+        !containsNewline(sRegex)
+    ) {
         Regex withTags(Tags tags, Regex r) = size(tags)>0 ? mark(tags, r) : r;
 
         Regex newRegex = liftScopes(concatenation(
@@ -311,7 +338,7 @@ Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
 
 // Helpers
 Maybe[set[ConvProd]] createNewProd(Symbol sym, Regex regex, set[ConvProd] sources) {
-    <cachedExp, _, _> = cachedRegexToPSNFAandContainsScopes(regex);
+    cachedExp = getCachedRegex(regex);
     ConvProd prod = convProd(sym, [regexp(cachedExp)], {convProdSource(source) | source <- sources});
     return just({prod});
 }

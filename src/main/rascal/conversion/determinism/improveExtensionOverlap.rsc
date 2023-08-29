@@ -43,7 +43,7 @@ Maybe[tuple[Regex, int]] fixOverlap(Regex re, list[ConvSymbol] parts, Conversion
     for(length <- [1..maxLength+1]) {
         expansion = expandSymbolsToRegex(parts, grammar, length);
         if(just(expansionRegex) := expansion) {
-            <expanded, _> = cachedRegexToPSNFA(lookahead(re, mark({determinismTag()}, expansionRegex)));
+            expanded = getCachedRegex(lookahead(re, mark({determinismTag()}, expansionRegex)));
 
             if(nothing() := doesSelfOverlap(expanded))
                 return just(<expanded, length>);

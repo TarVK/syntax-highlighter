@@ -13,6 +13,7 @@ import conversion::determinism::checkDeterminism;
 import conversion::determinism::improveAlternativesOverlap;
 import conversion::determinism::improveExtensionOverlap;
 import conversion::determinism::fixNullableRegexes;
+import conversion::determinism::expandFollow;
 
 data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
              | alternativesOverlapFix(Symbol source, ProdExtensions extensions)
@@ -24,12 +25,21 @@ data Warning = alternativesOverlap(Symbol source, ProdsOverlaps overlaps)
 
     The maxLookaheadLength specifies how many productions may be expanded into a lookahead to improve determinism when needed, at the expense of "responsiveness" of the grammar (The user will have to type more before previously typed words are finally highlighted). 
 }
-WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar) = makeDeterministic(grammar, 3);
-WithWarnings[ConversionGrammar] makeDeterministic(ConversionGrammar grammar, int maxLookaheadLength) {
+WithWarnings[ConversionGrammar] makeDeterministic(
+    ConversionGrammar grammar, 
+    ConversionGrammar exactGrammar
+) = makeDeterministic(grammar, exactGrammar, 1);
+WithWarnings[ConversionGrammar] makeDeterministic(
+    ConversionGrammar grammar, 
+    ConversionGrammar exactGrammar,
+    int maxLookaheadLength
+) {
     list[Warning] warnings = [];
     
     <nWarnings, grammar> = fixNullableRegexes(grammar);
     warnings += nWarnings;
+
+    grammar = fixOverlap(grammar, exactGrammar, maxLookaheadLength);
 
     <cWarnings, grammar> = combineOverlap(grammar);
     warnings += cWarnings;

@@ -1,9 +1,9 @@
 module conversion::regexConversion::checkModifiers
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::toConversionGrammar;
 import Warning;
 
-data Warning = unresolvedModifier(ConvSymbol modifier, ConvProd production);
 
 @doc {
     Modifiers may only be applied to regular expressions in the end. This function creates warnings for all modifiers that haven't been pushed to a regular expression.

@@ -48,3 +48,4 @@
 -   TM's regex allows for back-references, making this aspect more powerful than CFGs. Hence expressivity is incomparable with CFGs
 -   TM allows usage of capture group matches within the scope
 -   Different parts of the same regex can be labeled differently using `captures`
+-   Regular expressions are single line only, including lookarounds. They can recognize the `\n` at the end of the current line, but can not go further than this. 

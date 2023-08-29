@@ -2,6 +2,9 @@ module conversion::util::RegexCache
 
 extend regex::RegexToPSNFA;
 
+import lang::rascal::grammar::definition::Characters;
+import ParseTree;
+
 import regex::RegexTypes;
 import regex::Regex;
 import regex::RegexToPSNFA;
@@ -10,7 +13,14 @@ import regex::PSNFATypes;
 import regex::PSNFACombinators;
 
 // Create a new regex constructor an related functions
-data Regex = cached(Regex exp, NFA[State] psnfa, bool hasScope);
+data Regex = cached(
+    Regex exp, 
+    NFA[State] psnfa, 
+    tuple[
+        bool hasScope,
+        bool hasNewline
+    ] flags
+);
 str stringify(cached(exp, _, _)) = stringify(exp);
 NFA[State] regexToPSNFA(cached(_, psnfa, _)) = psnfa;
 
@@ -39,34 +49,37 @@ Regex removeCache(Regex regex) =
     Checks whether the given regular expression contains a scope
 }
 bool containsScopes(Regex regex) {
-    if(cached(_, _, hasScope) := regex) return hasScope;
+    if(cached(_, _, <hasScope, _>) := regex) return hasScope;
 
     hasScope = /scopeTag(_) := regex;
     return hasScope;
 }
 
 @doc {
-    Retrieves the PSNFA of the given regular expression, and the regular expression with the PSNFA cached into it for quick access later (using this same function)
+    Checks whether this regular expression contains a newline character
 }
-tuple[Regex, NFA[State]] cachedRegexToPSNFA(Regex regex) = cachedRegexToPSNFAandContainsScopes(regex)<0, 1>;
+bool containsNewline(Regex regex) {
+    if(cached(_, _, <_, hasNewline>) := regex) return hasNewline;
+
+    newline = [range(10, 10)];
+    hasNewline = /character(cc) := regex && any(r <- intersection(cc, newline), r != \empty-range());
+    return hasNewline;
+}
+
 
 @doc {
     Retrieves only the input regex, but already caches the PSNFA and contains scopes data into there for later use
 }
-Regex getCachedRegex(Regex regex) = cachedRegexToPSNFAandContainsScopes(regex)<0>;
+Regex getCachedRegex(Regex regex) = cachedRegexToPSNFAandFlags(regex)<0>;
 
 @doc {
-    Checks whether the given regular expression contains a scope, and retrieves a regular expression with this data cached into it. 
+    Retrieves the PSNFA of the given regular expression, whether the expression contains any scopes, any newlines, and a regular expression with this data cached into it. 
 }
-tuple[Regex, NFA[State]] cachedContainsScopes(Regex regex) = cachedRegexToPSNFAandContainsScopes(regex)<0, 2>;
-
-@doc {
-    Retrieves the PSNFA of the given regular expression, whether the expression contains any scopes, and a regular expression with this data cached into it. 
-}
-tuple[Regex, NFA[State], bool] cachedRegexToPSNFAandContainsScopes(Regex regex) {
-    if (cached(regex, n, hasScope) := regex) return <regex, n, hasScope>;
+tuple[Regex, NFA[State], tuple[bool, bool]] cachedRegexToPSNFAandFlags(Regex regex) {
+    if (cached(regex, n, <hasScope, hasNewline>) := regex) return <regex, n, <hasScope, hasNewline>>;
 
     n = regexToPSNFA(regex);
     hasScope = containsScopes(regex);
-    return <cached(regex, n, hasScope), n, hasScope>;
+    hasNewline = containsNewline(regex);
+    return <cached(regex, n, <hasScope, hasNewline>), n, <hasScope, hasNewline>>;
 }

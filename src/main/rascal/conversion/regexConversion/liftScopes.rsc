@@ -28,7 +28,7 @@ import regex::PSNFACombinators;
     This is done exhaustively. This rule is not based on exact grammar structure, instead the PSNFA is analyzed to decide whether internal scopes can be moved upwards. 
 }
 Regex liftScopes(Regex regex) {
-    <cachedRegex, psnfa, hasScope> = cachedRegexToPSNFAandContainsScopes(regex);
+    <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
     cachedRegex = removeInnerRegexCache(cachedRegex);
     
     liftableScopesSet = findLiftableScopes(cachedRegex);
@@ -94,7 +94,7 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
     Retrieves all the main scope sets, as well as a set of all scopes that only occur in all transitions of the main match of the regex and not the context match.
 }
 tuple[set[set[Scopes]], set[Scope]] findUniversalMainScopes(Regex regex) {
-    <cachedRegex, psnfa, hasScope> = cachedRegexToPSNFAandContainsScopes(regex);
+    <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
     <prefixStates, mainStates, suffixStates> = getPSNFApartition(psnfa);
     contextStates = prefixStates + suffixStates;
 

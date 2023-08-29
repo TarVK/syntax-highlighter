@@ -1,73 +1,32 @@
 {
-    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-    "name": "highlight",
-    "patterns": [{ "include": "#stmt" }],
-    "repository": {
-        "if": {
-            "patternComment": "if(#EXP){#STMT}else{#STMT}",
-            "name": "1",
-            "begin": "(?=if\\s*\\()",
-            "end": "\\}",
-            "endCaptures": {
-                "0": { "name": "bracket" }
-            },
-            "patterns": [
-                {
-                    "name": "2",
-                    "begin": "(?=if\\s*\\()",
-                    "end": "(?=(\\})\\s*(else)\\s*(\\{))",
-                    "patterns": [
-                        {
-                            "name": "3",
-                            "begin": "(?=if\\s*\\()",
-                            "end": "(?=(\\))\\s*(\\{))",
-                            "patterns": [
-                                {
-                                    "name": "4",
-                                    "begin": "(if)\\s*(\\()",
-                                    "beginCaptures": {
-                                        "1": { "name": "keyword" },
-                                        "2": { "name": "bracket" }
-                                    },
-                                    "end": "(?=(\\))\\s*(\\{))",
-                                    "patterns": [{"include": "#exp"}]
-                                }
-                            ]        
-                        },{
-                            "name": "5",
-                            "begin": "(\\))\\s*(\\{)",
-                            "beginCaptures": {
-                                "1": { "name": "bracket" },
-                                "2": { "name": "bracket" }
-                            },
-                            "end": "(?=(\\})\\s*(else)\\s*(\\{))",
-                            "patterns": [{"include": "#stmt"}]
-                        }
-                    ]
-                }, {
-                    "name": "6",
-                    "begin": "(\\})\\s*(else)\\s*(\\{)",
-                    "beginCaptures": {
-                        "1": { "name": "bracket" },
-                        "2": { "name": "keyword" },
-                        "3": { "name": "bracket" }
-                    },
-                    "end": "(?=\\})",
-                    "patterns": [{"include": "#stmt"}]
-                }
-            ]
-        },
-        "stmt": {
-            "patterns": [
-                { "include": "#if" }, 
-                { "match": "while", "name": "keyword" }
-            ]
-        },
-        "exp": {
-            "patterns": [
-                {"match": "[a-z]+", "name": "variable.parameter"}
-            ]
-        }
-    },
-    "scopeName": "source.highlight"
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "highlight",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.highlight",
+				"match": "(?m)((?<=^[\\s\\n\\r]*)i[\\s\\n\\r]*f(?=[\\s\\n\\r]*\r\n)|while|for|return)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.highlight",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.highlight",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.highlight"
 }

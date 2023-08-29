@@ -170,11 +170,12 @@ void main() {
     <cWarnings, conversionGrammar> = toConversionGrammar(#A);
     inputGrammar = conversionGrammar;
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
+    regexGrammar = conversionGrammar;
     
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
 
     inputGrammar = conversionGrammar;
-    <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, 2);
+    <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, regexGrammar);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
 

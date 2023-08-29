@@ -60,7 +60,16 @@ WithWarnings[ConversionGrammar] convertToRegularExpressions(ConversionGrammar gr
     }
 
     outGrammar = convGrammar(\start, toRel(productions));
-    return checkModifiers(outGrammar);
+    <warnings, outGrammar> = checkModifiers(outGrammar);
+
+    // Apply the rules once more, after getting rid of modifiers we can't apply
+    if(size(warnings)>0) {
+        productions = Relation::index(outGrammar.productions);
+        <_, productions> = applyRegexRules(\start, productions);
+        outGrammar = convGrammar(\start, toRel(productions));
+    }
+
+    return <warnings, outGrammar>;
 }
 
 @doc {

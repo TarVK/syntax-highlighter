@@ -5,6 +5,7 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
+import conversion::util::RegexCache;
 import regex::Regex;
 import regex::PSNFA;
 
@@ -57,6 +58,10 @@ ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
     for(part <- parts) {
         if(regexp(r) := part) {
             regexes += r;
+
+            // Regular expressions can only span one line, so we can't add anything after a newline character
+            if(containsNewline(r))
+                flush();
         } else {
             flush();
             newParts += part;

@@ -14,6 +14,9 @@ import conversion::regexConversion::RegexConversion;
 import conversion::determinism::Determinism;
 import conversion::shapeConversion::ShapeConversion;
 import conversion::util::RegexCache;
+import conversion::shapeConversion::util::getEquivalentSymbols;
+import conversion::shapeConversion::util::getSubsetSymbols;
+import conversion::shapeConversion::makePrefixedRightRecursive;
 
 // syntax A = "okay" B
 //          | "somethings" C;
@@ -49,20 +52,31 @@ import conversion::util::RegexCache;
 //    | @category="Comment" "%%" ![\n]* $
 //    ;
 
-
 syntax A = Stmt*;
 syntax Stmt = iff: "if" "(" Exp ")" Stmt
-            | iff: If "(" Exp ")" Stmt
             | assign: Id "=" Exp;
 syntax If = @token="if" "if";
-syntax Exp = brac: "(" Exp ")"
-           | plus: Exp "+" Exp
+syntax Exp = plus: Exp "+" Exp
            | id: Id
            | nat: Natural;
 layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
 lexical Id  = [a-z] !<< ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 lexical KW = "if" | "else";
 lexical Natural = [0-9]+ !>> [a-z0-9];
+
+// syntax A = Stmt*;
+// syntax Stmt = iff: "if" "(" Exp ")" Stmt
+//             | iff: If "(" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax If = @token="if" "if";
+// syntax Exp = brac: "(" Exp ")"
+//            | plus: Exp "+" Exp
+//            | id: Id
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = [a-z] !<< ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// lexical KW = "if" | "else";
+// lexical Natural = [0-9]+ !>> [a-z0-9];
 
 // syntax A = Stmt*;
 // syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" Stmt
@@ -73,7 +87,7 @@ lexical Natural = [0-9]+ !>> [a-z0-9];
 //            | id: Id
 //            | nat: Natural;
 // layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
-// lexical Id  = [a-z] !<< ([a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// lexical Id  = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 // lexical KW = "if" | "else";
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
@@ -168,21 +182,26 @@ void main() {
 
     
     <cWarnings, conversionGrammar> = toConversionGrammar(#A);
-    inputGrammar = conversionGrammar;
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
     regexGrammar = conversionGrammar;
+    <_, inputGrammar> = makePrefixedRightRecursive(conversionGrammar);
     
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
+    classes = getEquivalentSymbols(conversionGrammar);
+    subsets = getSubsetSymbols(conversionGrammar);
 
-    inputGrammar = conversionGrammar;
-    <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, regexGrammar);
+    // inputGrammar = conversionGrammar;
+    // <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, regexGrammar);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
+    dWarnings = [];
 
     warnings = cWarnings + rWarnings + sWarnings + dWarnings;
     visualize(insertPSNFADiagrams(removeInnerRegexCache(stripConvSources(<
         fromConversionGrammar(inputGrammar),
         stdGrammar,
-        warnings
+        warnings,
+        classes,
+        subsets
     >))));
 }

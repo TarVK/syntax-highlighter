@@ -17,15 +17,39 @@ import conversion::util::RegexCache;
     It also removes duplicate productions within the same symbol.
     Assumes all rules in the grammar to be right-recursive, or an empty production
 }
-ConversionGrammar deduplicateProductions(ConversionGrammar grammar) {
+ConversionGrammar deduplicateProductions(ConversionGrammar grammar) 
+    = deduplicateProductions(
+        grammar,
+        Symbol(Symbol a, Symbol b) {
+            if(grammar.\start == a) return a;
+            return b;
+        },
+        DedupeType(Symbol) { return replace(); }
+    );
+
+data DedupeType = keep() | replace() | reference();
+ConversionGrammar deduplicateProductions(
+    ConversionGrammar grammar,
+    Symbol(Symbol, Symbol) prioritize,
+    DedupeType(Symbol) dedupeBehavior
+) {
     rel[Symbol, ConvProd] productions = grammar.productions;
 
     classes = getEquivalentSymbols(grammar);
     
     for(class <- classes) {
-        if({sym, *eqSyms} := class, grammar.\start notin eqSyms) {
-            for(replaceSym <- eqSyms)
+
+        if({sym, *eqSyms} := class) {
+            for(otherSym <- eqSyms) 
+                sym = prioritize(sym, otherSym);
+
+            replaceSyms = {rSym | rSym <- class, rSym != sym, dedupeBehavior(rSym)==replace()};
+            for(replaceSym <- replaceSyms)
                 productions = replaceSymbol(productions, replaceSym, sym);
+
+            // referenceSyms = {rSym | rSym <- class, rSym != sym, dedupeBehavior(rSym)==reference()};
+            // for(referenceSym <- referenceSyms)
+            //     productions = referenceSymbol(productions, referenceSym, sym);
         }
     }
 
@@ -33,6 +57,12 @@ ConversionGrammar deduplicateProductions(ConversionGrammar grammar) {
     prodMap = removeDuplicateProds(prodMap, getClassMap(classes));
 
     return convGrammar(grammar.\start, toRel(prodMap));
+}
+
+rel[Symbol, ConvProd] referenceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {
+    filteredProds = {p | p:<def, _> <- prods, def != replaceSym};
+    newProd = <replaceSym, convProd(replaceSym, [symb(replaceBySym, [])], {})>;
+    return filteredProds + newProd;
 }
 
 rel[Symbol, ConvProd] replaceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {

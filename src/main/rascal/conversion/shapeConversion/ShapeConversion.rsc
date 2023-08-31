@@ -7,6 +7,7 @@ import Relation;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::shapeConversion::deduplicateProductions;
+import conversion::determinism::defineUnionSymbols;
 import conversion::shapeConversion::combineConsecutiveSymbols;
 import Warning;
 
@@ -35,7 +36,7 @@ WithWarnings[ConversionGrammar] convertToShape(ConversionGrammar grammar) {
     // return <rWarnings, grammar>;
 
     <cWarnings, grammar> = combineConsecutiveSymbols(grammar);
-    grammar = deduplicateProductions(grammar);
+    grammar = deduplicateProductionsRespectingUnions(grammar);
 
     return <rWarnings + cWarnings, grammar>;
 }

@@ -44,11 +44,15 @@ Regex liftScopes(Regex regex) {
             }
         };
 
-        if(cached(nonCached, _, _) := regexWithoutScope) 
-            return cached(mark(
-                {scopeTag(liftableScopes) | liftableScopes <- liftableScopesSet}, 
-                nonCached), 
-            psnfa, true);
+        if(cached(nonCached, _, <_, nl>) := regexWithoutScope) 
+            return cached(
+                mark(
+                    {scopeTag(liftableScopes) | liftableScopes <- liftableScopesSet}, 
+                    nonCached
+                ), 
+                psnfa,
+                <true, nl>
+            );
     }
 
     return cachedRegex;

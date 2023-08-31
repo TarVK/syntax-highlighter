@@ -250,6 +250,10 @@ Regex wrapScopes(Regex regex, Scopes scopes) {
         ()
     >;
 
-    return cached(mark({scopeTag(scopes)}, prefixedRegexScopes), scopedNFA, true);
+    return cached(
+        mark({scopeTag(scopes)}, prefixedRegexScopes), 
+        scopedNFA, 
+        <true, containsNewline(prefixedRegexScopes)>
+    );
 }
 

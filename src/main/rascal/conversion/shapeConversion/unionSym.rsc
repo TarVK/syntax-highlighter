@@ -28,14 +28,3 @@ Symbol unionSym(set[Symbol] parts, set[tuple[Regex, set[SourceProd]]] expression
     return custom("union", annotate(\alt(parts), {regexProd(removeInnerRegexCache(r), sources) | <r, sources> <- expressions}));
 }
 data RegexProd = regexProd(Regex, set[SourceProd]);
-
-@doc {
-    Removes the expression sources from the given symbol, to prevent irrelevant information from creating duplicate symbols in the grammar
-}
-Symbol removeRegexSources(custom("union", annotate(\alt(parts), annotations))) {
-    set[tuple[Regex, set[SourceProd]]] expressions = {};
-    for(regexProd(r, _) <- annotations)
-        expressions += <r, {}>;
-
-    return unionSym(parts, expressions);
-}

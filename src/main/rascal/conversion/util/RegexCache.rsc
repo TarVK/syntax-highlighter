@@ -41,7 +41,7 @@ Regex removeCache(Regex regex) =
 }
 &T removeInnerRegexCache(&T anything) 
     = top-down-break visit(anything) {
-        case Regex::cached(exp, dfa, scoped) => cached(removeRegexCache(exp), dfa, scoped)
+        case Regex::cached(exp, dfa, flags) => cached(removeRegexCache(exp), dfa, flags)
     };
 
 

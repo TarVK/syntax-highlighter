@@ -40,6 +40,8 @@ data Warning = mergeScopeDifferences(tuple[Regex, ConvProd] primary, set[tuple[R
 WithWarnings[ConversionGrammar] combineOverlap(ConversionGrammar grammar) {
     list[Warning] warnings = [];
 
+    println("start-combine");
+
     symbols = grammar.productions<0>;
     while(size(symbols) > 0) {
         subsets = getSubsetSymbols(grammar);
@@ -50,6 +52,7 @@ WithWarnings[ConversionGrammar] combineOverlap(ConversionGrammar grammar) {
 
         <newWarnings, symbols, grammar> = defineUnionSymbols(grammar);
         warnings += newWarnings;
+        println(symbols);
     }
     return <warnings, grammar>;
 }
@@ -122,7 +125,8 @@ WithWarnings[ConversionGrammar] combineProductions(
         if(shouldBeRegex) {
             if(size(symbols)>0) throw <"Encountered unexpected symbols", symbols>;
             mergedRegex = mergeRegex(regexes);
-            outParts += regexp(mergedRegex);
+            cachedRegex = getCachedRegex(mergedRegex);
+            outParts += regexp(cachedRegex);
         } else {
             if(size(regexes)>0) throw <"Encountered unexpected regexes", regexes>;
 
@@ -306,9 +310,21 @@ tuple[
             if(innerScopes != recScopes)
                 warnings += incompatibleScopesForUnion({<innerSym, innerScopes>, <recSym, recScopes>}, p);
 
-            grammar.productions += {<recSym, convProd(copyLabel(lDef, recSym), [regexp(r), symb(recSym, [])], {convProdSource(p)})>};
+
+
+            tailProd = convProd(
+                copyLabel(lDef, recSym), 
+                [regexp(r), symb(recSym, [])], 
+                {convProdSource(p)}
+            );
+            includesTailProd = any(p <- grammar.productions[recSym], prodIsSubset(tailProd, p, subsets, true));
+            if(!includesTailProd)
+                grammar.productions += {<recSym, tailProd>};
+
+
             prods -= p;
             prods += convProd(lDef, [*prodPrefix, symb(recSym, recScopes)], {convProdSource(p)});
+
             stable = false;
         }
     }

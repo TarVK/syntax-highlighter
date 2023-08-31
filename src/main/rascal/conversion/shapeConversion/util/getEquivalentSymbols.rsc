@@ -32,7 +32,7 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
             if(size(class) <= 1) continue classLoop;
 
             for(sym <- class) {
-                for(prod <- prods[sym]) {
+                for(prod <- getProds(sym, prods)) {
                     <contains, notContains> = split(class, prod, prods, classMap, rightRecursive);
                     if(size(notContains)>0){
                         classes = classes - {class} + {contains, notContains};
@@ -48,6 +48,16 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
     }
 
     return classes;
+}
+
+@doc {
+    Retrieves all productive productions, factoring out aliases
+}
+set[ConvProd] getProds(Symbol sym, ProdMap prods) {
+    symProds = prods[sym];
+    // if({convProd(_, [symb(ref, _)], _)} := symProds) 
+    //     return getProds(getWithoutLabel(ref), prods);
+    return symProds;
 }
 
 alias ClassMap = map[Symbol, set[Symbol]];

@@ -93,6 +93,13 @@ tuple[SubtractCache, Maybe[DependencyConstraints]] getSubsetDependencies(
     set[ConvProd] subProds = prods[sub];
     set[ConvProd] superProds = prods[super];
 
+    // Handle aliases
+    if({convProd(_, [symb(subRef, _)], _)} := subProds)
+        return <cache, just(subset(subRef, super))>;
+    if({convProd(_, [symb(superRef, _)], _)} := superProds)
+        return <cache, just(subset(sub, superRef))>;
+
+    // Handle normal symbols
     set[DependencyConstraints] requirements = {};
     for(prod <- subProds){
         set[DependencyConstraints] options = {};
@@ -302,9 +309,13 @@ bool prodIsSubset(ConvProd sub, ConvProd super, rel[Symbol, Symbol] subsets, boo
 }
 
 tuple[SubtractCache, bool] prodIsSubset(ConvProd sub, ConvProd super, rel[Symbol, Symbol] subsets, bool rightRecursive, SubtractCache cache) {
-    if(<cache, just(constraints)> := getSubprodDependencies(sub, super, rightRecursive, cache)) {
-        if(just(_) := getConstraintDependencies(constraints, subsets))
-            return <cache, true>;
-    }
+    <cache, res> = getSubprodDependencies(sub, super, rightRecursive, cache);
+
+    if(
+        just(constraints) := res,
+        just(_) := getConstraintDependencies(constraints, subsets)
+    )
+        return <cache, true>;
+
     return <cache, false>;
 }

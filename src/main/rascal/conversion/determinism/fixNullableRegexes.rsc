@@ -10,7 +10,7 @@ import Set;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::shapeConversion::combineConsecutiveSymbols;
-import conversion::shapeConversion::deduplicateProductions;
+import conversion::determinism::defineUnionSymbols;
 import conversion::util::RegexCache;
 import regex::RegexTypes;
 import regex::PSNFATools;
@@ -65,7 +65,7 @@ WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar){
         warnings += combineWarnings;
 
         // Remove duplicate symbols and productions
-        grammar = deduplicateProductions(grammar);
+        grammar = deduplicateProductionsRespectingUnions(grammar);
 
         // Recalculate, new union symbols might have introduced new paths
         prods = Relation::index(grammar.productions);

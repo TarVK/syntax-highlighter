@@ -25,15 +25,25 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
 
     map[Symbol, set[ConvProd]] prods = index(grammar.productions);
 
+    rel[
+        Symbol to, 
+        Symbol from
+    ] aliases = {
+        <aliasFor, sym> 
+        | sym <- symbols, 
+        {convProd(_, [symb(aliasFor, _)], _)} := prods[sym]
+    };
+
     bool stable = false;
     while(!stable) {
         stable = true;
         classLoop: for(class <- classes) {
             if(size(class) <= 1) continue classLoop;
 
-            for(sym <- class) {
-                for(prod <- getProds(sym, prods)) {
+            for(sym <- class - aliases<1>) {
+                for(prod <- prods[sym]) {
                     <contains, notContains> = split(class, prod, prods, classMap, rightRecursive);
+                    <contains, notContains> = followAliases(contains, notContains, aliases);
                     if(size(notContains)>0){
                         classes = classes - {class} + {contains, notContains};
                         for(c <- contains) classMap[c] = contains;
@@ -50,16 +60,6 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
     return classes;
 }
 
-@doc {
-    Retrieves all productive productions, factoring out aliases
-}
-set[ConvProd] getProds(Symbol sym, ProdMap prods) {
-    symProds = prods[sym];
-    // if({convProd(_, [symb(ref, _)], _)} := symProds) 
-    //     return getProds(getWithoutLabel(ref), prods);
-    return symProds;
-}
-
 alias ClassMap = map[Symbol, set[Symbol]];
 map[Symbol, set[Symbol]] getClassMap(set[set[Symbol]] classes) {
     ClassMap classMap = ();
@@ -67,6 +67,19 @@ map[Symbol, set[Symbol]] getClassMap(set[set[Symbol]] classes) {
         for(sym <- class) 
             classMap[sym] = class;
     return classMap;
+}
+
+tuple[
+    set[Symbol] contains,
+    set[Symbol] notContains
+] followAliases(set[Symbol] contains, set[Symbol] notContains, rel[Symbol to, Symbol from] aliases) {
+    set[Symbol] addContain;
+    do {
+        addContain = aliases[contains] & notContains;
+        contains += addContain;
+        notContains -= addContain;
+    } while(size(addContain)>0);
+    return <contains, notContains>;
 }
 
 tuple[

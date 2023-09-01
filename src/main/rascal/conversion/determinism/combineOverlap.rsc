@@ -37,7 +37,11 @@ data Warning = mergeScopeDifferences(tuple[Regex, ConvProd] primary, set[tuple[R
     BC -> ...C
     ```
 }
-WithWarnings[ConversionGrammar] combineOverlap(ConversionGrammar grammar) {
+WithWarnings[ConversionGrammar] combineOverlap(
+    ConversionGrammar grammar, 
+    ConversionGrammar exactGrammar,
+    int maxLookaheadLength
+) {
     list[Warning] warnings = [];
 
     println("start-combine");
@@ -45,25 +49,36 @@ WithWarnings[ConversionGrammar] combineOverlap(ConversionGrammar grammar) {
     symbols = grammar.productions<0>;
     while(size(symbols) > 0) {
         subsets = getSubsetSymbols(grammar);
+        set[Symbol] modifiedSymbols = {};
         for(sym <- symbols) {
-            <newWarnings, grammar, subsets> = combineOverlap(sym, grammar, subsets);
+            <newWarnings, grammar, newModified, subsets> 
+                = combineOverlap(sym, grammar, exactGrammar, maxLookaheadLength, subsets);
             warnings += newWarnings;
+            modifiedSymbols += newModified;
         }
 
         <newWarnings, symbols, grammar> = defineUnionSymbols(grammar);
         warnings += newWarnings;
-        println(symbols);
+        symbols += modifiedSymbols;
     }
     return <warnings, grammar>;
 }
 
 tuple[
-    list[Warning], 
-    ConversionGrammar, 
-    rel[Symbol, Symbol]
-] combineOverlap(Symbol sym, ConversionGrammar grammar, rel[Symbol, Symbol] subsets) {
+    list[Warning] warnings, 
+    ConversionGrammar grammar,
+    set[Symbol] modifiedSymbols, 
+    rel[Symbol, Symbol] subsets
+] combineOverlap(
+    Symbol sym, 
+    ConversionGrammar grammar,
+    ConversionGrammar exactGrammar,
+    int maxLookaheadLength, 
+    rel[Symbol, Symbol] subsets
+) {
     bool stable = false;
     list[Warning] warnings = [];
+    set[Symbol] modifiedSymbols = {};
     while(!stable) {
         prods = [p | p<-grammar.productions[sym]];
         stable = true;
@@ -82,8 +97,10 @@ tuple[
             }; 
 
             if(size(overlap) > 0) {
-                <newWarnings, grammar> = combineProductions(prod, overlap, grammar, subsets);
+                <newWarnings, grammar, newModified> 
+                    = combineProductions(prod, overlap, grammar, exactGrammar, maxLookaheadLength, subsets);
                 warnings += newWarnings;
+                modifiedSymbols += newModified;
                 stable = false;
                 subsets = getSubsetSymbols(grammar);
 
@@ -92,13 +109,19 @@ tuple[
         }
     }
 
-    return <warnings, grammar, subsets>;
+    return <warnings, grammar, modifiedSymbols, subsets>;
 }
 
-WithWarnings[ConversionGrammar] combineProductions(
+tuple[
+    list[Warning] warnings, 
+    ConversionGrammar grammar,
+    set[Symbol] modifiedSymbols
+] combineProductions(
     ConvProd main:convProd(mSym, [regexp(rm), *restM], _), 
     set[ConvProd] included, 
     ConversionGrammar grammar,
+    ConversionGrammar exactGrammar,
+    int maxLookaheadLength,
     rel[Symbol, Symbol] subsets
 ) {
     list[Warning] warnings = [];
@@ -108,13 +131,15 @@ WithWarnings[ConversionGrammar] combineProductions(
     plainSym = getWithoutLabel(mSym);
     labeledSym = size(labels)>0 ? label(stringify(labels, ","), plainSym) : plainSym;
 
-    <dWarnings, grammar, allShortenedProds> = removeDanglingExpressions(allProds, grammar, subsets);
+    <dWarnings, grammar, modifiedSymbols, allShortenedProds> 
+        = removeDanglingExpressions(allProds, grammar, exactGrammar, maxLookaheadLength, subsets);
     warnings += dWarnings;
 
-    grammar.productions -= {<getWithoutLabel(lDef), prod> | prod:convProd(lDef, _, _) <- allProds};
+    delProds = {<getWithoutLabel(lDef), prod> | prod:convProd(lDef, _, _) <- allProds};
+    grammar.productions -= delProds;
     if({prod:convProd(lDef, _, _)} := allShortenedProds) {
         grammar.productions += {<getWithoutLabel(lDef), prod>};
-        return <warnings, grammar>;
+        return <warnings, grammar, modifiedSymbols>;
     }
 
     list[ConvSymbol] outParts = [];
@@ -235,7 +260,7 @@ WithWarnings[ConversionGrammar] combineProductions(
         )
     >};
 
-    return <warnings, grammar>;
+    return <warnings, grammar, modifiedSymbols>;
 }
 
 Regex mergeRegex(set[Regex] regexes) {
@@ -266,17 +291,21 @@ Regex mergeRegex(set[Regex] regexes) {
     ```
 }
 tuple[
-    list[Warning], 
-    ConversionGrammar, 
-    set[ConvProd]
+    list[Warning] warnings, 
+    ConversionGrammar grammar, 
+    set[Symbol] modifiedSymbols,
+    set[ConvProd] remainingProds
 ] removeDanglingExpressions(
     set[ConvProd] prods, 
     ConversionGrammar grammar, 
+    ConversionGrammar exactGrammar,
+    int maxLookaheadLength,
     rel[Symbol, Symbol] subsets
 ) {
     list[Warning] warnings = [];
 
     if(size(prods)<=1) return <warnings, grammar, prods>;
+    set[Symbol] modifiedSymbols = {};
 
     bool stable = false;
     while(!stable) {
@@ -301,26 +330,29 @@ tuple[
             if(isClosing) continue;
 
             bool overlaps(Symbol sym) = any(p2:convProd(_, [regexp(r2), *_], _) <- grammar.productions[sym], 
-                p2 != p, 
                 just(_) := getOverlap(r, r2) || just(_) := getOverlap(r2, r));
-            overlapsRec = overlaps(recSym);
-            overlapsInner = overlaps(innerSym);
+                
+            recSymDef = followAliases(recSym, grammar);
+            innerSymDef = followAliases(innerSym, grammar);
+
+            overlapsRec = overlaps(recSymDef);
+            overlapsInner = overlaps(innerSymDef);
             if(overlapsRec && !overlapsInner) continue; // In this case it's safe to use `r` as a closing identifier for the innerSym, but not as an arbitrary matcher for recSym, hence it may be safer to not strip it out
 
             if(innerScopes != recScopes)
                 warnings += incompatibleScopesForUnion({<innerSym, innerScopes>, <recSym, recScopes>}, p);
 
 
-
             tailProd = convProd(
-                copyLabel(lDef, recSym), 
-                [regexp(r), symb(recSym, [])], 
+                copyLabel(lDef, recSymDef), 
+                [regexp(r), symb(recSymDef, [])], 
                 {convProdSource(p)}
             );
-            includesTailProd = any(p <- grammar.productions[recSym], prodIsSubset(tailProd, p, subsets, true));
-            if(!includesTailProd)
-                grammar.productions += {<recSym, tailProd>};
-
+            includesTailProd = any(pr <- grammar.productions[recSymDef], prodIsSubset(tailProd, pr, subsets, true));
+            if(!includesTailProd) {
+                grammar.productions += {<recSymDef, tailProd>};
+                modifiedSymbols += recSymDef;
+            }
 
             prods -= p;
             prods += convProd(lDef, [*prodPrefix, symb(recSym, recScopes)], {convProdSource(p)});
@@ -344,5 +376,17 @@ tuple[
         }
     }
 
-    return <warnings, grammar, prods>;
+    return <warnings, grammar, modifiedSymbols, prods>;
 }
+
+@doc {
+    Follows an alias symbol until the defining symbol that it's an alias is for is reached
+}
+Symbol followAliases(Symbol sym, ConversionGrammar grammar) {
+    while({convProd(_, [symb(ref, _)], _)} := grammar.productions[sym]) {
+        sym = getWithoutLabel(ref);
+    }
+    return sym;
+}
+
+// tuple[set[Symbol] modifiedSymbols, ConversionGrammar] addRegexToSymbol()

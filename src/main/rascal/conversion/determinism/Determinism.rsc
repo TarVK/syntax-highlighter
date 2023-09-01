@@ -41,7 +41,7 @@ WithWarnings[ConversionGrammar] makeDeterministic(
 
     grammar = fixOverlap(grammar, exactGrammar, maxLookaheadLength);
 
-    <cWarnings, grammar> = combineOverlap(grammar);
+    <cWarnings, grammar> = combineOverlap(grammar, exactGrammar, maxLookaheadLength);
     warnings += cWarnings;
 
     warnings += checkDeterminism(grammar);

@@ -41,8 +41,6 @@ data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd p
 WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar grammar) {
     list[Warning] warnings = [];
 
-    println("start");
-
     prevGrammar = grammar;
     // i = 0;
     do{
@@ -52,20 +50,13 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
             warnings += newWarnings;
         }
 
-        println("--");
         if(prevGrammar != grammar) {
             <unionWarnings, defined, grammar> = defineUnionSymbols(grammar);
             warnings += unionWarnings;
 
             if(size(defined)==0) break;
-            println(<"defined", defined>);
         }
-
-        // i += 1;
-        // if(i > 4) break;
     } while (prevGrammar != grammar);
-
-    println("end");
 
     return <warnings, grammar>;
 }

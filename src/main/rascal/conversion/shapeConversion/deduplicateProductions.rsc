@@ -47,9 +47,9 @@ ConversionGrammar deduplicateProductions(
             for(replaceSym <- replaceSyms)
                 productions = replaceSymbol(productions, replaceSym, sym);
 
-            // referenceSyms = {rSym | rSym <- class, rSym != sym, dedupeBehavior(rSym)==reference()};
-            // for(referenceSym <- referenceSyms)
-            //     productions = referenceSymbol(productions, referenceSym, sym);
+            referenceSyms = {rSym | rSym <- class, rSym != sym, dedupeBehavior(rSym)==reference()};
+            for(referenceSym <- referenceSyms)
+                productions = referenceSymbol(productions, referenceSym, sym);
         }
     }
 

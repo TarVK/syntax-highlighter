@@ -70,7 +70,6 @@ list[Warning] checkAlternativesOverlap(ConversionGrammar grammar) {
 
     for(sym <- grammar.productions<0>) {
         alternations = getAlternations(grammar, sym);
-        println(<size(alternations), sym, removeRegexCache([alt.parts | <_, alt> <- alternations])>);
         for(
             <alt1, alt1Prod> <- alternations, 
             <alt2, alt2Prod> <- alternations,
@@ -80,8 +79,6 @@ list[Warning] checkAlternativesOverlap(ConversionGrammar grammar) {
                 out += alternativesOverlap(alt1Prod, alt2Prod, overlap);
         }
     }
-
-    println(size(out));
 
     return out;
 }
@@ -110,12 +107,13 @@ list[Warning] checkClosingExpressionOverlap(ConversionGrammar grammar) {
         followExpressions = allFollowExpressions[sym];
         for(
             <alt, altProd> <- alternations, 
-            <follow, followProds> <- followExpressions
+            followExpr <- followExpressions
         ) {
-            if(just(overlap) := getOverlap(alt, follow))
-                out += closingOverlap(altProd, follow, followProds, overlap);
-            else if(just(overlap) := getOverlap(follow, alt))
-                out += closingOverlap(altProd, follow, followProds, overlap);
+            followProds = followExpressions[followExpr];
+            if(just(overlap) := getOverlap(alt, followExpr))
+                out += closingOverlap(altProd, followExpr, followProds, overlap);
+            else if(just(overlap) := getOverlap(followExpr, alt))
+                out += closingOverlap(altProd, followExpr, followProds, overlap);
         }
     }
 

@@ -35,23 +35,14 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
 
     // First add all union symbols without simplication
     undefinedUnionSyms = {sym | sym <- unionSyms, size(grammar.productions[sym])==0};
-    println(<"union", size(undefinedUnionSyms), undefinedUnionSyms>);
     if(size(undefinedUnionSyms)==0) return <[], {}, grammar>;
     for(unionSym <- undefinedUnionSyms) {
         <newSymM, grammar> = addUnionSymbol(unionSym, grammar, {}); // Skip subset simplficiation for now
         if(just(newSym) := newSymM) newlyDefined += newSym;
     }
 
-        
-    // Then calculate all subsets and perform simplification
-    subsets = getSubsetSymbols(grammar);
-    // println(<"subsets", subsets - {<s, s> | s <- grammar.productions<0>}>);
-    map[Symbol, set[ConvProd]] prods = Relation::index(grammar.productions);
-    for(unionSym <- undefinedUnionSyms) {
-        <newSymM, simplified, grammar> = addReducedUnionSymbol(unionSym, grammar, prods, subsets);
-        if(simplified) newlyDefined -= unionSym;
-        if(just(newSym) := newSymM) newlyDefined += newSym;
-    }
+    // Then simplify things by deduplicating
+    grammar = deduplicateProductionsRespectingUnions(grammar);
 
     // The defined union symbols will have two consecutive symbols at the end, we need to remove these
     <warnings, grammar> = combineConsecutiveSymbols(grammar);
@@ -285,11 +276,16 @@ ConversionGrammar deduplicateProductionsRespectingUnions(ConversionGrammar gramm
         grammar,
         Symbol(Symbol a, Symbol b) {
             if(grammar.\start == a) return a;
-            return b;
+            if(grammar.\start == b) return b;
+            if(custom("unionU", _) := a) return b;
+            if(custom("unionU", _) := b) return a;
+            if(custom("union", _) := a) return b;
+            if(custom("union", _) := b) return a;
+            return a;
         },
         DedupeType(Symbol s) {
             switch(s) {
-                case custom("unionU", _): return keep();
+                case custom("unionU", _): return reference();
                 case custom("union", _): return reference();
                 default: return replace();
             }

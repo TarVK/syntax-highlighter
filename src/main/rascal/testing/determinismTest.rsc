@@ -7,13 +7,14 @@ import ValueIO;
 
 import Visualize;
 import regex::PSNFA;
+import conversion::util::RegexCache;
+import conversion::util::Simplification;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::determinism::Determinism;
 import conversion::shapeConversion::ShapeConversion;
-import conversion::util::RegexCache;
 import conversion::shapeConversion::util::getEquivalentSymbols;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::makePrefixedRightRecursive;
@@ -67,18 +68,18 @@ import conversion::shapeConversion::makePrefixedRightRecursive;
 // lexical KW = "if" | "else";
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
-syntax A = Stmt*;
-syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
-            | iff: "if" "(" Exp ")" Stmt
-            | assign: Id "=" Exp;
-syntax Exp = brac: "(" Exp ")"
-           | plus: Exp "+" Exp
-           | id: Id
-           | nat: Natural;
-layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
-lexical Id  = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-lexical KW = "if" | "else";
-lexical Natural = [0-9]+ !>> [a-z0-9];
+// syntax A = Stmt*;
+// syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
+//             | iff: "if" "(" Exp ")" Stmt
+//             | assign: Id "=" Exp;
+// syntax Exp = brac: "(" Exp ")"
+//            | plus: Exp "+" Exp
+//            | id: Id
+//            | nat: Natural;
+// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+// lexical Id  = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// lexical KW = "if" | "else";
+// lexical Natural = [0-9]+ !>> [a-z0-9];
 
 
 // syntax A = Stmt;
@@ -92,18 +93,19 @@ lexical Natural = [0-9]+ !>> [a-z0-9];
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
 
-// syntax A = Stmt*;
-// syntax Stmt = forIn: "for" "(" Id "in" Exp ")" Stmt "else" Stmt
-//             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
-//             | assign: Id "=" Exp;
-// syntax Exp = brac: "(" Exp ")"
-//            | plus: Exp "+" Exp
-//            | id: Id \ KW
-//            | nat: Natural;
-// layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
-// keyword KW = "for";
-// lexical Id  = [a-z][a-z0-9]* !>> [a-z0-9];
-// lexical Natural = [0-9]+ !>> [a-z0-9];
+syntax A = Stmt*;
+syntax Stmt = forIn: "for" "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
+            | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
+            | assign: Id "=" Exp;
+syntax Exp = brac: "(" Exp ")"
+           | plus: Exp "+" Exp
+           | inn: Exp "in" Exp
+           | id: Id
+           | nat: Natural;
+layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
+keyword KW = "for"|"in";
+lexical Id  = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+lexical Natural = [0-9]+ !>> [a-z0-9];
 
 
 // syntax A = Stmt*;
@@ -172,13 +174,18 @@ void main() {
     
     <cWarnings, conversionGrammar> = toConversionGrammar(#A);
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
+    inputGrammar = conversionGrammar;
     // <_, inputGrammar> = makePrefixedRightRecursive(conversionGrammar);
     
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
     // subsets = getSubsetSymbols(conversionGrammar);
 
-    inputGrammar = conversionGrammar;
     <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar);
+
+    conversionGrammar = removeUnreachable(conversionGrammar);
+    conversionGrammar = removeAliases(conversionGrammar);
+    conversionGrammar = relabelGenerated(conversionGrammar);
+
 
     classes = getEquivalentSymbols(conversionGrammar);
     stdGrammar = fromConversionGrammar(conversionGrammar);

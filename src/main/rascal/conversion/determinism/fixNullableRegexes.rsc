@@ -43,12 +43,14 @@ import Warning;
     E -> e E
     ```
 }
-WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar){
+WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar) 
+    = fixNullableRegexes(grammar, grammar.productions<0>);
+WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar, set[Symbol] symbols){
     list[Warning] warnings = [];
 
     // Detect the empty paths
     prods = Relation::index(grammar.productions);
-    paths = findEmptyPaths(prods);
+    paths = findEmptyPaths(prods, symbols);
 
     while(size(paths)>0) {
         // Resolve the empty paths
@@ -61,7 +63,7 @@ WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar){
         grammar.productions = toRel(newProds);
 
         // Merge symbols that may be adedd by resolving paths
-        <combineWarnings, grammar> = combineConsecutiveSymbols(grammar);
+        <combineWarnings, newlyDefined, grammar> = combineConsecutiveSymbolsWithDefinedSymbols(grammar);
         warnings += combineWarnings;
 
         // Remove duplicate symbols and productions
@@ -69,7 +71,7 @@ WithWarnings[ConversionGrammar] fixNullableRegexes(ConversionGrammar grammar){
 
         // Recalculate, new union symbols might have introduced new paths
         prods = Relation::index(grammar.productions);
-        paths = findEmptyPaths(prods);
+        paths = findEmptyPaths(prods, newlyDefined);
     }
 
 
@@ -144,9 +146,9 @@ alias EmptyPath = list[tuple[
     B -> /b/ B
     ```
 }
-map[Symbol, set[EmptyPath]] findEmptyPaths(ProdMap prods) {    
+map[Symbol, set[EmptyPath]] findEmptyPaths(ProdMap prods, set[Symbol] symbols) {    
     map[Symbol, set[EmptyPath]] paths = ();
-    for(sym <- prods) {
+    for(sym <- symbols) {
         symPaths = findEmptyPaths(sym, Regex::empty(), [], prods);;
         if(size(symPaths)>0)
             paths[sym] = symPaths;

@@ -39,9 +39,16 @@ data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd p
     CA -> Y CA
     ```
 }
-WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar grammar) {
+WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar grammar)
+    = combineConsecutiveSymbolsWithDefinedSymbols(grammar)<0, 2>;
+tuple[
+    list[Warning],
+    set[Symbol],
+    ConversionGrammar
+] combineConsecutiveSymbolsWithDefinedSymbols(ConversionGrammar grammar) {
     list[Warning] warnings = [];
 
+    set[Symbol] allDefinedSymbols = {};
     bool changed;
     do{
         changed = false;
@@ -55,13 +62,14 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
             println("start");
             <unionWarnings, defined, grammar> = defineUnionSymbols(grammar);
             warnings += unionWarnings;
+            allDefinedSymbols += defined;
             println("end");
 
             if(size(defined)==0) break;
         }
     } while (changed);
 
-    return <warnings, grammar>;
+    return <warnings, allDefinedSymbols, grammar>;
 }
 
 /**
@@ -122,7 +130,7 @@ tuple[
                     spacerRegex, 
                     getWithoutLabel(ref), 
                     grammar,
-                    convProdSource(prod)
+                    prod
                 );
 
                 prevSymbol = just(<copyLabel(prevRef, newSymbol), scopes>);
@@ -151,20 +159,17 @@ tuple[
     Creates a symbol that includes the language defined by being able to perform the sequence of the three parts in a row.
 
     
-    By default a unionRec is used:
-    unionRec(startOption|regex|endOption, ())
+    We use a unionRec to achieve this:
+    unionRec(startOption|regex|endOption)
 
-    However if the startOption is a unionRec itself, and contains an end sequence, we take special care to not broaden the language too much.
-
-    E.g. for input `startOption = {unionRec(A, convSeq("smth" B))}`,
-    instead of generating the standard (after normalization):
+    If a sequence is present, we already take out symbols on the right of the sequence, since this results in an equivalent language with less redudant data in the specification. E.g.
+    given an input:
     ```
-    unionRec(A|convSeq("smth" B)|endOption, ())
+    startOption=convSeq("x" A)
     ```
-
-    We generate
+    We generate:
     ```
-    unionRec(A, convSeq("smth" unionRec(B|endOption, )))
+    unionRec(convSeq("x")|A|regex|endOption)
     ```
 */
 tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
@@ -172,93 +177,49 @@ tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
     Maybe[Regex] regex, 
     Symbol endOption, 
     ConversionGrammar grammar,
-    SourceProd source
+    ConvProd source
 ) {
-    // We can append if we have a clear end option
-    if(
-        unionRec(startStartOptions, startEndOptions) := startOption, 
-        all(seo <- startEndOptions, convSeq(_) := seo),
-        // Make sure there is a non-empty sequence
-        any(seo <- startEndOptions, convSeq([f, *rest]) := seo)
-    ) {
-        suffix = just(r) := regex ? [regexp(r), symb(endOption, [])] : [symb(endOption, [])];
-        // TODO: consider adding recursion regex to start options instead
-
-        list[Warning] warnings = [];
-        set[Symbol] endOptions = {};
-        for(seqSym <- startEndOptions){
-            if({p:convProd(lDef, parts, sources)} := grammar.productions[seqSym]) {
-                newSources = {*sources, source};
-                <cWarnings, cParts, grammar> = getCombinedConsecutiveSymbols(
-                    convProd(lDef, [*parts, *suffix], newSources), 
-                    grammar
-                );
-                warnings += cWarnings;
-
-                <dWarnings, newSeqSym, grammar> = defineSequenceSymbol(
-                    cParts, 
-                    newSources, 
-                    grammar
-                );
-                endOptions += newSeqSym;
-            } else {
-                println(<"Error for ", seqSym>);
-            }
-        }
-
-        <nWarnings, grammar, beginOptions, endOptions> 
-            = normalizeUnionParts(startStartOptions, endOptions, grammar);
-        warnings += nWarnings;
-        // println(removeRegexCache(<beginOptions, endOptions>));
-        return <warnings, unionRec(beginOptions, endOptions), grammar>;
-    }
+    list[Warning] warnings = [];
 
     // Otherwise we hit the default case
-    set[Symbol] recOptions = {startOption};
+    set[Symbol] recOptions = {startOption, endOption};
     if(just(r) := regex) {
-        <_, seqSymbol, grammar> := defineSequenceSymbol(
+        <dWarnings, seqSymbol, grammar> := defineSequenceSymbol(
             [regexp(r)], 
-            {convProdSource(prod)}, 
+            source, 
             grammar
         );
+        warnings += dWarnings;
         recOptions += seqSymbol;
     }
 
     // Create the parts and make sure we simplify sequences when possible
-    // TODO: add a setting to choose between these
-    <warnings, emptySeq, grammar> = defineSequenceSymbol([], {source}, grammar);
-    <nWarnings, grammar, beginOptions, endOptions> 
-        = normalizeUnionParts(recOptions+{endOption}, {emptySeq}, grammar);
-        // = normalizeUnionParts(recOptions, {endOption}, grammar);
-
+    <nWarnings, grammar, options> = normalizeUnionParts(recOptions, grammar);
     warnings += nWarnings;
-    return <warnings, unionRec(beginOptions, endOptions), grammar>;
+
+    return <warnings, unionRec(options), grammar>;
 }
 
 
 tuple[
     list[Warning], 
     ConversionGrammar, 
-    set[Symbol],
     set[Symbol]
 ] normalizeUnionParts(
-    set[Symbol] recOptionsInp,
-    set[Symbol] endOptionsInp,
+    set[Symbol] optionsInp,
     ConversionGrammar gr
 ) { 
-    switch(<recOptionsInp, endOptionsInp>) {
-        case <{convSeq([]), *recOptions}, endOptions>:
-            return normalizeUnionParts(recOptions, endOptions, gr);
-        case <{unionRec(ro, eo), *recOptions}, endOptions>:
-            return normalizeUnionParts({*ro, *eo, *recOptions}, endOptions, gr);
-        case <recOptions, {unionRec(ro, eo), *endOptions}>:
-            return normalizeUnionParts({*ro, *recOptions}, {*eo, *endOptions}, gr);
-        case <{op, *recOptions}, {op, *endOptions}>:
-            return normalizeUnionParts({op, *recOptions}, endOptions, gr);
+    switch(optionsInp) {
+        case {convSeq([]), *recOptions}:
+            return normalizeUnionParts(recOptions, gr);
+        case {unionRec(ro), *recOptions}:
+            return normalizeUnionParts({*ro, *recOptions}, gr);
         // Remove the symbol suffix of any sequences in recursion
-        case <{s:convSeq(parts:[*_, symb(_, _)]), *recOptions}, endOptions>: {
+        case {s:convSeq(parts:[*_, symb(_, _)]), *recOptions}: {
             list[Warning] warnings = [];
+
             sourceProd = getOneFrom(gr.productions[s]);
+            parts = sourceProd.parts; // This version includes the regex caches
             while([*partsPrefix, symb(ref, scopes)] := parts) {
                 parts = partsPrefix;
                 recOptions += ref;
@@ -266,15 +227,15 @@ tuple[
                     warnings += incompatibleScopesForUnion({<ref, scopes>}, sourceProd);
             }
             <sWarnings, newSeqSym, gr> 
-                = defineSequenceSymbol(parts, {convProdSource(sourceProd)}, gr);
+                = defineSequenceSymbol(parts, sourceProd, gr);
             warnings += sWarnings;
 
-            <rWarnings, gr, ro, eo> = normalizeUnionParts({newSeqSym, *recOptions}, endOptions, gr);
-            return <rWarnings + warnings, gr, ro, eo>;
+            <rWarnings, gr, ro> = normalizeUnionParts({newSeqSym, *recOptions}, gr);
+            return <rWarnings + warnings, gr, ro>;
         }
     }
 
-    return <[], gr, recOptionsInp, endOptionsInp>;
+    return <[], gr, optionsInp>;
 }
 
 bool containsProd(

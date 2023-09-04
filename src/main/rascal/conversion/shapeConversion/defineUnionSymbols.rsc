@@ -22,17 +22,15 @@ import Warning;
     Defines all unioSymbols that are used in the grammar, but not yet defined in the grammar.
     Returns the set of newly created (reduced) union symbols (that aren't aliases for other symbols), together with the resulting grammar
 }
-tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(ConversionGrammar grammar)
-    = defineUnionSymbols(grammar, false);
-tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(ConversionGrammar grammar, bool br) {
+tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(ConversionGrammar grammar) {
     orGrammar = grammar;
 
     set[Symbol] newlyDefined = {};
 
     set[Symbol] unionSyms = {};
     for(<_, convProd(_, parts, _)> <- grammar.productions) {
-        unionSyms += {s | symb(s:unionRec(_, _), _) <- parts};
-        unionSyms += {s | symb(label(_, s:unionRec(_, _)), _) <- parts};
+        unionSyms += {s | symb(s:unionRec(_), _) <- parts};
+        unionSyms += {s | symb(label(_, s:unionRec(_)), _) <- parts};
     }
 
     // First add all union symbols without simplication
@@ -46,11 +44,9 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
     // Then simplify things by deduplicating
     grammar = deduplicateProductionsRespectingUnions(grammar);
 
-    if(br) 
-        return <[], newlyDefined, grammar>;
-
     // The defined union symbols will have two consecutive symbols at the end, we need to remove these
-    <warnings, grammar> = combineConsecutiveSymbols(grammar);
+    <warnings, recDefined, grammar> = combineConsecutiveSymbolsWithDefinedSymbols(grammar);
+    newlyDefined += recDefined;
     
     return <warnings, newlyDefined, grammar>;
 }
@@ -58,13 +54,12 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
 bool exists(Symbol s, ConversionGrammar grammar) = size(grammar.productions[s]) != 0;
 
 tuple[Maybe[Symbol], ConversionGrammar] addUnionSymbol(
-    s:unionRec(recOptions, endOptions),
+    s:unionRec(recOptions),
     ConversionGrammar grammar
 ) {
     if(exists(s, grammar)) return <nothing(), grammar>;
 
     recProds = {p | sym <- recOptions, p <- grammar.productions[followAlias(sym, grammar)]};
-    endProds = {p | sym <- endOptions, p <- grammar.productions[followAlias(sym, grammar)]} - recProds;
 
     sourceProds = {
                     convProd(
@@ -73,14 +68,6 @@ tuple[Maybe[Symbol], ConversionGrammar] addUnionSymbol(
                         {convProdSource(p)}
                     ) 
                     | p:convProd(lDef, parts, _) <- recProds
-                }
-                + {
-                    convProd(
-                        copyLabel(lDef, s), 
-                        parts, 
-                        {convProdSource(p)}
-                    ) 
-                    | p:convProd(lDef, parts, _) <- endProds
                 };
 
     grammar.productions += {<s, prod> | prod <- sourceProds};
@@ -100,8 +87,8 @@ ConversionGrammar deduplicateProductionsRespectingUnions(ConversionGrammar gramm
         Symbol(Symbol a, Symbol b) {
             if(grammar.\start == a) return a;
             if(grammar.\start == b) return b;
-            if(unionRec(_, _) := a) return b; // Deprioritize unions to be kept as definitions
-            if(unionRec(_, _) := b) return a;
+            if(unionRec(_) := a) return b; // Deprioritize unions to be kept as definitions
+            if(unionRec(_) := b) return a;
             return a;
         },
         DedupeType(Symbol s) {

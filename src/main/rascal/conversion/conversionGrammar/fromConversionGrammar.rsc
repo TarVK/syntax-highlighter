@@ -198,5 +198,5 @@ Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
 &T removeCustomSymbols(&T grammar) = 
     visit(grammar) {
         case convSeq(parts) => \seq([s | p <- parts, just(s) := convSymbolToSymbol(p)])
-        case unionRec(recOptions, endOptions) => custom("unionR", \seq([\alt(recOptions), \alt(endOptions)]))
+        case unionRec(recOptions) => custom("UR", \alt(recOptions))
     };

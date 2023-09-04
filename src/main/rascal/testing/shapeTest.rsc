@@ -8,13 +8,14 @@ import Set;
 
 import Visualize;
 import regex::PSNFA;
+import conversion::util::RegexCache;
+import conversion::util::Simplification;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::shapeConversion::ShapeConversion;
 import conversion::shapeConversion::defineUnionSymbols;
-import conversion::util::RegexCache;
 import conversion::determinism::expandFollow;
 
 syntax A = Stmt*;
@@ -66,6 +67,11 @@ void main() {
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
     println("overlap");
     conversionGrammar = fixOverlap(conversionGrammar, 1);
+
+    
+    conversionGrammar = removeUnreachable(conversionGrammar);
+    conversionGrammar = removeAliases(conversionGrammar);
+    conversionGrammar = relabelGenerated(conversionGrammar);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
 

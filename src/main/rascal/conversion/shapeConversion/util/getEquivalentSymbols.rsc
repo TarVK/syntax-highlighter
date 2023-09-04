@@ -34,24 +34,49 @@ set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar, bool rightRecur
         {convProd(_, [symb(aliasFor, _)], _)} := prods[sym]
     };
 
+    // map[Symbol, set[Symbol]] dependencies = Relation::index({
+    //     <sym, dep>
+    //     | <sym, convProd(_, parts, _)> <- grammar/productions,
+    //     symb(dep, _) <- parts
+    // });
+    rel[Symbol, Symbol] dependents = {
+        <dep, sym>
+        | <sym, convProd(_, parts, _)> <- grammar.productions,
+        symb(dep, _) <- parts
+    };
+
+    set[set[Symbol]] queue = classes;
+
     bool stable = false;
     while(!stable) {
         stable = true;
-        classLoop: for(class <- classes) {
+        classLoop: while({class, *rest} := queue) {
+            queue = rest;
             if(size(class) <= 1) continue classLoop;
 
-            for(sym <- class - aliases<1>) {
-                for(prod <- prods[sym]) {
-                    <contains, notContains> = split(class, prod, prods, classMap, rightRecursive);
-                    <contains, notContains> = followAliases(contains, notContains, aliases);
-                    if(size(notContains)>0){
-                        classes = classes - {class} + {contains, notContains};
-                        for(c <- contains) classMap[c] = contains;
-                        for(c <- notContains) classMap[c] = notContains;
+            splitters = {
+                splitter
+                | sym <- class - aliases<1>,
+                convProd(_, splitter, _) <- prods[sym]
+            };
+            for(splitter <- splitters) {
+                <contains, notContains> = split(class, splitter, prods, classMap, rightRecursive);
+                <contains, notContains> = followAliases(contains, notContains, aliases);
+                if(size(notContains)>0){
+                    classes = classes - {class} + {contains, notContains};
+                    for(c <- contains) classMap[c] = contains;
+                    for(c <- notContains) classMap[c] = notContains;
 
-                        stable = false;
-                        continue classLoop;
-                    }
+                    /*
+                        We need to check the newly created classes to see whether further splits are possible,
+                        And for any classes that contain symbols that depent on elemens of the newly split class, we also need to check if they are still stable
+                    */
+                    queue += {contains, notContains};
+                    for(dependent <- dependents[class])
+                        queue += {classMap[dependent]};
+
+                    stable = false;
+                    continue classLoop;
                 }
             }
         }
@@ -87,7 +112,7 @@ tuple[
     set[Symbol] notContains
 ] split(
     set[Symbol] symbols,  
-    ConvProd splitter, 
+    list[ConvSymbol] splitter, 
     map[Symbol, set[ConvProd]] prods,
     ClassMap classMap,
     bool rightRecursive
@@ -97,12 +122,13 @@ tuple[
 
     for(sym <- symbols) {
         bool doesContain = false;
-        for(prod <- prods[sym]) {
-            if(prodsEqual(prod, splitter, classMap, rightRecursive)) {
+        for(convProd(_, parts, _) <- prods[sym]) {
+            if(prodsEqual(parts, splitter, classMap, rightRecursive)) {
                 doesContain = true;
                 break;
             }
         }
+        
         if(doesContain) contains += sym;
         else            notContains += sym;
     }
@@ -110,7 +136,9 @@ tuple[
     return <contains, notContains>;
 }
 
-bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMap, bool rightRecursive) {
+bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMap, bool rightRecursive)
+    = prodsEqual(aParts, bParts, classMap, rightRecursive);
+bool prodsEqual(list[ConvSymbol] aParts, list[ConvSymbol]  bParts, ClassMap classMap, bool rightRecursive) {
     if(rightRecursive) {
         aParts = mergeEqual(aParts, classMap);
         bParts = mergeEqual(bParts, classMap);
@@ -120,13 +148,15 @@ bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMa
     bSize = size(bParts);
     if(aSize != bSize) return false;
 
+    set[tuple[Regex, Regex]] regexChecks = {};
     for(i <- [0..aSize]) {
         pa = aParts[i];
         pb = bParts[i];
 
         if(regexp(ra) := pa) {
             if(regexp(rb) := pb) {
-                if(!equals(ra, rb)) return false;
+                // Store regex to check instead of checking immediately, because these checks are somewhat expensive and not always needed if the structure isn't the same
+                regexChecks += <ra, rb>;
             } else 
                 return false;
         } else if(symb(symA, scopesA) := pa) {
@@ -141,6 +171,9 @@ bool prodsEqual(convProd(_, aParts, _), convProd(_, bParts, _), ClassMap classMa
                 return false;
         }
     }
+
+    for(<ra, rb> <- regexChecks)
+        if(!equals(ra, rb)) return false;
 
     return true;
 }

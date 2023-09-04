@@ -11,8 +11,9 @@ import conversion::shapeConversion::util::overlapsAlternation;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::compareProds;
 import conversion::shapeConversion::util::getComparisonProds;
-import conversion::shapeConversion::unionSym;
-import conversion::determinism::defineUnionSymbols;
+import conversion::shapeConversion::customSymbols;
+import conversion::shapeConversion::defineUnionSymbols;
+import conversion::shapeConversion::defineSequenceSymbol;
 import conversion::util::RegexCache;
 import regex::PSNFATools;
 import regex::Regex;
@@ -41,22 +42,24 @@ data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd p
 WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar grammar) {
     list[Warning] warnings = [];
 
-    prevGrammar = grammar;
-    // i = 0;
+    bool changed;
     do{
-        prevGrammar = grammar;
-        for(<sym, prod> <- grammar.productions) {
-            <newWarnings, grammar> = combineConsecutiveSymbols(prod, grammar);
+        changed = false;
+        for(<sym, prod> <- grammar.productions, convProd(_, [symb(_, _)], _) !:= prod) {
+            <newWarnings, changedProd, grammar> = combineConsecutiveSymbols(prod, grammar);
             warnings += newWarnings;
+            if(changedProd) changed = true;
         }
 
-        if(prevGrammar != grammar) {
+        if(changed) {
+            println("start");
             <unionWarnings, defined, grammar> = defineUnionSymbols(grammar);
             warnings += unionWarnings;
+            println("end");
 
             if(size(defined)==0) break;
         }
-    } while (prevGrammar != grammar);
+    } while (changed);
 
     return <warnings, grammar>;
 }
@@ -65,10 +68,34 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(ConversionGrammar gram
     Note that we don't hve to prove that the subset relation is maintained when merging symbols. It might be maintained, or it might not be maintained. Regardless of this, if the relation is not maintained during merges, we still get the output we're after. We use the subset relation to determine whether a merge correctly maintains all tokenizations that are present in the spec. If more tokenizations are added because of a merge, we don't necessarily have to maintain those during subsequent merges, so we do not care if the subset relation now gives a false positive w.r.t. to the current grammar. We only care about the subset relation ensuring that it's correct w.r.t. the input specification, which it will be because the grammar is only ever broadened. 
 */
 
-WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, parts, sources), ConversionGrammar grammar) {
+tuple[
+    list[Warning] warnings,
+    bool changed,
+    ConversionGrammar grammar 
+] combineConsecutiveSymbols(
+    prod:convProd(lDef, parts, sources), 
+    ConversionGrammar grammar
+) {
+    <warnings, newParts, grammar> = getCombinedConsecutiveSymbols(prod, grammar);
+
+    if(parts == newParts) return <warnings, false, grammar>;
+
+    pureDef = getWithoutLabel(lDef);
+    grammar.productions -= {<pureDef, prod>};
+    grammar.productions += {<pureDef, convProd(lDef, newParts, {convProdSource(prod)})>};
+    
+    return <warnings, true, grammar>;
+}
+tuple[
+    list[Warning] warnings,
+    list[ConvSymbol] parts,
+    ConversionGrammar grammar
+] getCombinedConsecutiveSymbols(
+    prod:convProd(_, parts, _), 
+    ConversionGrammar grammar
+) {
     list[Warning] warnings = [];
 
-    bool modified = false;
     Maybe[tuple[Symbol, Scopes]] prevSymbol = nothing();
     Maybe[Regex] spacerRegex = nothing();
     void flush() {
@@ -87,42 +114,23 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
             if (just(<prevRef, prevScopes>) := prevSymbol) {
                 if(prevScopes != scopes)
                     warnings += incompatibleScopesForUnion({<ref, scopes>, <prevRef, prevScopes>}, prod);
-
                 else if(scopes != [] && just(_) := spacerRegex)
                     warnings += incompatibleScopesForUnion({<ref, scopes>}, prod);
 
-                modified = true;
-
-                set[tuple[Regex, set[SourceProd]]] regexes = just(r) := spacerRegex
-                    ? {<spacerRegex, {convProdSource(prod)}>}
-                    : {};
-                newSymbol = unionSym({getWithoutLabel(ref), getWithoutLabel(prevRef)}, regexes);
+                <sWarnings, newSymbol, grammar> = createSequence(
+                    getWithoutLabel(prevRef), 
+                    spacerRegex, 
+                    getWithoutLabel(ref), 
+                    grammar,
+                    convProdSource(prod)
+                );
 
                 prevSymbol = just(<copyLabel(prevRef, newSymbol), scopes>);
                 spacerRegex = nothing();
             } else {
                 prevSymbol = just(<ref, scopes>);
             }
-        } else if(regexp(regex) := part) {
-            // bool normalRegex = true;
-            // if(acceptsEmpty(regex), just(<A, _>) := prevSymbol) {
-            //     // Let A X B be a sequence of symbols in parts, where X represents regex
-            //     // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
-            //     // They only apply at once, if X overlaps with an alternation of A
-
-            //     overlaps = overlapsAlternation(A, regex, grammar);
-            //     if(overlaps) {
-            //         spacerRegex = just(regex);
-            //         normalRegex = false;
-            //     }
-            // }
-            
-            // if(normalRegex) {
-            //     flush();
-            //     outParts += part;
-            // }
-
-            
+        } else if(regexp(regex) := part) {            
             // Let A X B be a sequence of symbols in parts, where X represents regex
             // Even if X accepts an empty string, depending on the lookahead/behind of the regex, A and B might never apply at once
             // We know that A can always be skipped if X accepts the empty string without restrictions, hence we merge in this case. If X accepts the empty string with restrictions, we simply hope that the overlap with A is minimal (and we might choose to merge in a later step of the algorithm)
@@ -136,86 +144,138 @@ WithWarnings[ConversionGrammar] combineConsecutiveSymbols(prod:convProd(lDef, pa
     }
     flush();
 
-    if(!modified) return <warnings, grammar>;
-
-    pureDef = getWithoutLabel(lDef);
-    grammar.productions -= {<pureDef, prod>};
-    grammar.productions += {<pureDef, convProd(lDef, outParts, {convProdSource(prod)})>};
-    
-    return <warnings, grammar>;
+    return <warnings, outParts, grammar>;
 }
 
-// tuple[ConversionGrammar, Symbol, bool] combineSymbols(
-//     Symbol ref, 
-//     Symbol prevRef, 
-//     Maybe[Regex] spacerRegex, 
-//     ConvProd source,
-//     ConversionGrammar grammar,
-//     rel[Symbol, Symbol] subsets
-// ) { 
-//     // Retrieve data for comparison (including the regular expression if specified)
-//     pureRef = getWithoutLabel(ref);
-//     purePrevRef = getWithoutLabel(prevRef);
+/*
+    Creates a symbol that includes the language defined by being able to perform the sequence of the three parts in a row.
 
-//     refProds = grammar.productions[pureRef];
-
-//     prevRefProds = grammar.productions[purePrevRef];
-
-//     // Check if one set of productions is already contained in the other
-//     Maybe[tuple[Symbol, set[ConvProd]]] superset = nothing();
-
-//     bool refIncluded = <pureRef, purePrevRef> in subsets;
-//     bool prevRefIncluded = <purePrevRef, pureRef> in subsets;
-
-//     bool regexIncluded(Symbol sym) = just(r) := spacerRegex
-//         ? containsProd(sym, convProd(sym, [regexp(r), symb(sym, [])], {}), grammar, subsets)
-//         : true;
-//     bool regexIncludedInRef = regexIncluded(pureRef);
-//     bool regexIncludedInPrevRef = regexIncluded(purePrevRef);
-
-//     if(refIncluded && regexIncludedInPrevRef) 
-//         superset = just(<purePrevRef, prevRefProds>);
-//     else if(prevRefIncluded && regexIncludedInRef) 
-//         superset = just(<pureRef, refProds>);
-
-//     if(just(<supersetRef, supersetProds>) := superset) {
-//         return <grammar, supersetRef, false>;
-//     }
-
-//     // If a regular expression was added, or neither production set is a superset of the other, create a new union set of all these productions
-//     set[Symbol] defParts = {};
-//     set[tuple[Regex, set[SourceProd]]] expressions = {};
-//     set[ConvProd] prods = {};
-//     if(!refIncluded) {
-//         defParts += pureRef;
-//         prods += refProds;
-//     }
-//     if(!(prevRefIncluded && !refIncluded)) {
-//         defParts += purePrevRef;
-//         prods += prevRefProds;
-//     }
-//     bool regexIncluded = regexIncludedInRef && !refIncluded || regexIncludedInPrevRef && !prevRefIncluded;
-//     if(!regexIncluded && just(r) := spacerRegex)
-//         expressions += <r, {}>; // Sources only have to be included if the union symbol is not defined directly
-
-//     newSym = unionSym(defParts, expressions);
-
-//     bool alreadyCreated = size(grammar.productions[newSym])>0;
-//     if(alreadyCreated) return <grammar, newSym, false>;
     
-//     if(!regexIncluded && just(r) := spacerRegex)
-//         prods += {convProd(newSym, [regexp(r), symb(newSym, [])], {convProdSource(source)})};
-    
-//     rel[Symbol, ConvProd] mergedProds = {};
-//     for(p:convProd(lDef, parts, _) <- prods) {
-//         newParts = size(parts) == 0 ? [] : [*parts, symb(newSym, [])];
-//         mergedProds += {<newSym, convProd(copyLabel(lDef, newSym), newParts, {convProdSource(p)})>};
-//     }
+    By default a unionRec is used:
+    unionRec(startOption|regex|endOption, ())
 
-//     grammar.productions += mergedProds;
-//     return <grammar, newSym, true>;
-// }
+    However if the startOption is a unionRec itself, and contains an end sequence, we take special care to not broaden the language too much.
 
+    E.g. for input `startOption = {unionRec(A, convSeq("smth" B))}`,
+    instead of generating the standard (after normalization):
+    ```
+    unionRec(A|convSeq("smth" B)|endOption, ())
+    ```
+
+    We generate
+    ```
+    unionRec(A, convSeq("smth" unionRec(B|endOption, )))
+    ```
+*/
+tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
+    Symbol startOption, 
+    Maybe[Regex] regex, 
+    Symbol endOption, 
+    ConversionGrammar grammar,
+    SourceProd source
+) {
+    // We can append if we have a clear end option
+    if(
+        unionRec(startStartOptions, startEndOptions) := startOption, 
+        all(seo <- startEndOptions, convSeq(_) := seo),
+        // Make sure there is a non-empty sequence
+        any(seo <- startEndOptions, convSeq([f, *rest]) := seo)
+    ) {
+        suffix = just(r) := regex ? [regexp(r), symb(endOption, [])] : [symb(endOption, [])];
+        // TODO: consider adding recursion regex to start options instead
+
+        list[Warning] warnings = [];
+        set[Symbol] endOptions = {};
+        for(seqSym <- startEndOptions){
+            if({p:convProd(lDef, parts, sources)} := grammar.productions[seqSym]) {
+                newSources = {*sources, source};
+                <cWarnings, cParts, grammar> = getCombinedConsecutiveSymbols(
+                    convProd(lDef, [*parts, *suffix], newSources), 
+                    grammar
+                );
+                warnings += cWarnings;
+
+                <dWarnings, newSeqSym, grammar> = defineSequenceSymbol(
+                    cParts, 
+                    newSources, 
+                    grammar
+                );
+                endOptions += newSeqSym;
+            } else {
+                println(<"Error for ", seqSym>);
+            }
+        }
+
+        <nWarnings, grammar, beginOptions, endOptions> 
+            = normalizeUnionParts(startStartOptions, endOptions, grammar);
+        warnings += nWarnings;
+        // println(removeRegexCache(<beginOptions, endOptions>));
+        return <warnings, unionRec(beginOptions, endOptions), grammar>;
+    }
+
+    // Otherwise we hit the default case
+    set[Symbol] recOptions = {startOption};
+    if(just(r) := regex) {
+        <_, seqSymbol, grammar> := defineSequenceSymbol(
+            [regexp(r)], 
+            {convProdSource(prod)}, 
+            grammar
+        );
+        recOptions += seqSymbol;
+    }
+
+    // Create the parts and make sure we simplify sequences when possible
+    // TODO: add a setting to choose between these
+    <warnings, emptySeq, grammar> = defineSequenceSymbol([], {source}, grammar);
+    <nWarnings, grammar, beginOptions, endOptions> 
+        = normalizeUnionParts(recOptions+{endOption}, {emptySeq}, grammar);
+        // = normalizeUnionParts(recOptions, {endOption}, grammar);
+
+    warnings += nWarnings;
+    return <warnings, unionRec(beginOptions, endOptions), grammar>;
+}
+
+
+tuple[
+    list[Warning], 
+    ConversionGrammar, 
+    set[Symbol],
+    set[Symbol]
+] normalizeUnionParts(
+    set[Symbol] recOptionsInp,
+    set[Symbol] endOptionsInp,
+    ConversionGrammar gr
+) { 
+    switch(<recOptionsInp, endOptionsInp>) {
+        case <{convSeq([]), *recOptions}, endOptions>:
+            return normalizeUnionParts(recOptions, endOptions, gr);
+        case <{unionRec(ro, eo), *recOptions}, endOptions>:
+            return normalizeUnionParts({*ro, *eo, *recOptions}, endOptions, gr);
+        case <recOptions, {unionRec(ro, eo), *endOptions}>:
+            return normalizeUnionParts({*ro, *recOptions}, {*eo, *endOptions}, gr);
+        case <{op, *recOptions}, {op, *endOptions}>:
+            return normalizeUnionParts({op, *recOptions}, endOptions, gr);
+        // Remove the symbol suffix of any sequences in recursion
+        case <{s:convSeq(parts:[*_, symb(_, _)]), *recOptions}, endOptions>: {
+            list[Warning] warnings = [];
+            sourceProd = getOneFrom(gr.productions[s]);
+            while([*partsPrefix, symb(ref, scopes)] := parts) {
+                parts = partsPrefix;
+                recOptions += ref;
+                if(size(scopes)>0)
+                    warnings += incompatibleScopesForUnion({<ref, scopes>}, sourceProd);
+            }
+            <sWarnings, newSeqSym, gr> 
+                = defineSequenceSymbol(parts, {convProdSource(sourceProd)}, gr);
+            warnings += sWarnings;
+
+            <rWarnings, gr, ro, eo> = normalizeUnionParts({newSeqSym, *recOptions}, endOptions, gr);
+            return <rWarnings + warnings, gr, ro, eo>;
+        }
+    }
+
+    return <[], gr, recOptionsInp, endOptionsInp>;
+}
 
 bool containsProd(
     Symbol sym, 

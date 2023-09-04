@@ -10,7 +10,7 @@ import Set;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::shapeConversion::combineConsecutiveSymbols;
-import conversion::determinism::defineUnionSymbols;
+import conversion::shapeConversion::defineUnionSymbols;
 import conversion::util::RegexCache;
 import regex::RegexTypes;
 import regex::PSNFATools;

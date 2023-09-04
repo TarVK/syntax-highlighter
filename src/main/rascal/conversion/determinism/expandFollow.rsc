@@ -4,6 +4,7 @@ import Relation;
 import Set;
 import util::Maybe;
 import IO;
+import Map;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::RegexCache;
@@ -12,20 +13,30 @@ import regex::PSNFATools;
 import regex::PSNFACombinators;
 import regex::Regex;
 
+alias LACache = map[tuple[
+    Maybe[Regex] target,
+    list[ConvSymbol] parts, 
+    int length
+], Regex];
+
 @doc {
     Attempts to add lookaheads to the first regexes of productions in the grammar to prevent overlap between alternations
-
-    The reference grammar is used to extract lookahead information from in a way that's more restrictive than the data extracted from our already processed grammar. This is only used if overlap can not be resolved from the relaxted grammar.
 }
 ConversionGrammar fixOverlap(
     ConversionGrammar grammar, 
-    ConversionGrammar referenceGrammar, 
+    int maxLookahead
+)
+    = fixOverlap(grammar, grammar.productions<0>, maxLookahead);
+    
+ConversionGrammar fixOverlap(
+    ConversionGrammar grammar, 
+    set[Symbol] symbols,
     int maxLookahead
 ) {
+    LACache cache = ();
     ProdMap prods = Relation::index(grammar.productions);
-    ProdMap laProds = prods + Relation::index(referenceGrammar.productions);
 
-    for(sym <- prods) {
+    for(sym <- domain(prods) & symbols) {
         stable = false;
         while(!stable) {
             alternations = [*prods[sym]];
@@ -43,10 +54,7 @@ ConversionGrammar fixOverlap(
                         just(_) := getOverlap(ra, rb)
                         || just(_) := getOverlap(rb, ra)
                     ) {
-                        fix = fixOverlap(pa, pb, prods, maxLookahead);
-                        if(fix == nothing()) {
-                            fix = fixOverlap(pa, pb, laProds, maxLookahead);
-                        }
+                        <fix, cache> = fixOverlap(pa, pb, prods, maxLookahead, cache);
 
                         if(just(<newPa, newPb>) := fix) {
                             grammar.productions -= {<sym, pa>, <sym, pb>};
@@ -55,7 +63,8 @@ ConversionGrammar fixOverlap(
 
                             stable = false;
                             break outer;
-                        }
+                        } 
+                        // TODO: if fix fails, try use definitions extracted from regular symbols, e.g. for `"%" ![%]+ "%"` we could extract all required data from `![%]+`, rather than the current definition of the grammar (which will be nullable)
                     }
                 }
             }
@@ -68,39 +77,48 @@ ConversionGrammar fixOverlap(
 @doc {
     Attempts to add lookaheads to the first regexes of the given productions to solve overlap
 }
-Maybe[tuple[ConvProd, ConvProd]] fixOverlap(
+tuple[
+    Maybe[tuple[ConvProd, ConvProd]],
+    LACache
+ ] fixOverlap(
     ConvProd pa, 
     ConvProd pb, 
     ProdMap prods,
-    int maxLookahead
+    int maxLookahead,
+    LACache cache
 ) {
     if(
         convProd(aDef, allPartsA:[regexp(ra), *partsA], aSources) := pa,
-        convProd(bDef, allPartsB:[regexp(rb), *partsB], bSources) := pb,
-        just(<newA, aLength, newB, bLength>) := fixOverlap(allPartsA, allPartsB, prods, maxLookahead)
+        convProd(bDef, allPartsB:[regexp(rb), *partsB], bSources) := pb
     ) {
-        return just(<
-            convProd(aDef, [regexp(newA), *partsA], aLength==0?aSources:{convProdSource(pa)}),
-            convProd(bDef, [regexp(newB), *partsB], bLength==0?bSources:{convProdSource(pb)})
-        >);
+        <res, cache> = fixOverlap(allPartsA, allPartsB, prods, maxLookahead, cache);
+        if(just(<newA, aLength, newB, bLength>) := res)
+            return <just(<
+                convProd(aDef, [regexp(newA), *partsA], aLength==0?aSources:{convProdSource(pa)}),
+                convProd(bDef, [regexp(newB), *partsB], bLength==0?bSources:{convProdSource(pb)})
+            >), cache>;
     }
 
-    return nothing();
+    return <nothing(), cache>;
 }
 
 @doc {
     Attempts to add a lookahead for the following symbols to regex a and or b in order to fix overlap
 }
-Maybe[tuple[
-    Regex newRa, 
-    int lookaheadLengthA,
-    Regex newRb,
-    int lookaheadLengthB
-]] fixOverlap(
+tuple[
+    Maybe[tuple[
+        Regex newRa, 
+        int lookaheadLengthA,
+        Regex newRb,
+        int lookaheadLengthB
+    ]],
+    LACache
+ ] fixOverlap(
     [regexp(ra), *partsA], 
     [regexp(rb), *partsB], 
     ProdMap prods,
-    int maxLookahead
+    int maxLookahead,
+    LACache cache
 ) {
     lengthCombinations = sort(
         ([0..maxLookahead+1] * [0..maxLookahead+1]) - <0, 0>,
@@ -113,9 +131,21 @@ Maybe[tuple[
     
     Regex getExpanded(Regex r, list[ConvSymbol] parts, int length) {
         if(length==0) return r;
+        if(containsNewline(r)) return r;
 
-        la = getLookahead(parts, length, prods, {});
+        fullKey = <just(r), parts, length>;
+        if(fullKey in cache) return cache[fullKey];
+
+        laKey = <nothing(), parts, length>;
+
+        la = laKey in cache 
+            ? cache[laKey]
+            : getCachedRegex(getLookahead(parts, length, prods, {}));
         expanded = getCachedRegex(lookahead(r, la));
+
+        cache[laKey] = la;
+        cache[fullKey] = expanded;
+
         return expanded;
     }
 
@@ -126,11 +156,11 @@ Maybe[tuple[
             nothing() := getOverlap(expandedA, expandedB), 
             nothing() := getOverlap(expandedB, expandedA)
         ) {
-            return just(<expandedA, aLength, expandedB, bLength>);
+            return <just(<expandedA, aLength, expandedB, bLength>), cache>;
         }
     }
 
-    return nothing();
+    return <nothing(), cache>;
 }
 
 

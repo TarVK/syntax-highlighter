@@ -20,23 +20,36 @@ import regex::Tags;
 import conversion::util::RegexCache;
 
 @doc {
-    Checks whether the two given NFAs define the same language
+    Checks whether the two given NFAs define the same language.
+    If moduloTags is specified, the tag data is ignored.
 }
-bool equals(NFA[State] a, NFA[State] b) {
+bool equals(NFA[State] a, NFA[State] b)
+    = equals(a, b, false);
+bool equals(NFA[State] a, NFA[State] b, bool moduloTags) {
     if (a == b) return true;
+
+    // This check is quicker than the subtraction check, hence doing this first might speed things up since majority of calls return false, this check can be left out if it ends up making things slower
+    if(isEmpty(productPSNFA(a, b))) return false;
     
-    inANotB = subtractPSNFA(a, b);
-    inBNotA = subtractPSNFA(b, a);
-    return isEmpty(inANotB) && isEmpty(inBNotA);
+    inANotB = moduloTags ? strongSubtractPSNFA(a, b) : subtractPSNFA(a, b);
+    if(!isEmpty(inANotB)) return false;
+
+    inBNotA = moduloTags ? strongSubtractPSNFA(b, a) : subtractPSNFA(b, a);
+    if(!isEmpty(inBNotA)) return false;
+
+    return true;
 }
 
 @doc {
-    Checks whether two given regular expressions define the same language
+    Checks whether two given regular expressions define the same language.
+    If moduloTags is specified, the tag data is ignored.
 }
-bool equals(Regex a, Regex b) {
+bool equals(Regex a, Regex b)
+    = equals(a, b, false);
+bool equals(Regex a, Regex b, bool moduloTags) {
     aNFA = regexToPSNFA(a);
-    bNFA = regexToPSNFA(b);
-    return equals(aNFA, bNFA);
+    bNFA = regexToPSNFA(b);     
+    return equals(aNFA, bNFA, moduloTags);
 }
 
 

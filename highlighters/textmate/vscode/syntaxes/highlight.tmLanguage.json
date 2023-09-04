@@ -3,29 +3,64 @@
 	"name": "highlight",
 	"patterns": [
 		{
-			"include": "#keywords"
-		},
-		{
-			"include": "#strings"
+			"include": "#a"
 		}
 	],
 	"repository": {
-		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.highlight",
-				"match": "(?m)((?<=^[\\s\\n\\r]*)i[\\s\\n\\r]*f(?=[\\s\\n\\r]*\r\n)|while|for|return)\\b"
-			}]
-		},
-		"strings": {
-			"name": "string.quoted.double.highlight",
-			"begin": "\"",
-			"end": "\"",
+		"a": {
+			"beginCaptures": {
+				"0": {"name": "string.quoted.double.highlight"}
+			},
+			"begin": "a",
+			"end": "d",
 			"patterns": [
 				{
-					"name": "constant.character.escape.highlight",
-					"match": "\\\\."
+					"include": "#b"
+				},
+				{
+					"include": "#d"
 				}
 			]
+		},
+		"b": {
+			"beginCaptures": {
+				"0": { "name": "keyword.control.highlight" }
+			},
+			"begin": "b",
+			"end": "(?=d)",
+			"patterns": [
+				{
+					"include": "#c"
+				}
+			]
+		},
+		"c": {
+			"beginCaptures": {
+				"0": { "name": "constant.character.escape.highlight" }
+			},
+			"begin": "c",
+			"end": "",
+			"patterns": [
+				{
+					"include": "#a"
+				},
+				{
+					"name": "entity.name.function", 
+					"match": "d"
+				},
+				{
+					"name": "variable.parameter",
+					"begin": "e",
+					"end": "e"
+				}
+			]
+		},
+		"d": {
+			"beginCaptures": {
+				"0": { "name": "variable.parameter" }
+			},
+			"begin": "d",
+			"end": ""
 		}
 	},
 	"scopeName": "source.highlight"

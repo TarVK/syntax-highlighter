@@ -68,7 +68,7 @@ import conversion::shapeConversion::makePrefixedRightRecursive;
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
 syntax A = Stmt*;
-syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" Stmt
+syntax Stmt = ifElse: "if" "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
             | iff: "if" "(" Exp ")" Stmt
             | assign: Id "=" Exp;
 syntax Exp = brac: "(" Exp ")"
@@ -172,14 +172,13 @@ void main() {
     
     <cWarnings, conversionGrammar> = toConversionGrammar(#A);
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
-    regexGrammar = conversionGrammar;
     // <_, inputGrammar> = makePrefixedRightRecursive(conversionGrammar);
     
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
     // subsets = getSubsetSymbols(conversionGrammar);
 
     inputGrammar = conversionGrammar;
-    <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, regexGrammar);
+    <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar);
 
     classes = getEquivalentSymbols(conversionGrammar);
     stdGrammar = fromConversionGrammar(conversionGrammar);

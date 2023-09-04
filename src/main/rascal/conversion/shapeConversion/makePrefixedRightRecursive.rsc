@@ -59,8 +59,10 @@ WithWarnings[set[ConvProd]] convert(Symbol target, set[ConvProd] prods, Conversi
             if([symb(ref, scopes), *rest] := parts) {
                 if(size(scopes) > 0) warnings += inapplicableScope(scopes, p);
                 
-                if(size(rest) > 0) queue += convProd(copyLabel(lDef, target), makeLoop(target, rest), {convProdSource(p)});
+                // Try adding the remainder as a production later
+                if(size(rest) > 0) queue += convProd(copyLabel(lDef, target), rest, {convProdSource(p)});
 
+                // Add all of the encountered prefix
                 pureRef = getWithoutLabel(ref);
                 refProds = grammar.productions[pureRef];
                 if(pureRef in encountered) continue;

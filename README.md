@@ -5,10 +5,10 @@ Code for generating syntax highlighters from context free grammars
 
 Todo:
 - [x] Broaden symbols
-- [ ] Detect nullable loops (E.g. A -> /()|s/ A)
+- [x] Detect nullable loops (E.g. A -> /()|s/ A)
 - [x] Deal with chains of symbols
 - [ ] Targeted right-recursion
-- [ ] Check determinism/improve determinism
+- [x] Check determinism/improve determinism
 - [ ] Translate conversion grammar to highlight grammar
 - [ ] Improve robustness
 

@@ -23,7 +23,7 @@ Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
         newProd = prod(lSym, newParts, {\tag(pr)});
         outProds += newProd;
     }
-    return grammar({\start}, outProds);
+    return grammar({\start}, removeCustomSymbols(outProds));
 }
 Maybe[Symbol] convSymbolToSymbol(ConvSymbol inp) {
     switch(inp) {
@@ -194,3 +194,9 @@ Symbol simpAlt(Symbol a, Symbol b) = \alt({a, b});
 Symbol simpAlt(Symbol a, \alt(b)) = \alt({a, *b});
 Symbol simpAlt(\alt(a), Symbol b) = \alt({*a, b});
 Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
+
+&T removeCustomSymbols(&T grammar) = 
+    visit(grammar) {
+        case convSeq(parts) => \seq([s | p <- parts, just(s) := convSymbolToSymbol(p)])
+        case unionRec(recOptions, endOptions) => custom("unionR", \seq([\alt(recOptions), \alt(endOptions)]))
+    };

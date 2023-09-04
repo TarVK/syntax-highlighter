@@ -4,6 +4,7 @@ import IO;
 import Grammar;
 import ParseTree;
 import ValueIO;
+import Set;
 
 import Visualize;
 import regex::PSNFA;
@@ -12,6 +13,7 @@ import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::shapeConversion::ShapeConversion;
+import conversion::shapeConversion::defineUnionSymbols;
 import conversion::util::RegexCache;
 import conversion::determinism::expandFollow;
 
@@ -42,7 +44,7 @@ keyword StatementKW = "if" | "while";
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @category="Comment" "%" ![%]+ "%"
+   | @category="Comment" "%" !>> "%" ![%]+ "%" // Look into automatic lookahead fix
    | @category="Comment" "%%" ![\n]* $
    ;
 
@@ -62,8 +64,8 @@ void main() {
 
     // <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar, 2);
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar);
-    conversionGrammar = fixOverlap(conversionGrammar, inputGrammar, 1);
-
+    println("overlap");
+    conversionGrammar = fixOverlap(conversionGrammar, 1);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
 

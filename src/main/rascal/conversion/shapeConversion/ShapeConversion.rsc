@@ -3,11 +3,12 @@ module conversion::shapeConversion::ShapeConversion
 import Set;
 import List;
 import Relation;
+import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::shapeConversion::deduplicateProductions;
-import conversion::determinism::defineUnionSymbols;
+import conversion::shapeConversion::defineUnionSymbols;
 import conversion::shapeConversion::combineConsecutiveSymbols;
 import Warning;
 
@@ -32,8 +33,6 @@ import Warning;
 WithWarnings[ConversionGrammar] convertToShape(ConversionGrammar grammar) {
     <rWarnings, grammar> = makePrefixedRightRecursive(grammar);
     grammar = deduplicateProductions(grammar);
-
-    // return <rWarnings, grammar>;
 
     <cWarnings, grammar> = combineConsecutiveSymbols(grammar);
     grammar = deduplicateProductionsRespectingUnions(grammar);

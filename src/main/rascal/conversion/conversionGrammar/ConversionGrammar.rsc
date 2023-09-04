@@ -149,3 +149,11 @@ Symbol copyLabel(Symbol withLabel, Symbol target) {
     if(label(x, _) := withLabel) return label(x, getWithoutLabel(target));
     return target;
 }
+
+@doc {
+    Follows any sequence of aliases until a defining symbol in the grammar is reached, and returns said symbol
+}
+Symbol followAlias(Symbol aliasSym, ConversionGrammar grammar) {
+    while({convProd(_, [symb(ref, _)], _)} := grammar.productions[aliasSym]) aliasSym = getWithoutLabel(ref);
+    return aliasSym;
+}

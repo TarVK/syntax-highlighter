@@ -50,7 +50,8 @@ tuple[list[Warning], set[Symbol], ConversionGrammar] defineUnionSymbols(Conversi
         return <[], newlyDefined, grammar>;
 
     // The defined union symbols will have two consecutive symbols at the end, we need to remove these
-    <warnings, grammar> = combineConsecutiveSymbols(grammar);
+    <warnings, recDefined, grammar> = combineConsecutiveSymbolsWithDefinedSymbols(grammar);
+    newlyDefined += recDefined;
     
     return <warnings, newlyDefined, grammar>;
 }

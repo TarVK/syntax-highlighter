@@ -128,6 +128,10 @@ tuple[
         Regex startRegex = r;
         for(p:convProd(_, [regexp(r2), *_], _) <- rest) {
             if(isSubset(r2, r)) continue;
+            if(isSubset(r, r2)) {
+                r = r2;
+                continue;
+            }
             r = getCachedRegex(alternation(r, r2));
         }
 

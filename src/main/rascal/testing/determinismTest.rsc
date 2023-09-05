@@ -7,13 +7,14 @@ import ValueIO;
 
 import Visualize;
 import regex::PSNFA;
+import conversion::util::RegexCache;
+import conversion::util::Simplification;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::RegexConversion;
 import conversion::determinism::Determinism;
 import conversion::shapeConversion::ShapeConversion;
-import conversion::util::RegexCache;
 import conversion::shapeConversion::util::getEquivalentSymbols;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::makePrefixedRightRecursive;
@@ -78,7 +79,7 @@ syntax Exp = brac: "(" Exp ")"
 layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
 lexical Id  = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 lexical KW = "if" | "else";
-lexical Natural = [0-9]+ !>> [a-z0-9];
+lexical Natural = [a-z] !<< [0-9]+ !>> [a-z0-9];
 
 
 // syntax A = Stmt;
@@ -179,6 +180,10 @@ void main() {
 
     inputGrammar = conversionGrammar;
     <dWarnings, conversionGrammar> = makeDeterministic(conversionGrammar);
+
+    conversionGrammar = removeUnreachable(conversionGrammar);
+    conversionGrammar = removeAliases(conversionGrammar);
+    conversionGrammar = relabelGenerated(conversionGrammar);
 
     classes = getEquivalentSymbols(conversionGrammar);
     stdGrammar = fromConversionGrammar(conversionGrammar);

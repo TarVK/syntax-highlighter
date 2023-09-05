@@ -137,6 +137,19 @@ ConversionGrammar replaceSymbol(Symbol replace, Symbol replaceBy, ConversionGram
 }
 
 @doc {
+    Renames the given symbol while keeping the language of the grammar in tact
+}
+ConversionGrammar renameSymbol(Symbol source, Symbol rename, ConversionGrammar grammar) {
+    sourcePure = getWithoutLabel(source);
+    grammar.productions += {
+        <getWithoutLabel(rename), convProd(copyLabel(lDef, rename), parts, sources)>
+        | convProd(lDef, parts, sources) <- grammar.productions[sourcePure]
+    };
+
+    return replaceSymbol(source, rename, grammar);
+}
+
+@doc {
     Retrieve the raw definition symbol, by getting rid of any potential labels
 }
 Symbol getWithoutLabel(label(_, sym)) = sym;

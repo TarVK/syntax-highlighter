@@ -1,4 +1,4 @@
-module conversion::shapeConversion::customSymbols
+module conversion::conversionGrammar::customSymbols
 
 import ParseTree;
 import Set;
@@ -13,7 +13,9 @@ data Symbol =
             // L(convSeq(A B)) = L(A B)
             convSeq(list[ConvSymbol] parts) 
             // L(unionRec(A|B) = (L(A) ∪ L(B))*
-            | unionRec(set[Symbol] recOptions);
+            | unionRec(set[Symbol] recOptions)
+            // L(clsoedBy(A, X)) = L(A)  (only difference is that we know `X` must follow in this context, and we ensure a produciton of A can happen when this occurs)
+            | closedBy(Symbol target, Regex closer);
 
 @doc {
     We apply normalization rules `A -> B` such that `L(A) = L(B)`:

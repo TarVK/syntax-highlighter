@@ -11,7 +11,7 @@ import conversion::util::combineLabels;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::defineUnionSymbols;
 import conversion::determinism::improveAlternativesOverlap;
-import conversion::shapeConversion::customSymbols;
+import conversion::conversionGrammar::customSymbols;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::getEquivalentSymbols;
 import conversion::shapeConversion::combineConsecutiveSymbols;

@@ -11,7 +11,7 @@ import conversion::shapeConversion::util::overlapsAlternation;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::compareProds;
 import conversion::shapeConversion::util::getComparisonProds;
-import conversion::shapeConversion::customSymbols;
+import conversion::conversionGrammar::customSymbols;
 import conversion::shapeConversion::defineUnionSymbols;
 import conversion::shapeConversion::defineSequenceSymbol;
 import conversion::util::RegexCache;

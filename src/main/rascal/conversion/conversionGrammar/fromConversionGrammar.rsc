@@ -19,167 +19,85 @@ Grammar fromConversionGrammar(ConversionGrammar gr) = fromConversionGrammar(gr, 
 Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
     set[Production] outProds = {};
     for(<_, pr:convProd(lSym, parts, sources)> <- prods) {
-        newParts = [p | part <- parts, just(p) := convSymbolToSymbol(part)];
+        newParts = [p | part <- parts, p := convSymbolToSymbol(part)];
         newProd = prod(lSym, newParts, {\tag(pr)});
         outProds += newProd;
     }
     return grammar({\start}, removeCustomSymbols(outProds));
 }
-Maybe[Symbol] convSymbolToSymbol(ConvSymbol inp) {
+Symbol convSymbolToSymbol(ConvSymbol inp) {
     switch(inp) {
         case symb(ref, scopes): {
             if(size(scopes)>0)
-                return just(annotate(ref, {stringify(scopes), scopes}));
-            return just(ref);
+                return annotate(ref, {stringify(scopes), scopes});
+            return ref;
         }
-        case delete(from, del): {
-            mFromSym = convSymbolToSymbol(from);
-            if(just(fromSym) := mFromSym && just(delSym) := convSymbolToSymbol(del)) 
-                return just(\conditional(fromSym, {\delete(delSym)}));
-            return mFromSym;
-        }
-        case follow(cSym, f): {
-            mSym = convSymbolToSymbol(cSym);
-            if(just(sym) := mSym && just(followSym) := convSymbolToSymbol(f)) 
-                return just(\conditional(sym, {\follow(followSym)}));
-            return mSym;
-        }
-        case notFollow(cSym, f): {
-            mSym = convSymbolToSymbol(cSym);
-            if(just(sym) := mSym && just(followSym) := convSymbolToSymbol(f)) 
-                return just(\conditional(sym, {\not-follow(followSym)}));
-            return mSym;
-        }
-        case precede(cSym, p): {
-            mSym = convSymbolToSymbol(cSym);
-            if(just(sym) := mSym && just(precedeSym) := convSymbolToSymbol(p)) 
-                return just(\conditional(sym, {\precede(precedeSym)}));
-            return mSym;
-        }
-        case notPrecede(cSym, p): {
-            mSym = convSymbolToSymbol(cSym);
-            if(just(sym) := mSym && just(precedeSym) := convSymbolToSymbol(p)) 
-                return just(\conditional(sym, {\not-precede(precedeSym)}));
-            return mSym;
-        }
-        case atEndOfLine(cSym): {
-            if(just(sym) := convSymbolToSymbol(cSym)) 
-                return just(\conditional(sym, {\end-of-line()}));
-            return nothing();
-        }
-        case atStarrtOfLine(cSym): {
-            if(just(sym) := convSymbolToSymbol(cSym))
-                return just(\conditional(sym, {\begin-of-line()}));
-            return nothing();
-        }
+        case delete(from, del): 
+            return \conditional(convSymbolToSymbol(cSym), {\delete(convSymbolToSymbol(del))});
+        case follow(cSym, f): 
+            return \conditional(convSymbolToSymbol(cSym), {\follow(convSymbolToSymbol(f))});
+        case notFollow(cSym, f):
+            return \conditional(convSymbolToSymbol(cSym), {\not-follow(convSymbolToSymbol(f))});
+        case precede(cSym, p): 
+            return \conditional(convSymbolToSymbol(cSym), {\precede(convSymbolToSymbol(p))});
+        case notPrecede(cSym, p): 
+            return \conditional(convSymbolToSymbol(cSym), {\not-precede(convSymbolToSymbol(p))});
+        case atEndOfLine(cSym): 
+            return \conditional(convSymbolToSymbol(cSym), {\end-of-line()});
+        case atStarrtOfLine(cSym):
+            return \conditional(convSymbolToSymbol(cSym), {\begin-of-line()});
         case regexp(regex): return regexToSymbol(removeCache(reduce(regex)));
     }
-    return nothing();
 }
-Maybe[Symbol] regexToSymbol(Regex inp) {
+
+Symbol regexToSymbol(Regex inp) {
     eolR = eolRegex();
     solR = solRegex();
     
     switch(inp) {
         // Special cases that lead to slightly easier to read grammars
-        case alternation(\multi-iteration(r), Regex::empty()): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(\iter-star(rSym));
-            return nothing();
-        }
-        case alternation(Regex::empty(), \multi-iteration(r)): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(\iter-star(rSym));
-            return nothing();
-        }
-        case concatenation(r, eolR): {
-            if(just(rSym) := regexToSymbol(r))
-                return just(\conditional(rSym, {\end-of-line()}));
-            return nothing();
-        }
-        case concatenation(solR, r): {
-            if(just(rSym) := regexToSymbol(r))
-                return just(\conditional(rSym, {\begin-of-line()}));
-            return nothing();
-        }
+        case alternation(\multi-iteration(r), Regex::empty()):
+            return \iter-star(regexToSymbol(r));
+        case alternation(Regex::empty(), \multi-iteration(r)): 
+            return \iter-star(regexToSymbol(r));
+        case concatenation(r, eolR): 
+            return just(\conditional(regexToSymbol(r), {\end-of-line()}));
+        case concatenation(solR, r):
+            return \conditional(regexToMaybeSymbol(r), {\begin-of-line()});
 
         // Normal cases
-        case never(): return nothing();
-        case Regex::empty(): return just(ParseTree::\empty());
-        case always(): return just(\iter-start(complement(\char-class([]))));
+        case never(): return custom("never", seq([])); // TODO: could also use an empty range or smth: \char-class([])
+        case Regex::empty(): return ParseTree::\empty();
+        case always(): return \iter-start(complement(\char-class([])));
         case character(ranges): {
             if([range(k, k)]:=ranges)
-                return just(\lit(stringChar(k)));
+                return \lit(stringChar(k));
             if([range(k, k), range(l, l)]:=ranges && l==k+40 && 101<=k && k<=132)
-                return just(\cilit(stringChar(l)));
-            return just(\char-class(ranges));
+                return \cilit(stringChar(l));
+            return \char-class(ranges);
         }
-        case lookahead(r, lookahead): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym && just(laSym) := regexToSymbol(lookahead)) 
-                return just(\conditional(rSym, {\follow(laSym)}));
-            return mRSym;
-        }
-        case lookbehind(r, lookbehind): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym && just(lbSym) := regexToSymbol(lookbehind)) 
-                return just(\conditional(rSym, {\precede(lbSym)}));
-            return mRSym;
-        }
-        case \negative-lookahead(r, lookahead): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym && just(laSym) := regexToSymbol(lookahead)) 
-                return just(\conditional(rSym, {\not-follow(laSym)}));
-            return mRSym;
-        }
-        case \negative-lookbehind(r, lookbehind): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym && just(lbSym) := regexToSymbol(lookbehind)) 
-                return just(\conditional(rSym, {\not-precede(lbSym)}));
-            return mRSym;
-        }
-        case subtract(r, removal): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym && just(removalSym) := regexToSymbol(removal)) 
-                return just(\conditional(rSym, {\delete(removalSym)}));
-            return mRSym;
-        }
-        case concatenation(head, tail): {
-            mHeadSym = regexToSymbol(head);
-            mTailSym = regexToSymbol(tail);
-            if(just(headSym) := mHeadSym){
-                if(just(tailSym) := mTailSym) return just(simpSeq(headSym, tailSym));
-                return just(headSym);
-            }
-            return mTailSym;
-        }
-        case alternation(opt1, opt2): {
-            mOpt1Sym = regexToSymbol(opt1);
-            mOpt2Sym = regexToSymbol(opt2);
-            if(just(opt1Sym) := mOpt1Sym){
-                if(just(opt2Sym) := mOpt2Sym) return just(simpAlt(opt1Sym, opt2Sym));
-                return just(opt1Sym);
-            }
-            return mOpt2Sym;
-        }
-        case \multi-iteration(r): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(\iter(rSym));
-            return nothing();
-        }
-        case mark(tags, r): {
-            mRSym = regexToSymbol(r);
-            if(just(rSym) := mRSym)
-                return just(annotate(rSym, {
-                    Scope::stringify(s) 
-                    | scopeTag(s) <- tags, 
-                    size(s)>0
-                } + tags));
-            return nothing();
-        }
+        case lookahead(r, lookahead): 
+            return \conditional(regexToSymbol(r), {\follow(regexToSymbol(lookahead))});
+        case lookbehind(r, lookbehind): 
+            return \conditional(regexToSymbol(r), {\precede(regexToSymbol(lookbehind))});
+        case \negative-lookahead(r, lookahead): 
+            return \conditional(regexToSymbol(r), {\not-follow(regexToSymbol(lookahead))});
+        case \negative-lookbehind(r, lookbehind): 
+            return \conditional(regexToSymbol(r), {\not-precede(regexToSymbol(lookbehind))});
+        case subtract(r, removal): 
+            return \conditional(regexToSymbol(r), {\delete(regexToSymbol(removal))});
+        case concatenation(head, tail): 
+            return simpSeq(regexToSymbol(head), regexToSymbol(tail));
+        case alternation(opt1, opt2): 
+            return simpAlt(regexToSymbol(opt1), regexToSymbol(opt2));
+        case \multi-iteration(r): 
+            return \iter(regexToSymbol(r));
+        case mark(tags, r): 
+            return annotate(regexToSymbol(r), {
+                Scope::stringify(s) 
+                | scopeTag(s) <- tags, 
+                size(s)>0
+            } + tags);
     }
     return nothing();
 }
@@ -197,6 +115,7 @@ Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
 
 &T removeCustomSymbols(&T grammar) = 
     visit(grammar) {
-        case convSeq(parts) => \seq([s | p <- parts, just(s) := convSymbolToSymbol(p)])
+        case convSeq(parts) => \seq([s | p <- parts, s := convSymbolToSymbol(p)])
+        case closedBy(sym, c) => \conditional(sym, {\follow(regexToSymbol(c))})
         case unionRec(recOptions) => custom("UR", \alt(recOptions))
     };

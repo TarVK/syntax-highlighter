@@ -197,10 +197,6 @@ STMT_4 ->
 ```
 STMT -> if( EXP ) STMT else STMT
 ```
-=
-```
-STMT -> if( EXP ) STMT else
-```
 =>
 ```
 STMT -> (>if\() STMT_2 else STMT
@@ -269,13 +265,9 @@ A_k ->
 STMT -> for\( EXPCOMMA ; EXPCOMMA ; EXPCOMMA \) STMT
 EXPCOMMA -> {Expression ","}*
 ```
-= {aspects concerning this transformation}
-```
-STMT -> for\( EXPCOMMA ; EXPCOMMA ; EXPCOMMA \)
-```
 =>
 ```
-STMT -> (>for\() STMT_2 \)
+STMT -> (>for\() STMT_2 \) STMT
 STMT_2 -> (>for\() STMT_3 ; STMT_2
 STMT_2 -> (!>for\() EXPCOMMA (>\)) STMT_2
 STMT_2 ->
@@ -289,3 +281,51 @@ STMT_4 ->
 ### Observed drawback
 
 This technique still doesn't allow for all self-recursion, but does allow for slightly more self-recursion. E.g. `A -> X A Y A Z A` is problematic, but `A -> X A Y B Z A` is fine.
+
+## Technique 5
+
+A production `A -> X_1 B_1 X_2 B_2 ... X_k B_k X_{k+1} A` can be simulated accurately if:
+- `X_{k+1}` does not overlap with any `X_i` for `i ∈ [2..k]`
+- `X_{k+1}` does not overlap with any production of `B_i` for `i ∈ [1..k]`
+- `X_i` does not overlap with any production of `B_i` for `i ∈ [1..k]`
+
+We translate this rule to:
+```
+A -> X_1 A_1 X_{k+1} A
+A_1 -> ...B_1
+A_1 -> X_2 A_2 (>X_{k+1}) A_1
+A_2 -> ...B_2
+A_2 -> X_3 A_3 (>X_{k+1}) A_2
+...
+A_{k-1} -> ...B_{k-1}
+A_{k-1} -> X_k B_k (>X_{k+1}) A_{k-1}
+```
+
+Note that the suffix `(>X_{k+1})` isn't strictly necessary. We can instead specify
+E.g. `A_1 -> X_2 A_2`, and a later transformation can make sure to add this suffix for TM like languages, while leaving it out for state-based languages (that can deal with state changes natively).
+
+### Applied for loop example
+
+```
+STMT -> for \( EXP in EXP , COND\) STMT
+```
+=>
+```
+STMT -> for \( STMT_2 \) STMT
+STMT_2 -> ...EXP
+STMT_2 -> in STMT_3 (> \))
+STMT_3 -> ...EXP
+STMT_3 -> , COND (> \))
+```
+
+Now if `in` is already is a prefix of EXP, we would get the following after overlap fixing:
+```
+STMT -> for \( STMT_2 \) STMT
+STMT_2 -> ...EXP\{in}
+STMT_2 -> in UR<STMT_2|STMT_3|(> \))>
+UR<STMT_2|STMT_3|(> \))> -> ...EXP
+UR<STMT_2|STMT_3|(> \))> -> , COND (> \))
+```
+
+## Technique 6
+In some cases we simply can't adhere to the specified structure without causing non-determinism. In this case we can simply broaden the language by allowing any order of elements. 

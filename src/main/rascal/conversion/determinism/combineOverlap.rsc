@@ -1,18 +1,20 @@
 module conversion::determinism::combineOverlap
 
 import Set;
+import List;
 import util::Maybe;
 import IO;
 
 import util::List;
 import regex::Regex;
+import conversion::util::makeLookahead;
 import conversion::util::RegexCache;
 import conversion::util::combineLabels;
+import conversion::conversionGrammar::customSymbols;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::determinism::expandFollow;
 import conversion::determinism::fixNullableRegexes;
-import conversion::shapeConversion::customSymbols;
 import conversion::shapeConversion::util::getSubsetSymbols;
 import conversion::shapeConversion::util::getEquivalentSymbols;
 import conversion::shapeConversion::combineConsecutiveSymbols;
@@ -42,25 +44,46 @@ data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], set[ConvPr
 WithWarnings[ConversionGrammar] combineOverlap(
     ConversionGrammar grammar, 
     int maxLookaheadLength
+) 
+    = combineOverlapWithDefinedSymbols(grammar, maxLookaheadLength)<0, 2>;
+tuple[
+    list[Warning],
+    set[Symbol],
+    ConversionGrammar
+] combineOverlapWithDefinedSymbols(
+    ConversionGrammar grammar,
+    int maxLookaheadLength
+)
+    = combineOverlapWithDefinedSymbols(grammar, grammar.productions<0>, maxLookaheadLength);
+tuple[
+    list[Warning],
+    set[Symbol],
+    ConversionGrammar
+] combineOverlapWithDefinedSymbols(
+    ConversionGrammar grammar,
+    set[Symbol] symbols,
+    int maxLookaheadLength
 ) {
     list[Warning] warnings = [];
+    set[Symbol] allNewlyDefined = {};
 
     println("start-combine");
-
-    symbols = grammar.productions<0>;
     while(size(symbols) > 0) {
         for(sym <- symbols) {
             <newWarnings, grammar> = combineOverlap(sym, grammar);
             warnings += newWarnings;
         }
 
-        <uWarnings, symbols, grammar> = defineUnionSymbols(grammar);
-        grammar = fixOverlap(grammar, symbols, maxLookaheadLength);
-        <fWarnings, grammar> = fixNullableRegexes(grammar, symbols);
+        <uWarnings, newlyDefined, grammar> = defineUnionSymbols(grammar);
+        grammar = fixOverlap(grammar, newlyDefined, maxLookaheadLength);
+        <fWarnings, grammar> = fixNullableRegexes(grammar, newlyDefined);
+
+        allNewlyDefined += newlyDefined;
+        symbols = newlyDefined;
 
         warnings += uWarnings + fWarnings;
     }
-    return <warnings, grammar>;
+    return <warnings, allNewlyDefined, grammar>;
 }
 
 WithWarnings[ConversionGrammar] combineOverlap(
@@ -180,6 +203,10 @@ tuple[
             else break outer;
             i += 1;
         }
+
+        while([*firstSymbols, lastSymbol] := out, regexp(_) !:= lastSymbol)
+            out = firstSymbols; // Make sure we end on a regular expression
+
         return out;
     }
 
@@ -188,16 +215,11 @@ tuple[
         if(index < size(parts)) return just(parts[index]);
         return nothing();
     });
-    while([*prefixStart, prefixEnd] := prefix, regexp(_) !:= prefixEnd)
-        prefix = prefixStart; // Make sure we end on a regular expression
-
-    suffix = findCommon(Maybe[ConvSymbol](list[ConvSymbol] parts, int index) {
+    suffix = reverse(findCommon(Maybe[ConvSymbol](list[ConvSymbol] parts, int index) {
         index = size(parts) - index - 1; // Start at the end
         if(size(prefix) <= index && index < size(parts)) return just(parts[index]);
         return nothing();
-    });
-    while([suffixStart, *suffixEnd] := suffix, regexp(_) !:= suffixStart)
-        suffix = suffixEnd; // Make sure we start on a regular expression    
+    }));
 
     // Create the new combined production
     set[Symbol] sequences = {};
@@ -208,8 +230,8 @@ tuple[
 
         // If we have a common suffix, add a lookahead to prevent symbol merging in sequence
         if([regexp(r), *_] := suffix) {
-            la = lookahead(empty(), r);
-            remainder += regexp(getCachedRegex(la));
+            la = makeLookahead(r);
+            remainder += regexp(la);
         }
 
         <dWarnings, seqSym, grammar> 
@@ -232,16 +254,3 @@ tuple[
 
     return <warnings, outProd, grammar>;
 }
-
-
-// @doc {
-//     Follows an alias symbol until the defining symbol that it's an alias is for is reached
-// }
-// Symbol followAliases(Symbol sym, ConversionGrammar grammar) {
-//     while({convProd(_, [symb(ref, _)], _)} := grammar.productions[sym]) {
-//         sym = getWithoutLabel(ref);
-//     }
-//     return sym;
-// }
-
-// tuple[set[Symbol] modifiedSymbols, ConversionGrammar] addRegexToSymbol()

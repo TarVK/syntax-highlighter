@@ -8,7 +8,7 @@ import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::shapeConversion::util::getSubsetSymbols;
-import conversion::shapeConversion::customSymbols;
+import conversion::conversionGrammar::customSymbols;
 import conversion::shapeConversion::combineConsecutiveSymbols;
 import conversion::shapeConversion::deduplicateProductions;
 import conversion::util::RegexCache;

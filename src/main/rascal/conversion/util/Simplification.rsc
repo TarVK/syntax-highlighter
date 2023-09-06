@@ -3,7 +3,7 @@ module conversion::util::Simplification
 import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
-import conversion::shapeConversion::customSymbols;
+import conversion::conversionGrammar::customSymbols;
 
 @doc {
     Removes all symbols in the grammar that are no longer reachable
@@ -88,11 +88,13 @@ Symbol followAliases(Symbol sym, ConversionGrammar grammar) {
 @doc {
     Renames the generated symbols to simple sort names
 }
-ConversionGrammar relabelGenerated(ConversionGrammar grammar) {
+ConversionGrammar relabelGenerated(ConversionGrammar grammar)
+    = relabelGenerated(grammar, true);
+ConversionGrammar relabelGenerated(ConversionGrammar grammar, bool relabelClosing) {
     set[Symbol] generated = {
         sym 
         | sym <- grammar.productions<0>,
-        unionRec(_) := sym || seq(_) := sym
+        unionRec(_) := sym || seq(_) := sym || (relabelClosing && closedBy(_, _) := sym)
     };
 
     int i=0;

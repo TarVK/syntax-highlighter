@@ -6,7 +6,7 @@ import String;
 import util::Maybe;
 
 import conversion::conversionGrammar::ConversionGrammar;
-import conversion::shapeConversion::customSymbols;
+import conversion::conversionGrammar::customSymbols;
 import conversion::shapeConversion::makePrefixedRightRecursive;
 import conversion::util::RegexCache;
 import Warning;
@@ -38,7 +38,7 @@ tuple[
     set[Symbol] prefixes = {};
 
     while([symb(ref, scopes), *rest] := parts) {
-        prefixes += getWithoutLabel(ref);
+        prefixes += followAlias(ref, grammar);
         if(size(scopes) > 0) warnings += inapplicableScope(scopes, p);
         parts = rest;
     }

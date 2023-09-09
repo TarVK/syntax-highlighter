@@ -56,12 +56,25 @@ NFA[State] transformTest() {
 
 NFA[State] reservationTest() {
     // regex = parseRegexReduced("[a-z]!\<(([a-z]+)\\(hoi|bye))!\>[a-z]");
-    regex1 = "([a-z]!\<[a-z]+!\>[a-z])\\(hoi|bye)";
-    regex2 = "(!\>([a-z]!\<(hoi|bye)!\>[a-z]))([a-z]!\<[a-z]+!\>[a-z])";
+    // regex1 = "([a-z]!\<[a-z]+!\>[a-z])\\(hoi|bye)";
+    // regex2 = "(!\>([a-z]!\<(hoi|bye)!\>[a-z]))([a-z]!\<[a-z]+!\>[a-z])";
     // regex2 = "(!\>([a-z]!\<(hoi|bye)))([a-z]!\<[a-z]+!\>[a-z])";
 
+    // regex1 = "([a-z]*\\(hoi))[.]";
+    // regex2 = "((!\>hoi[.])[a-z]*[.])";
+
+    // regex1 = "[a-z]([a-z]*\\(hoi))[.]";
+    // regex2 = "(!\>[a-z]hoi[.])[a-z][a-z]*[.]";
+    
+    // regex1 = "([a-z]+\\(shit))([0-9]+\\(19))";
+    // regex2 = "(!\>shit[0-9]+)([a-z]+[0-9]+)(([a-z]+19)!\<)"; 
+
+    // regex1 = "([a-z]!\<[a-z][a-z0-9]*!\>[a-z0-9])\\(for|if|in)";
+    regex1 = "([a-z]!\<[a-z][a-z0-9]*!\>[a-z0-9])\\(([a-z]!\<)(for|if|in)(!\>[a-z0-9]))";
+    regex2 = "(!\>([a-z]!\<)(for|if|in)(!\>[a-z0-9]))([a-z]!\<[a-z][a-z0-9]*!\>[a-z0-9])";
+
     return difference(regex1, regex2);
-    // r = parseRegexReduced(regex1);
+    // r = parseRegexReduced(regex2);
     // return regexToPSNFA(r); 
 }
 
@@ -92,7 +105,7 @@ tuple[NFA[State], NFA[State]] minimizeTest() {
 
     minimized = minimize(nfa);
 
-    return <nfa,  relabelIntPSNFA(relabel(minimized))>;
+    return <nfa, relabelIntPSNFA(relabel(minimized))>;
 }
 
 // NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(mergeEdges(n, PSNFAMerge))));

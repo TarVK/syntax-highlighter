@@ -13,6 +13,17 @@ import regex::util::GetDisjointCharClasses;
 
 @doc {
     Minimizes the given NFA using a DFA minimization algorithm, nad gets rid of unreachable/dead states.
+
+    // TODO: in order to use the minimized DFA for equivalence checking, we have to normalize multiple transitions between the same states. Currently we can have both these transitions in the same DFA:
+    ```
+    A -![01]-> B
+    A -[1]-> B
+    ```
+    This should be merged/normalized into:
+    ```
+    A -![0]-> B
+    ```
+    Without doing this, there is not a unique minized DFA representing the input NFA
 }
 NFA[set[&T]] minimize(NFA[&T] nfa) {
     TagsClass universe = {*tc | <_, character(_, tc), _> <- nfa.transitions};

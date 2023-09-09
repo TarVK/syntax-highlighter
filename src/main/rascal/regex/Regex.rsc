@@ -132,6 +132,7 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
         case (RegexCST)`\><RegexCST la>`: return lookahead(empty(), r(la));
         case (RegexCST)`!\><RegexCST nla>`: return \negative-lookahead(empty(), r(nla));
         case (RegexCST)`<RegexCST lb>\<`: return lookbehind(empty(), r(lb));
+        case (RegexCST)`<RegexCST nlb>!\<`: return \negative-lookbehind(empty(), r(nlb));
 
         case (RegexCST)`<RegexCST exp>\\<RegexCST subt>`: return subtract(r(exp), r(subt));
         case (RegexCST)`\\<RegexCST subt>`: return subtract(always(), r(subt));
@@ -202,7 +203,7 @@ str stringify(Regex regex) {
         case Regex::concatenation(h, t): return "(<stringify(h)>)(<stringify(t)>)";
         case Regex::alternation(h, t): return "(<stringify(h)>)|(<stringify(t)>)";
         case Regex::\multi-iteration(r): return "(<stringify(r)>)+";
-        case Regex::subtract(r, s): return "(<stringify(r)>)-(<stringify(s)>)";
+        case Regex::subtract(r, s): return "(<stringify(r)>)\\(<stringify(s)>)";
         case Regex::concatenation([]): return "$e";
         case Regex::concatenation([first]): return stringify(first);
         case Regex::concatenation([first, *parts]): return ("(<stringify(first)>)" | it + "(<stringify(p)>)" | p <- parts);

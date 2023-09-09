@@ -145,6 +145,8 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
             return mark({scopeTag(newSCopes)}, CSTtoRegex(cst, newSCopes));
         }
     }
+
+    println("Error: missed a case: <regex>");
     return empty();
 }
 

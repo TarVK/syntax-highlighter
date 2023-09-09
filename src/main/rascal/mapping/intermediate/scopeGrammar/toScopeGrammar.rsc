@@ -7,6 +7,7 @@ import mapping::intermediate::scopeGrammar::ScopeGrammar;
 import mapping::intermediate::scopeGrammar::cleanupRegex;
 import mapping::intermediate::scopeGrammar::extractRegexScopes;
 import mapping::intermediate::scopeGrammar::removeRegexSubtraction;
+import mapping::intermediate::scopeGrammar::splitRegexLookarounds;
 import conversion::util::RegexCache;
 import regex::Regex;
 import regex::PSNFA;
@@ -32,84 +33,82 @@ WithWarnings[ScopeGrammar] toScopeGrammar(ConversionGrammar grammar) {
     ScopeProductions prods = ();
 
     list[Warning] warnings = [];
+
+    set[str] textSymbols = {};
+    SymbolMap symMapping = ();
     TokenCache tokenCache = ();
     ScopeCache scopeCache = ();
 
     for(sym <- grammar.productions<0>) {
         symInpProds = grammar.productions[sym];
-        set[ScopeProd] symProds = {};
-        prods[sym] = {};
+        <textSym, symMapping, textSymbols> = getSymbolString(sym, symMapping, textSymbols);
+
+        list[ScopeProd] symProds = [];
+        prods[textSym] = symProds;
 
         for(prod:convProd(_, [regexp(r), symb(_, _)], _) <- symInpProds) {
-            <prodSym, newWarnings, tokenCache, prods> 
-                = defineTokenProd(r, tokenCache, prods, prod);
+            <prodSym, newWarnings, tokenCache, prods, textSymbols> 
+                = defineTokenProd(r, tokenCache, prods, prod, textSymbols);
             symProds += inclusion(prodSym);
             warnings += newWarnings;
         }
 
         for(prod:convProd(_, [regexp(open), symb(ref, scopes), regexp(close), symb(_, _)], _) <- symInpProds) {
-            <prodSym, newWarnings, scopeCache, prods> 
-                = defineScopeProd(open, ref, scopes, close, scopeCache, prods, prod);
+            <textRef, symMapping, textSymbols> = getSymbolString(ref, symMapping, textSymbols);
+            <prodSym, newWarnings, scopeCache, prods, textSymbols> 
+                = defineScopeProd(open, textRef, scopes, close, scopeCache, prods, prod, textSymbols);
             symProds += inclusion(prodSym);
             warnings += newWarnings;
         }
 
-        prods[sym] = symProds;
+        prods[textSym] = symProds;
     }
 
-    return <warnings, scopeGrammar(grammar.\start, prods)>;
+
+    return <warnings, scopeGrammar(getSymbolString(grammar.\start, symMapping, textSymbols)<0>, prods)>;
 }
 
-alias TokenCache = map[Regex, Symbol];
-tuple[Symbol, list[Warning], TokenCache, ScopeProductions] defineTokenProd(
+alias SymbolMap = map[Symbol, str];
+
+alias TokenCache = map[Regex, str];
+tuple[str, list[Warning], TokenCache, ScopeProductions, set[str]] defineTokenProd(
     Regex regex, 
     TokenCache tokenCache,
     ScopeProductions prods, 
-    ConvProd prod
+    ConvProd prod,
+    set[str] textSymbols
 ) {
     regexCacheless = removeRegexCache(regex);
-    if(regexCacheless in tokenCache) return <tokenCache[regexCacheless], [], tokenCache, prods>;
+    if(regexCacheless in tokenCache) return <tokenCache[regexCacheless], [], tokenCache, prods, textSymbols>;
 
-    str newLabel = just(text) := getLabel(prod) ? text : "t";
-    if(sort(newLabel) in prods) {
-        int i = 1;
-        while(sort("<newLabel><i>") in prods) i+=1;
-        newLabel = "<newLabel><i>";
-    }
+    <textSym, textSymbols> = createUniqueSymbol(just(text) := getLabel(prod) ? text : "T", textSymbols);
+    tokenCache[regexCacheless] = textSym;
 
-    Symbol sym = sort(newLabel);
     <warnings, scopedRegex> = convertRegex(regex, prod);
-    prods[sym] = {tokenProd(scopedRegex, sources=prod.sources)};
-    tokenCache[regexCacheless] = sym;
+    prods[textSym] = [tokenProd(scopedRegex, sources=prod.sources)];
 
-    return <sym, warnings, tokenCache, prods>;
+    return <textSym, warnings, tokenCache, prods, textSymbols>;
 }
 
-alias ScopeCache = map[tuple[Regex, Symbol, Scopes, Regex], Symbol];
-tuple[Symbol, list[Warning], ScopeCache, ScopeProductions] defineScopeProd(
+alias ScopeCache = map[tuple[Regex, str, Scopes, Regex], str];
+tuple[str, list[Warning], ScopeCache, ScopeProductions, set[str]] defineScopeProd(
     Regex open, 
-    Symbol ref,
+    str ref,
     Scopes scopes,
     Regex close,
     ScopeCache scopeCache,
     ScopeProductions prods, 
-    ConvProd prod
+    ConvProd prod,
+    set[str] textSymbols
 ) {
     openCacheless = removeRegexCache(open);
     closeCacheless = removeRegexCache(close);
 
-    key = <openCacheless, getWithoutLabel(ref), scopes, closeCacheless>;
-    if(key in scopeCache) return <scopeCache[key], [], scopeCache, prods>;
+    key = <openCacheless, ref, scopes, closeCacheless>;
+    if(key in scopeCache) return <scopeCache[key], [], scopeCache, prods, textSymbols>;
 
-    str newLabel = just(text) := getLabel(prod) ? text : "s";
-    if(sort(newLabel) in prods) {
-        int i = 1;
-        while(sort("<newLabel><i>") in prods) i+=1;
-        newLabel = "<newLabel><i>";
-    }
-
-    Symbol sym = sort(newLabel);
-    scopeCache[key] = sym;
+    <textSym, textSymbols> = createUniqueSymbol(just(text) := getLabel(prod) ? text : "S", textSymbols);
+    scopeCache[key] = textSym;
 
     Scope scope;
     if([first, second, *rest] := scopes) {
@@ -132,9 +131,9 @@ tuple[Symbol, list[Warning], ScopeCache, ScopeProductions] defineScopeProd(
 
     <openWarnings, openScoped> = convertRegex(open, prod);
     <closeWarnings, closeScoped> = convertRegex(close, prod);
-    prods[sym] = {scopeProd(openScoped, <ref, scope>, closeScoped, sources=prod.sources)};
+    prods[textSym] = [scopeProd(openScoped, <ref, scope>, closeScoped, sources=prod.sources)];
 
-    return <sym, openWarnings+closeWarnings, scopeCache, prods>;
+    return <textSym, openWarnings+closeWarnings, scopeCache, prods, textSymbols>;
 }
 
 WithWarnings[tuple[Regex, list[Scope]]] convertRegex(Regex regex, ConvProd prod) {
@@ -145,6 +144,39 @@ WithWarnings[tuple[Regex, list[Scope]]] convertRegex(Regex regex, ConvProd prod)
         minimizedDelta = relabelSetPSNFA(minimize(delta));
         warnings = [unresolvabledSubtraction(regex, minimizedDelta, prod)];
     }
-    improvedRegex = cleanupRegex(removeRegexCache(subtractionlessRegex));
+    emptyLookarounds = splitRegexLookarounds(removeRegexCache(subtractionlessRegex));
+    improvedRegex = cleanupRegex(emptyLookarounds);
     return <warnings, extractRegexScopes(improvedRegex)>;
+}
+
+
+tuple[str name, set[str] taken] createUniqueSymbol(str name, set[str] taken) {
+    if(name in taken) {
+        int i = 1;
+        while("<name><i>" in taken) i+=1;
+        name = "<name><i>";
+    }
+
+    return <name, taken + name>;
+}
+
+tuple[str name, SymbolMap symbolMap, set[str] textSymbols] getSymbolString(
+    Symbol sym, 
+    SymbolMap symbolMap, 
+    set[str] textSymbols
+) {
+    sym = getWithoutLabel(sym);
+    if(sym in symbolMap) return <symbolMap[sym], symbolMap, textSymbols>;
+
+    str text = "G";
+    switch(sym) {
+        case sort(t): text = t;
+        case lex(t): text = "L<t>";
+        case layouts(t): text = "W<t>";
+        case keywords(t): text = "K<t>";
+    }
+
+    <labelText, textSymbols> = createUniqueSymbol(text, textSymbols);
+    symbolMap[sym] = labelText;
+    return <labelText, symbolMap, textSymbols>;
 }

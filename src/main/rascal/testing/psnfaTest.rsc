@@ -112,6 +112,9 @@ tuple[NFA[State], NFA[State]] minimizeTest() {
 NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(n)));
 
 void main() {
+    visualize(parseRegexReduced("a\<b\<c\>d\>e"));
+    return;
+
     nfa = reservationTest();
 
     // nfaText = visualizePSNFA(relabel(nfa));

@@ -1,39 +1,9 @@
-
-
-if(something) { 
-    else 
-
-    if(okay) {
-
-    } else { 
-        
+%smth% stuff = ( %stuff% something);
+if(test+okay)
+    for(smth;stuff;oops==true) {
+        smth = (("st\nr${stuff ("inner")}ing"));
     }
-   if 
-} else {
-    else 
-
-    if (smth) stuff else else {}
-
-    for(something; stuff,smth; oranges,stuff) {
-        for(a;b;c) {
-
-        }
-
-        for(a;b) {
-
-        }
-        for(a;b;c;d) {
-
-        }
-
-        for(a;b;c) {
-
-        }
-    }
-
-    while
-} else {
-    while
-}
-
-if(smth if){ orange } while {} else {}
+else okay = 4;
+for(smth in %comment% collection)
+    %% one line comment
+    test = 3;

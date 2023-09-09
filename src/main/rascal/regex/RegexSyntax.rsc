@@ -8,7 +8,7 @@ syntax RegexCST
     | alwaysCST: "$1"
     | EOL: "$$"
     | SOL: "^"
-    | multiIterationCST: RegexCST "+"
+    > multiIterationCST: RegexCST "+"
     | iterationCST: RegexCST "*"
     | minIterationCST: RegexCST "{" Num min "," "}"
     | maxIterationCST: RegexCST "{" "," Num max "}"
@@ -17,17 +17,29 @@ syntax RegexCST
     | optionalCST: RegexCST "?"
     > right concatenationCST: RegexCST head !>> [\\!\>\<] [\\!\>\<] !<< RegexCST tail
     > left alternationCST: RegexCST opt1 "|" RegexCST opt2
-    > left subtractCST: RegexCST "\\" RegexCST 
-    > left emptySubtractCST: "\\" RegexCST 
+    > right subtractCST: RegexCST "\\" RegexCST 
+    > emptySubtractCST: "\\" RegexCST 
+    // > left (
+    //     left lookaheadCST: RegexCST exp "\>" RegexCST lookahead
+    //     | left emptyLookaheadCST: "\>" RegexCST lookahead
+    //     | left negativeLookaheadCST: RegexCST exp "!\>" RegexCST negativeLookahead
+    //     | left emptyNegativeLookaheadCST: "!\>" RegexCST negativeLookahead
+    //     | right lookbehindCST: RegexCST lookbehind "\<" RegexCST exp
+    //     | right emptyLookbehindCST: RegexCST lookbehind "\<"
+    //     | right negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
+    //     | right emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
+    // )
+    > right (
+        lookaheadCST: RegexCST exp "\>" RegexCST lookahead
+        | emptyLookaheadCST: "\>" RegexCST lookahead
+        | negativeLookaheadCST: RegexCST exp "!\>" RegexCST negativeLookahead
+        | emptyNegativeLookaheadCST: "!\>" RegexCST negativeLookahead
+    )
     > left (
-        left lookaheadCST: RegexCST exp "\>" RegexCST lookahead
-        | left emptyLookaheadCST: "\>" RegexCST lookahead
-        | left negativeLookaheadCST: RegexCST exp "!\>" RegexCST negativeLookahead
-        | left emptyNegativeLookaheadCST: "!\>" RegexCST negativeLookahead
-        | right lookbehindCST: RegexCST lookbehind "\<" RegexCST exp
-        | right emptyLookbehindCST: RegexCST lookbehind "\<"
-        | right negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
-        | right emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
+        lookbehindCST: RegexCST lookbehind "\<" RegexCST exp
+        | emptyLookbehindCST: RegexCST lookbehind "\<"
+        | negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
+        | emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
     )
     | bracket \bracketCST: "(" RegexCST ")"
     | bracket \scopedCST: "(""\<"ScopesCST"\>" RegexCST ")";

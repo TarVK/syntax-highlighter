@@ -61,9 +61,9 @@ Symbol regexToSymbol(Regex inp) {
         case alternation(Regex::empty(), \multi-iteration(r)): 
             return \iter-star(regexToSymbol(r));
         case concatenation(r, eolR): 
-            return just(\conditional(regexToSymbol(r), {\end-of-line()}));
+            return \conditional(regexToSymbol(r), {\end-of-line()});
         case concatenation(solR, r):
-            return \conditional(regexToMaybeSymbol(r), {\begin-of-line()});
+            return \conditional(regexToSymbol(r), {\begin-of-line()});
 
         // Normal cases
         case never(): return custom("never", seq([])); // TODO: could also use an empty range or smth: \char-class([])

@@ -22,24 +22,16 @@ tuple[
     list[ConvSymbol] parts, 
     ConvProd source, 
     ConversionGrammar grammar
-) 
-    = defineSequenceSymbol(parts, {convProdSource(source)}, grammar, getLabel(source));
-tuple[
-    list[Warning] warnings,
-    Symbol seqSymbol,
-    ConversionGrammar grammar
-] defineSequenceSymbol(
-    list[ConvSymbol] parts, 
-    set[SourceProd] sources, 
-    ConversionGrammar grammar,
-    Maybe[str] prodLabel
 ) {
+    prodLabel = getLabel(source);
+    sources = {convProdSource(source)};
+
     list[Warning] warnings = [];
     set[Symbol] prefixes = {};
 
     while([symb(ref, scopes), *rest] := parts) {
         prefixes += followAlias(ref, grammar);
-        if(size(scopes) > 0) warnings += inapplicableScope(scopes, p);
+        if(size(scopes) > 0) warnings += inapplicableScope(scopes, source);
         parts = rest;
     }
 

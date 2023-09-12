@@ -9,7 +9,7 @@ import Warning;
 import Scope;
 
 // The scope can't be applied to the given grammar due to left-recursion
-data Warning = inapplicableScope(Scopes scope, ConvProd production);
+data Warning = inapplicableScope(ScopeList scope, ConvProd production);
 
 @doc {
     Gets rid of all left-most symbols in productions, broadening the language.
@@ -57,7 +57,7 @@ WithWarnings[set[ConvProd]] convert(Symbol target, set[ConvProd] prods, Conversi
         <p, queue> = takeOneFrom(queue);
         if(convProd(lDef, parts, sources) := p){
             if([symb(ref, scopes), *rest] := parts) {
-                if(size(scopes) > 0) warnings += inapplicableScope(scopes, p);
+                if(scopes != []) warnings += inapplicableScope(scopes, p);
                 
                 // Try adding the remainder as a production later
                 if(size(rest) > 0) queue += convProd(copyLabel(lDef, target), rest, {convProdSource(p)});

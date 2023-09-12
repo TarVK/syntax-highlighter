@@ -24,7 +24,7 @@ import regex::PSNFATools;
 import Scope;
 import Warning;
 
-data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], set[ConvProd] productions);
+data Warning = incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], set[ConvProd] productions);
 
 @doc {
     Attempts to combine productions that start with overlapping regular expressions
@@ -167,7 +167,7 @@ tuple[
             bool same = true;
             part = getPart(leading.parts, i);
 
-            set[tuple[Symbol, Scopes]] incompatibleScopes = {};
+            set[tuple[Symbol, ScopeList]] incompatibleScopes = {};
             set[ConvProd] incompatibleScopesSources = {};
 
             // Check if all symbols are equivalent 

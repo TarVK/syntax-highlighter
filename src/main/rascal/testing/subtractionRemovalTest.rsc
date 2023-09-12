@@ -26,8 +26,8 @@ void testRemoval(str regexText, bool convertable) {
         inRegex = subtractPSNFA(regexToPSNFA(regex), regexToPSNFA(converted));
         inConverted = subtractPSNFA(regexToPSNFA(converted), regexToPSNFA(regex));
 
-        minimizedInRegex = relabelSetPSNFA(minimize(inRegex));
-        minimizedInConverted = relabelSetPSNFA(minimize(inConverted));
+        minimizedInRegex = minimizeUnique(inRegex);
+        minimizedInConverted = minimizeUnique(inConverted);
 
         visualize(insertPSNFADiagrams(<
             regexText,

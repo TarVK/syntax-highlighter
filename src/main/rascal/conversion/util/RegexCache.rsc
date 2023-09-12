@@ -2,6 +2,7 @@ module conversion::util::RegexCache
 
 extend regex::RegexToPSNFA;
 
+import IO;
 import lang::rascal::grammar::definition::Characters;
 import ParseTree;
 

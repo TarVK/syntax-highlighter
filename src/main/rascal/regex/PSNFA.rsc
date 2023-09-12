@@ -39,6 +39,7 @@ bool PSNFAMatch(LangSymbol input, TransSymbol match) {
     return false;
 }
 
+
 @doc {
     Converts the given PSNFA to a deterministic PSNFA with an equivalent language
 }
@@ -84,8 +85,11 @@ set[TransSymbol](set[TransSymbol] included) getPSNFAComplementRetriever(TagsClas
         
         // Calculate the remaining characters
         CharClass remainingChars = getCharsComplements({cc | character(cc, _) <- included});
-        if(size(remainingChars)>0)
-            out += character(remainingChars, complement({}, tagsUniverse)); // The remaning characters with any tags
+        if(size(remainingChars)>0) {
+            tagsComplement = complement({}, tagsUniverse);
+            if(!isEmpty(tagsComplement))
+                out += character(remainingChars, tagsComplement); // The remaning characters with any tags
+        }
 
         return out;
     };
@@ -155,37 +159,12 @@ RascalVisGraph PSNFAtoDiagram(NFA[&T] n, Maybe[str](TransSymbol sym) getLabel) =
 }
 value insertPSNFADiagrams(value val) = insertPSNFADiagrams(val, true);
 value insertPSNFADiagrams(value val, bool simplify) = top-down-break visit (val) {
-    case n:<State i, rel[State, TransSymbol, State] t, set[State] a, _> => simplify 
-        ? <i, t, a, PSNFAtoDiagram(relabel(n))>
-        : <i, t, a, PSNFAtoDiagram(n)>
+    case n:<State i, rel[State, TransSymbol, State] t, set[State] a, _> => 
+        simplify 
+            ? all(s <- getStates(n), simple(int _):=s) 
+                ? <i, t, a, PSNFAtoDiagram(mapStates(n, int(State s) {
+                    return simple(id) := s ? id : 0;
+                }))>
+                : <i, t, a, PSNFAtoDiagram(relabel(n))>
+            : <i, t, a, PSNFAtoDiagram(n)>
 };
-
-@doc {
-    Relabels all states of the given NFA to a numeric one
-}
-NFA[int] relabel(NFA[&T] n) {
-    maxID = 0; 
-    set[&T] found = {};
-    set[&T] queue = {n.initial};
-    map[&T, int] labels = ();
-
-    while(size(queue)>0) {
-        <state, queue> = takeOneFrom(queue);
-
-        if(state in found) continue;
-        found += {state};
-
-        labels[state] = maxID;
-        maxID += 1;
-
-        queue += n.transitions[state]<1>;
-    }
-
-    int mapState(&T state) {
-        if (state in labels) return labels[state];
-        maxID += 1;
-        return maxID-1;
-    }
-
-    return mapStates(n, mapState);
-}

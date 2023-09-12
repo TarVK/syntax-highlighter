@@ -90,11 +90,11 @@ tuple[str, list[Warning], TokenCache, ScopeProductions, set[str]] defineTokenPro
     return <textSym, warnings, tokenCache, prods, textSymbols>;
 }
 
-alias ScopeCache = map[tuple[Regex, str, Scopes, Regex], str];
+alias ScopeCache = map[tuple[Regex, str, ScopeList, Regex], str];
 tuple[str, list[Warning], ScopeCache, ScopeProductions, set[str]] defineScopeProd(
     Regex open, 
     str ref,
-    Scopes scopes,
+    ScopeList scopes,
     Regex close,
     ScopeCache scopeCache,
     ScopeProductions prods, 
@@ -127,7 +127,7 @@ tuple[str, list[Warning], ScopeCache, ScopeProductions, set[str]] defineScopePro
     } else if([first] := scopes) 
         scope = first;
     else if([] := scopes)
-        scope = [];
+        scope = "";
 
     <openWarnings, openScoped> = convertRegex(open, prod);
     <closeWarnings, closeScoped> = convertRegex(close, prod);
@@ -141,7 +141,7 @@ WithWarnings[tuple[Regex, list[Scope]]] convertRegex(Regex regex, ConvProd prod)
     list[Warning] warnings = [];
     if(!isEqual) {
         delta = differencePSNFA(regexToPSNFA(regex), regexToPSNFA(subtractionlessRegex));
-        minimizedDelta = relabelSetPSNFA(minimize(delta));
+        minimizedDelta = minimizeUnique(delta);
         warnings = [unresolvabledSubtraction(regex, minimizedDelta, prod)];
     }
     emptyLookarounds = splitRegexLookarounds(removeRegexCache(subtractionlessRegex));

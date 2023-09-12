@@ -36,16 +36,16 @@ NFA[set[&T]] convertNFAtoDFA(NFA[&T] n, ComputeDisjoint getDisjoint, ComputeRema
         stateTransitions = n.transitions[stateSet];
         transitionSymbols = {symbol | symbol <- stateTransitions<0>, symbol != epsilon()};
 
-        disjoinSymbolsMapping = getDisjoint(transitionSymbols);
-        for(disjoint <- disjoinSymbolsMapping<0>) {
-            original = disjoinSymbolsMapping[disjoint]; // Get all the original transitions corresponding to this new disjoint transition
+        disjointSymbolsMapping = getDisjoint(transitionSymbols);
+        for(disjoint <- disjointSymbolsMapping<0>) {
+            original = disjointSymbolsMapping[disjoint]; // Get all the original transitions corresponding to this new disjoint transition
             directToSet = stateTransitions[original];
             set[&T] toSet = expandEpsilon(n, directToSet);
             init(toSet);
             transitions += <stateSet, disjoint, toSet>;
         }
 
-        includedSymbols = disjoinSymbolsMapping<0>;
+        includedSymbols = disjointSymbolsMapping<0>;
         remainingSymbols = getRemainder(includedSymbols);
         for(remainingSymbol <- remainingSymbols) {
             set[&T] toSet = {};

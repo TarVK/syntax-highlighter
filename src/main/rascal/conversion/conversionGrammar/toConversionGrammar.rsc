@@ -15,7 +15,11 @@ import regex::Regex;
 import Scope;
 import Warning;
 
-data Warning = unresolvedModifier(ConvSymbol modifier, ConvProd production);
+// Warnings that may be produced by conversion
+data Warning = unresolvedModifier(ConvSymbol modifier, ConvProd production)
+             | unsupportedCondition(Condition condition, Production inProd)
+             | multipleTokens(set[ScopeList] tokens, Production inProd) // Warning because order can not be guaranteed, use a single token declaration instead
+             | multipleScopes(set[ScopeList] scopes, Production inProd); // Warning because order can not be guaranteed, use a single scope declaration instead
 
 
 @doc {
@@ -36,11 +40,11 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
         for(/p:prod(lDef, parts, attributes) <- defProds) {
             nonTermScopesSet = {parseScopes(scopes) | \tag("scope"(scopes)) <- attributes};
             if(size(nonTermScopesSet)>1) warnings += multipleScopes(nonTermScopesSet, p);
-            nonTermScopes = [*scopes | scopes <- nonTermScopesSet];
+            ScopeList nonTermScopes = [*scopes | scopes <- nonTermScopesSet];
 
             pureTermScopesSet = {parseScopes(scopes) | \tag("token"(scopes)) <- attributes};
             if(size(pureTermScopesSet)>1) warnings += multipleTokens(pureTermScopesSet, p);
-            pureTermScopes = [*scopes | scopes <- pureTermScopesSet];
+            ScopeList pureTermScopes = [*scopes | scopes <- pureTermScopesSet];
             termScopes = nonTermScopes + pureTermScopes;
 
             list[ConvSymbol] newParts = [];
@@ -60,18 +64,18 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
     startSymbol = getOneFrom(grammar.starts);
     return <warnings, convGrammar(startSymbol, prods)>;
 }
-WithWarnings[list[ConvSymbol]] getConvSymbol(Symbol sym, Production prod, Scopes termScopes, Scopes nonTermScopes) {
+WithWarnings[list[ConvSymbol]] getConvSymbol(Symbol sym, Production prod, ScopeList termScopes, ScopeList nonTermScopes) {
     list[Warning] warnings = [];
 
     list[ConvSymbol] rec(Symbol s) = rec(s, termScopes, nonTermScopes);
-    list[ConvSymbol] rec(Symbol s, Scopes termScopes, Scopes nonTermScopes){
+    list[ConvSymbol] rec(Symbol s, ScopeList termScopes, ScopeList nonTermScopes){
         warningsAndResult = getConvSymbol(s, prod, termScopes, nonTermScopes);
         warnings += warningsAndResult.warnings;
         return warningsAndResult.result;
     }
 
     ConvSymbol getRegex(Regex exp) {
-        if(size(termScopes) > 0) exp = mark({scopeTag(termScopes)}, exp);
+        if(termScopes != []) exp = mark({scopeTag(toScopes(termScopes))}, exp);
         cachedExp = getCachedRegex(exp);
         return regexp(cachedExp);
     }
@@ -164,4 +168,4 @@ list[list[CharClass]] getCharRanges(str text, bool caseInsensitive) {
 
     return [[getCharClass(c) | c <- seq] | seq <- sequences];
 }
-Scopes parseScopes(str scopes) = [split(".", scope) | scope <- split(",", scopes)];
+ScopeList parseScopes(str scopes) = split(",", scopes);

@@ -1,12 +1,14 @@
 module regex::RegexToPSNFA
 
 import IO;
+
 import regex::RegexTypes;
 import regex::NFA;
 import regex::PSNFA;
 import regex::PSNFATypes;
 import regex::PSNFACombinators;
 import regex::NFASimplification;
+import regex::PSNFASimplification;
 
 // Would prefer to not import this here, see if we can get around this
 import conversion::util::RegexCache;
@@ -20,7 +22,7 @@ NFA[State] regexToPSNFA(Regex regex) {
     NFA[State] n = neverPSNFA();
     switch(regex) {
         case never(): n = neverPSNFA();
-        case empty(): n = emptyPSNFA();
+        case Regex::empty(): n = emptyPSNFA();
         case always(): n = alwaysPSNFA();
         case character(cc): n = charPSNFA(cc);
         case lookahead(r, la): n = lookaheadPSNFA(regexToPSNFA(r), regexToPSNFA(la));
@@ -44,6 +46,5 @@ NFA[State] regexToPSNFA(Regex regex) {
 }
 
 NFA[State] simplify(NFA[State] n) {
-    simplified = minimize(removeUnreachable(n));
-    return relabelIntPSNFA(relabel(simplified));
+    return minimizeUnique(n);
 }

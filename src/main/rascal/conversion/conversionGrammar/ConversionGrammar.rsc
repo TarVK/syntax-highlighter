@@ -34,7 +34,7 @@ data SourceProd = convProdSource(ConvProd convProd)
                 | origProdSource(Production origProd);
                 
 
-data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-terminal, with the scopes to assign it
+data ConvSymbol = symb(Symbol ref, ScopeList scopes)                // Non-terminal, with the scopes to assign it
                 | delete(ConvSymbol from, ConvSymbol del)           // Deleting one non-terminal from another non-terminal
                 | follow(ConvSymbol sym, ConvSymbol follow)         // Matching sym only if followed by follow
                 | notFollow(ConvSymbol sym, ConvSymbol follow)      // Matching sym only if not followed by follow
@@ -51,10 +51,6 @@ data ConvSymbol = symb(Symbol ref, Scopes scopes)                   // Non-termi
 // Allow sources to be specified within an expression, to track how a regular expression was obtained, TODO: 
 // data Regex = regexSource(Regex r, set[ConvProd] prods);
 
-// Warnings that may be produced by conversion
-data Warning = unsupportedCondition(Condition condition, Production inProd)
-             | multipleTokens(set[Scopes] tokens, Production inProd) // Warning because order can not be guaranteed, use a single token declaration instead
-             | multipleScopes(set[Scopes] scopes, Production inProd); // Warning because order can not be guaranteed, use a single scope declaration instead
 
 @doc {
     Replaces the given production in the grammar with the new production

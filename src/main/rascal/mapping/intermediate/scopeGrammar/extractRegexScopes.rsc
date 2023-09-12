@@ -2,6 +2,7 @@ module mapping::intermediate::scopeGrammar::extractRegexScopes
 
 import List;
 import IO;
+import Set;
 
 import regex::PSNFATools;
 import conversion::util::RegexCache;
@@ -22,20 +23,27 @@ tuple[Regex, list[Scope]] extractRegexScopes(Regex regex, list[Scope] scopes) {
             /*
                 If a scope `b` is contained under a parent scope `a`, it will be tagged with something like: 
                 {scopeTag([a, b])}
-             */
-            set[Scopes] markScopes = {s | scopeTag(s) <- tags};
-            set[Scope] newScopes = {s | [*_, s] <- markScopes};
+            */
+            if(
+                {scopeTag(s:someScopes(_, _)), *rest} := tags, 
+                scopeList := toList(s), 
+                // Make sure we get an outermost scope
+                !any(
+                    scopeTag(s2:someScopes(_, _)) <- tags, 
+                    scopeList2 := toList(s2),
+                    [*scopeList2, _, *_] := scopeList
+                )
+            ) {
+                scope = last(scopeList);
 
-            if({} := newScopes)
-                regex = r;
-            else if({scope} := newScopes) {
+                if(size(rest) > 0) r = mark(rest, r); // Make sure the remaining scopes are also processed
+
                 newCaptureGroup = captureGroup(size(scopes));
                 scopes += [scope];
                 <r, scopes> = extractRegexScopes(r, scopes);
                 regex = mark({newCaptureGroup}, r);
             } else {
-                // Unsupported, shouldn't happen
-                println("A regular expression contained multiple scopes: <newScopes>");
+                regex = r;
             }
         }
 

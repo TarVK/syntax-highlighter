@@ -29,7 +29,7 @@ Symbol convSymbolToSymbol(ConvSymbol inp) {
     switch(inp) {
         case symb(ref, scopes): {
             if(size(scopes)>0)
-                return annotate(ref, {stringify(scopes), scopes});
+                return annotate(ref, {stringify(toScopes(scopes)), scopes});
             return ref;
         }
         case delete(from, del): 
@@ -96,7 +96,7 @@ Symbol regexToSymbol(Regex inp) {
             return annotate(regexToSymbol(r), {
                 Scope::stringify(s) 
                 | scopeTag(s) <- tags, 
-                size(s)>0
+                s!=noScopes()
             } + tags);
     }
     return nothing();

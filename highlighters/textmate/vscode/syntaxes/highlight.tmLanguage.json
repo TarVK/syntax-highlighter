@@ -8,24 +8,26 @@
     ],
     "repository": {
         "assign1": {
-            "begin": "(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "begin": "\\=",
             "end": "\\;",
-            "beginCaptures": {
-                "1": {
-                    "name": "variable.parameter"
-                }
-            },
+            "beginCaptures": [],
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G6"
+                    "include": "#Exp"
                 }
             ]
         },
         "escape,dollarChar,char": {
-            "match": "(\\\\.)|[^\\\"\\$\\\\]|\\$(?!\\{)",
+            "match": "[^\\\"\\$\\\\]|\\$(?!\\{)|((\\\\)(.))",
             "captures": {
                 "1": {
+                    "name": "constant.character.escape"
+                },
+                "2": {
+                    "name": "constant.character.escape"
+                },
+                "3": {
                     "name": "constant.character.escape"
                 }
             }
@@ -36,19 +38,10 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#booll,var,inn,forIn,mult,subt,divide,equals,add,nat"
-                },
-                {
-                    "include": "#S1"
-                },
-                {
-                    "include": "#forIter1"
-                },
-                {
                     "include": "#S"
                 },
                 {
-                    "include": "#brac"
+                    "include": "#iffElse,iff7"
                 }
             ]
         },
@@ -58,19 +51,32 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                    "include": "#iffElse,iff2"
                 },
                 {
                     "include": "#S"
+                }
+            ]
+        },
+        "G0": {
+            "patterns": [
+                {
+                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                },
+                {
+                    "include": "#T"
                 },
                 {
                     "include": "#brac"
                 },
                 {
+                    "include": "#forIter1"
+                },
+                {
                     "include": "#S1"
                 },
                 {
-                    "include": "#iffElse,iff3"
+                    "include": "#S"
                 }
             ]
         },
@@ -80,19 +86,10 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff2"
-                },
-                {
-                    "include": "#S"
-                },
-                {
-                    "include": "#assign1"
-                },
-                {
                     "include": "#forIter,forIn"
                 },
                 {
-                    "include": "#S2"
+                    "include": "#S"
                 }
             ]
         },
@@ -102,19 +99,19 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                    "include": "#S2"
                 },
                 {
-                    "include": "#forIter"
+                    "include": "#assign"
+                },
+                {
+                    "include": "#forIter,forIn1"
+                },
+                {
+                    "include": "#iffElse,iff4"
                 },
                 {
                     "include": "#S"
-                },
-                {
-                    "include": "#S1"
-                },
-                {
-                    "include": "#brac"
                 }
             ]
         },
@@ -124,10 +121,19 @@
                     "include": "#T"
                 },
                 {
+                    "include": "#iffElse,iff3"
+                },
+                {
+                    "include": "#S2"
+                },
+                {
+                    "include": "#iffElse,assign1"
+                },
+                {
                     "include": "#S"
                 },
                 {
-                    "include": "#iffElse,iff4"
+                    "include": "#forIter,forIn1"
                 }
             ]
         },
@@ -137,69 +143,67 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,assign"
-                },
-                {
-                    "include": "#S"
-                },
-                {
-                    "include": "#S2"
-                },
-                {
                     "include": "#iffElse,iff"
                 },
                 {
-                    "include": "#assign"
-                },
-                {
-                    "include": "#forIter,forIn"
+                    "include": "#S"
                 }
             ]
         },
         "iffElse,iff4": {
-            "begin": "\\(",
+            "begin": "((if)(?=\\%\\%|\\%(?!\\%)|\\(|[\\t-\\n\\r ]))",
             "end": "(?=\\})",
-            "beginCaptures": [],
-            "endCaptures": [],
-            "patterns": [
-                {
-                    "include": "#G5"
-                }
-            ]
-        },
-        "iffElse,iff5": {
-            "begin": "\\)",
-            "end": "(?=\\})",
-            "beginCaptures": [],
-            "endCaptures": [],
-            "patterns": [
-                {
-                    "include": "#G7"
-                }
-            ]
-        },
-        "iffElse,iff6": {
-            "begin": "(if)(?=[\\t-\\n\\r ]|\\%\\%[^\\n]*(?:(?!.)|(?=\\n|\\r\\n))|\\%(?!\\%)|\\()",
-            "end": "(?:x(?<!x))",
             "beginCaptures": {
                 "1": {
+                    "name": "keyword"
+                },
+                "2": {
                     "name": "keyword"
                 }
             },
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G9"
+                    "include": "#G8"
+                }
+            ]
+        },
+        "iffElse,iff5": {
+            "begin": "((if)(?=\\%\\%|\\%(?!\\%)|\\(|[\\t-\\n\\r ]))",
+            "end": "(?:x(?<!x))",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "keyword"
+                }
+            },
+            "endCaptures": [],
+            "patterns": [
+                {
+                    "include": "#G12"
+                }
+            ]
+        },
+        "iffElse,iff6": {
+            "begin": "\\)",
+            "end": "(?:x(?<!x))",
+            "beginCaptures": [],
+            "endCaptures": [],
+            "patterns": [
+                {
+                    "include": "#G4"
                 }
             ]
         },
         "Exp": {
             "patterns": [
                 {
-                    "include": "#T"
+                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
                 },
                 {
-                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                    "include": "#T"
                 },
                 {
                     "include": "#S"
@@ -238,19 +242,19 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#S"
-                },
-                {
-                    "include": "#iffElse,iff6"
-                },
-                {
-                    "include": "#forIter,forIn"
+                    "include": "#assign"
                 },
                 {
                     "include": "#S2"
                 },
                 {
-                    "include": "#assign1"
+                    "include": "#forIter,forIn1"
+                },
+                {
+                    "include": "#S"
+                },
+                {
+                    "include": "#iffElse,iff5"
                 }
             ]
         },
@@ -265,7 +269,7 @@
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#Exp"
+                    "include": "#G0"
                 }
             ]
         },
@@ -281,17 +285,13 @@
             ]
         },
         "forIter,forIn": {
-            "begin": "(for)(?=[\\t-\\n\\r ]|\\%\\%[^\\n]*(?:(?!.)|(?=\\n|\\r\\n))|\\%(?!\\%)|\\()",
-            "end": "\\)",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword"
-                }
-            },
+            "begin": "\\(",
+            "end": "(?=\\))",
+            "beginCaptures": [],
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G0"
+                    "include": "#G7"
                 }
             ]
         },
@@ -304,45 +304,41 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff7"
+                    "include": "#iffElse,iff3"
                 },
                 {
-                    "include": "#S"
-                }
-            ]
-        },
-        "G121": {
-            "patterns": [
-                {
-                    "include": "#T"
-                },
-                {
-                    "include": "#iffElse,assign2"
-                },
-                {
-                    "include": "#S"
-                },
-                {
-                    "include": "#iffElse,iff"
-                },
-                {
-                    "include": "#forIter,forIn"
+                    "include": "#iffElse,assign"
                 },
                 {
                     "include": "#S2"
-                }
-            ]
-        },
-        "G0": {
-            "patterns": [
-                {
-                    "include": "#T"
                 },
                 {
                     "include": "#S"
                 },
                 {
                     "include": "#forIter,forIn1"
+                }
+            ]
+        },
+        "G111": {
+            "patterns": [
+                {
+                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                },
+                {
+                    "include": "#T"
+                },
+                {
+                    "include": "#brac"
+                },
+                {
+                    "include": "#iffElse,iff6"
+                },
+                {
+                    "include": "#S"
+                },
+                {
+                    "include": "#S1"
                 }
             ]
         },
@@ -377,56 +373,44 @@
             "contentName": "meta.embedded.line"
         },
         "booll,var,inn,mult,subt,divide,equals,add,nat": {
-            "match": "(false|true)|([0-9]+(?![0-9a-z]))|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(\\=\\=|\\+|in|\\*|\\/|\\-)",
+            "match": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(([0-9]+)(?![0-9a-z]))|(true|false)|((\\-)|(\\*)|(\\=\\=)|(\\/)|(\\+)|(in))",
             "captures": {
+                "11": {
+                    "name": "keyword.operator"
+                },
                 "1": {
-                    "name": "constant.other"
+                    "name": "variable"
                 },
                 "2": {
                     "name": "constant.numeric"
                 },
                 "3": {
-                    "name": "variable"
+                    "name": "constant.numeric"
                 },
                 "4": {
+                    "name": "constant.other"
+                },
+                "5": {
+                    "name": "keyword.operator"
+                },
+                "6": {
+                    "name": "keyword.operator"
+                },
+                "7": {
+                    "name": "keyword.operator"
+                },
+                "8": {
+                    "name": "keyword.operator"
+                },
+                "9": {
+                    "name": "keyword.operator"
+                },
+                "10": {
                     "name": "keyword.operator"
                 }
             }
         },
         "G5": {
-            "patterns": [
-                {
-                    "include": "#T"
-                },
-                {
-                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
-                },
-                {
-                    "include": "#iffElse,iff5"
-                },
-                {
-                    "include": "#S1"
-                },
-                {
-                    "include": "#S"
-                },
-                {
-                    "include": "#brac"
-                }
-            ]
-        },
-        "forIter,forIn1": {
-            "begin": "\\(",
-            "end": "(?=\\))",
-            "beginCaptures": [],
-            "endCaptures": [],
-            "patterns": [
-                {
-                    "include": "#G10"
-                }
-            ]
-        },
-        "G6": {
             "patterns": [
                 {
                     "include": "#T"
@@ -439,14 +423,61 @@
                 }
             ]
         },
-        "assign": {
-            "begin": "\\=",
-            "end": "\\;",
-            "beginCaptures": [],
+        "forIter,forIn1": {
+            "begin": "((for)(?=\\%\\%|\\%(?!\\%)|\\(|[\\t-\\n\\r ]))",
+            "end": "\\)",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword"
+                },
+                "2": {
+                    "name": "keyword"
+                }
+            },
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#Exp"
+                    "include": "#G2"
+                }
+            ]
+        },
+        "G6": {
+            "patterns": [
+                {
+                    "include": "#T"
+                },
+                {
+                    "include": "#iffElse,assign2"
+                },
+                {
+                    "include": "#S"
+                },
+                {
+                    "include": "#forIter,forIn1"
+                },
+                {
+                    "include": "#assign1"
+                },
+                {
+                    "include": "#iffElse,iff3"
+                },
+                {
+                    "include": "#S2"
+                }
+            ]
+        },
+        "assign": {
+            "begin": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "end": "\\;",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.parameter"
+                }
+            },
+            "endCaptures": [],
+            "patterns": [
+                {
+                    "include": "#G5"
                 }
             ]
         },
@@ -455,18 +486,39 @@
             "captures": []
         },
         "booll,var,inn,forIn,mult,subt,divide,equals,add,nat": {
-            "match": "(false|true)|([0-9]+(?![0-9a-z]))|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(\\=\\=|\\+|in|\\*|\\/|\\-)|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])",
+            "match": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(([0-9]+)(?![0-9a-z]))|(true|false)|((\\-)|(\\*)|(\\=\\=)|(\\/)|(\\+)|(in))|(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])",
             "captures": {
+                "11": {
+                    "name": "keyword.operator"
+                },
                 "1": {
-                    "name": "constant.other"
+                    "name": "variable"
                 },
                 "2": {
                     "name": "constant.numeric"
                 },
                 "3": {
-                    "name": "variable"
+                    "name": "constant.numeric"
                 },
                 "4": {
+                    "name": "constant.other"
+                },
+                "5": {
+                    "name": "keyword.operator"
+                },
+                "6": {
+                    "name": "keyword.operator"
+                },
+                "7": {
+                    "name": "keyword.operator"
+                },
+                "8": {
+                    "name": "keyword.operator"
+                },
+                "9": {
+                    "name": "keyword.operator"
+                },
+                "10": {
                     "name": "keyword.operator"
                 }
             }
@@ -482,29 +534,29 @@
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G3"
+                    "include": "#Exp"
                 }
             ]
         },
         "G7": {
             "patterns": [
                 {
+                    "include": "#booll,var,inn,forIn,mult,subt,divide,equals,add,nat"
+                },
+                {
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff"
+                    "include": "#brac"
                 },
                 {
-                    "include": "#S2"
+                    "include": "#forIter"
                 },
                 {
-                    "include": "#forIter,forIn"
+                    "include": "#S1"
                 },
                 {
                     "include": "#S"
-                },
-                {
-                    "include": "#iffElse,assign1"
                 }
             ]
         },
@@ -530,32 +582,44 @@
         "G9": {
             "patterns": [
                 {
+                    "include": "#booll,var,inn,mult,subt,divide,equals,add,nat"
+                },
+                {
                     "include": "#T"
                 },
                 {
-                    "include": "#S"
+                    "include": "#brac"
                 },
                 {
                     "include": "#iffElse,iff1"
+                },
+                {
+                    "include": "#S1"
+                },
+                {
+                    "include": "#S"
                 }
             ]
         },
         "iffElse,iff1": {
-            "begin": "\\(",
-            "end": "(?:x(?<!x))",
+            "begin": "\\)",
+            "end": "(?=\\})",
             "beginCaptures": [],
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G12"
+                    "include": "#G11"
                 }
             ]
         },
         "S": {
-            "begin": "(\\%(?!\\%))",
+            "begin": "((\\%)(?!\\%))",
             "end": "(\\%)",
             "beginCaptures": {
                 "1": {
+                    "name": "comment.block"
+                },
+                "2": {
                     "name": "comment.block"
                 }
             },
@@ -572,54 +636,66 @@
             "contentName": "comment.block"
         },
         "iffElse,iff2": {
-            "begin": "(if)(?=[\\t-\\n\\r ]|\\%\\%[^\\n]*(?:(?!.)|(?=\\n|\\r\\n))|\\%(?!\\%)|\\()",
-            "end": "(?=\\})",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword"
-                }
-            },
-            "endCaptures": [],
-            "patterns": [
-                {
-                    "include": "#G4"
-                }
-            ]
-        },
-        "T": {
-            "match": "[\\t-\\n\\r ]|(\\%\\%[^\\n]*(?!.)|(?=\\n|\\r\\n))",
-            "captures": {
-                "1": {
-                    "name": "comment.line"
-                }
-            }
-        },
-        "iffElse,iff3": {
-            "begin": "\\)",
+            "begin": "\\(",
             "end": "(?:x(?<!x))",
             "beginCaptures": [],
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G121"
+                    "include": "#G111"
                 }
             ]
         },
-        "iffElse,assign1": {
-            "begin": "(else)|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
-            "end": "(?=\\})",
+        "T": {
+            "match": "((\\%\\%)(([^\\n]*)(?!.)|(?=\\n|\\r\\n)))|[\\t-\\n\\r ]",
+            "captures": {
+                "1": {
+                    "name": "comment.line"
+                },
+                "2": {
+                    "name": "comment.line"
+                },
+                "3": {
+                    "name": "comment.line"
+                },
+                "4": {
+                    "name": "comment.line"
+                }
+            }
+        },
+        "iffElse,iff3": {
+            "begin": "((if)(?=\\%\\%|\\%(?!\\%)|\\(|[\\t-\\n\\r ]))",
+            "end": "\\)",
             "beginCaptures": {
                 "1": {
                     "name": "keyword"
                 },
                 "2": {
-                    "name": "variable.parameter"
+                    "name": "keyword"
                 }
             },
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G8"
+                    "include": "#G10"
+                }
+            ]
+        },
+        "iffElse,assign1": {
+            "begin": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(else)",
+            "end": "(?:x(?<!x))",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.parameter"
+                },
+                "2": {
+                    "name": "keyword"
+                }
+            },
+            "endCaptures": [],
+            "patterns": [
+                {
+                    "include": "#G6"
                 }
             ]
         },
@@ -635,46 +711,42 @@
             ]
         },
         "iffElse,assign2": {
-            "begin": "(else)|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
-            "end": "(?:x(?<!x))",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword"
-                },
-                "2": {
-                    "name": "variable.parameter"
-                }
-            },
-            "endCaptures": [],
-            "patterns": [
-                {
-                    "include": "#G8"
-                }
-            ]
-        },
-        "iffElse,assign": {
-            "match": "(else)|(?!(?<![a-z])(?:else|false|true|in|for|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "match": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(else)",
             "captures": {
                 "1": {
-                    "name": "keyword"
+                    "name": "variable.parameter"
                 },
                 "2": {
-                    "name": "variable.parameter"
+                    "name": "keyword"
                 }
             }
         },
-        "iffElse,iff": {
-            "begin": "(if)(?=[\\t-\\n\\r ]|\\%\\%[^\\n]*(?:(?!.)|(?=\\n|\\r\\n))|\\%(?!\\%)|\\()",
-            "end": "\\)",
+        "iffElse,assign": {
+            "begin": "(?!(?<![a-z])(?:if|for|true|false|in|else)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|(else)",
+            "end": "(?=\\})",
             "beginCaptures": {
                 "1": {
+                    "name": "variable.parameter"
+                },
+                "2": {
                     "name": "keyword"
                 }
             },
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G11"
+                    "include": "#G6"
+                }
+            ]
+        },
+        "iffElse,iff": {
+            "begin": "\\(",
+            "end": "(?=\\})",
+            "beginCaptures": [],
+            "endCaptures": [],
+            "patterns": [
+                {
+                    "include": "#G9"
                 }
             ]
         },
@@ -685,7 +757,7 @@
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G2"
+                    "include": "#G3"
                 }
             ]
         }

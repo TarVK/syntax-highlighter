@@ -46,10 +46,10 @@ import mapping::common::HighlightGrammarData;
 // lexical Natural = [0-9]+ !>> [a-z0-9];
 
 syntax A = Stmt*;
-syntax Stmt = forIn: For "(" Id In !>> [a-z0-9] Exp ")" Stmt
-            | forIter: For "(" Exp Sep Exp Sep Exp ")" Stmt
-            | iff: If "(" Exp ")" Stmt
-            | iffElse: If "(" Exp ")" Stmt Else Stmt
+syntax Stmt = forIn: For >> ("("|[\ \t\n\r]|"%" !>> "%"|"%%") "(" Id In !>> [a-z0-9] Exp ")" Stmt
+            | forIter: For >> ("("|[\ \t\n\r]|"%" !>> "%"|"%%") "(" Exp Sep Exp Sep Exp ")" Stmt
+            | iff: If >> ("("|[\ \t\n\r]|"%" !>> "%"|"%%") "(" Exp ")" Stmt
+            | iffElse: If >> ("("|[\ \t\n\r]|"%" !>> "%"|"%%") "(" Exp ")" Stmt Else Stmt
             | "{" Stmt* "}"
             | assign: Def "=" Exp ";";
 

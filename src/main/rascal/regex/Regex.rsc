@@ -102,7 +102,7 @@ Regex parseRegexReduced(str text) = reduce(parseRegex(text));
 Regex parseRegex(str text) = CSTtoRegex(parse(#RegexCST, text));
 
 Regex CSTtoRegex(RegexCST regex) = CSTtoRegex(regex, []);
-Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
+Regex CSTtoRegex(RegexCST regex, ScopeList scopes) {
     Regex r(RegexCST regex) = CSTtoRegex(regex, scopes);
     switch(regex) {
         case (RegexCST)`$0`: return never();
@@ -142,7 +142,7 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
         case (RegexCST)`(<RegexCST cst>)`: return r(cst);
         case (RegexCST)`(\<<ScopesCST scopesCST>\><RegexCST cst>)`: {
             newSCopes = scopes + CSTtoScopes(scopesCST);
-            return mark({scopeTag(newSCopes)}, CSTtoRegex(cst, newSCopes));
+            return mark({scopeTag(toScopes(newSCopes))}, CSTtoRegex(cst, newSCopes));
         }
     }
 
@@ -172,15 +172,15 @@ CharRange CSTtoCharRange(RangeCST range) {
 int CSTtoCharCode(Char char) = size("<char>")==1 ? charAt("<char>", 0) : charAt("<char>", 1);
 int CSTtoNumber(Num number) = toInt("<number>");
 
-Scope::Scopes CSTtoScopes(ScopesCST scopes) {
+Scope::ScopeList CSTtoScopes(ScopesCST scopes) {
     if((ScopesCST)`<{ScopeCST ","}+ scopesT>` := scopes) {
-        Scope::Scopes out = [];
+        Scope::ScopeList out = [];
         for((ScopeCST)`<{TokenCST "."}+ scopeT>` <- scopesT) {
-            Scope::Scope scope = [];
+            Scope::Scope scope = "";
             for((TokenCST)`<RawChar+ chars>` <- scopeT) {
-                scope += "<chars>";
+                scope += ".<chars>";
             }
-            out += [scope];
+            out += [scope[1..]];
         }
         return out;
     }

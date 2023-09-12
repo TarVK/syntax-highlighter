@@ -179,7 +179,7 @@ bool prodsEqual(list[ConvSymbol] aParts, list[ConvSymbol]  bParts, ClassMap clas
 }
 
 list[ConvSymbol] mergeEqual(list[ConvSymbol] parts, ClassMap classMap) {
-    Maybe[tuple[set[Symbol], Scopes]] prevClass = nothing();
+    Maybe[tuple[set[Symbol], ScopeList]] prevClass = nothing();
     list[ConvSymbol] newParts = [];
     for(part <- parts) {
         if(symb(ref, scopes) := part, ref in classMap) {

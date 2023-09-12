@@ -14,6 +14,7 @@ import regex::NFA;
 import regex::NFASimplification;
 import regex::PSNFA;
 import regex::PSNFATypes;
+import regex::PSNFASimplification;
 
 TransSymbol anyChar() = character(anyCharClass(), {{}});
 
@@ -328,18 +329,6 @@ NFA[State] tagsPSNFA(NFA[State] n, Tags tags) {
 
 //         Helpers
 // ------------------------
-@doc {
-    Turns the PSNFA containing sets of states into a PSNFA with State instances, to be reusable in other PSNFA combinators
-}
-NFA[State] relabelSetPSNFA(NFA[set[State]] n) = mapStates(n, State (set[State] states) { return stateSet(states); });
-
-@doc {
-    Turns the PSNFA containing int states into a PSNFA with State instances, to be reusable in other PSNFA combinators
-}
-NFA[State] relabelIntPSNFA(NFA[int] n) = mapStates(n, State (int state) { return simple("<state>"); });
-
-
-
 @doc {
     Retrieves the standard concat/lookahead/lookbehind transitions
     - shouldMerge: Whether tags should be merged instead of matching exactly

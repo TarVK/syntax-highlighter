@@ -47,7 +47,7 @@ Regex liftScopes(Regex regex) {
         if(cached(nonCached, _, <_, nl>) := regexWithoutScope) 
             return cached(
                 mark(
-                    {scopeTag(liftableScopes) | liftableScopes <- liftableScopesSet}, 
+                    {scopeTag(toScopes(liftableScopes)) | liftableScopes <- liftableScopesSet}, 
                     nonCached
                 ), 
                 psnfa,
@@ -97,14 +97,14 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
 @doc {
     Retrieves all the main scope sets, as well as a set of all scopes that only occur in all transitions of the main match of the regex and not the context match.
 }
-tuple[set[set[Scopes]], set[Scope]] findUniversalMainScopes(Regex regex) {
+tuple[set[set[ScopeList]], set[Scope]] findUniversalMainScopes(Regex regex) {
     <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
     <prefixStates, mainStates, suffixStates> = getPSNFApartition(psnfa);
     contextStates = prefixStates + suffixStates;
 
     // Extract every combination of scopes
-    set[set[Scopes]] getScopeSets(set[State] inStates) = 
-        {{scopes | scopeTag(scopes) <- tags} 
+    set[set[ScopeList]] getScopeSets(set[State] inStates) = 
+        {{toList(scopes) | scopeTag(scopes) <- tags} 
             | <from, character(_, tagsClass), _> <- psnfa.transitions, 
             from in inStates, 
             tags <- tagsClass};

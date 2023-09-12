@@ -20,7 +20,7 @@ import Scope;
 import Warning;
 
 data Warning = mergeScopeDifferences(tuple[Regex, ConvProd] primary, set[tuple[Regex, ConvProd]] regexOverlaps)
-             | incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], set[ConvProd] productions);
+             | incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], set[ConvProd] productions);
 
 @doc {
     Attempts to combine productions that start with overlapping regular expressions
@@ -200,7 +200,7 @@ tuple[
     void mergeBody(int until) {
         set[Symbol] mergeSymbols = {};
         set[tuple[Regex, set[SourceProd]]] mergeRegexes = {};
-        set[tuple[Symbol, Scopes]] incompatibleScopes = {};
+        set[tuple[Symbol, ScopeList]] incompatibleScopes = {};
         set[ConvProd] incompatibleScopesProds = {};
 
         startIndex = minLength-3;
@@ -210,7 +210,7 @@ tuple[
             for(i <- [startIndex..size(sequence)+until]) {
                 part = sequence[i];
                 if(symb(sym, scopes) := part) {
-                    if(size(scopes) > 0) {
+                    if(scopes != []) {
                         incompatibleScopes += <sym, scopes>;
                         incompatibleScopesProds += prod;
                     }

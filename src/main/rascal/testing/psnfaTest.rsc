@@ -103,18 +103,15 @@ tuple[NFA[State], NFA[State]] minimizeTest() {
     // regex = parseRegexReduced("h(o|e)i");
     nfa = regexToPSNFA(regex); 
 
-    minimized = minimize(nfa);
+    minimized = minimizeUnique(nfa);
 
     return <nfa, relabelIntPSNFA(relabel(minimized))>;
 }
 
 // NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(mergeEdges(n, PSNFAMerge))));
-NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimize(n)));
+NFA[State] simplify(NFA[State] n) = relabelIntPSNFA(relabel(minimizeUnique(n)));
 
 void main() {
-    visualize(parseRegexReduced("a\<b\<c\>d\>e"));
-    return;
-
     nfa = reservationTest();
 
     // nfaText = visualizePSNFA(relabel(nfa));

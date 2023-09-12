@@ -72,8 +72,8 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
             for(<s,lDef,parts> <- targetProds) {
                 list[ConvSymbol] newParts = [];
 
-                ConvSymbol sub(Regex regex, Scopes scopes) 
-                    = regexp(size(scopes)>0 ? wrapScopes(regex, scopes) : regex);
+                ConvSymbol sub(Regex regex, ScopeList scopes) 
+                    = regexp(scopes != [] ? wrapScopes(regex, scopes) : regex);
                 for(part <- parts) {
                     if([regexp(regex)] := subParts) {
                         newParts += visit(part) {
@@ -81,9 +81,9 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
                             case symb(label(_, target), scopes) => sub(regex, scopes)
                         };
                     }else{
-                        newPart = [part];
+                        newPart = subParts;
                         
-                        Maybe[Scopes] scopes = nothing();
+                        Maybe[ScopeList] scopes = nothing();
                         if(symb(target, l) := part) scopes = just(l);
                         else if(symb(label(_, target), l) := part) scopes = just(l);
                         // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
@@ -163,7 +163,7 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
                 for(part <- parts) {
                     newPart = [part];
 
-                    Maybe[Scopes] scopes = nothing();
+                    Maybe[ScopeList] scopes = nothing();
                     if(symb(target, l) := part) scopes = just(l);
                     else if(symb(label(_, target), l) := part) scopes = just(l);
                     // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
@@ -202,11 +202,12 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
 @doc {
     Wraps the given regular expresion in the given scope
 }
-Regex wrapScopes(Regex regex, Scopes scopes) {
+Regex wrapScopes(Regex regex, ScopeList scopeList) {
+    Scopes scopes = toScopes(scopeList);
     Regex prefixScopes(Regex regex) {
         switch(regex) {
             case mark(tags, r): return mark({
-                scopeTag(s) := t ? scopeTag([*scopes, *s]) : t | t <- tags
+                scopeTag(s) := t ? scopeTag(concat(scopes, s)) : t | t <- tags
             }, prefixScopes(r));
             case lookahead(r, la): return lookahead(prefixScopes(r), la);
             case \negative-lookahead(r, la): return \negative-lookahead(prefixScopes(r), la);
@@ -234,7 +235,7 @@ Regex wrapScopes(Regex regex, Scopes scopes) {
 
     TagsClass modifyTags(TagsClass tc) = regex::Tags::merge(
             visit (tc) {
-                case scopeTag(s) => scopeTag([*scopes, *s])
+                case scopeTag(s) => scopeTag(concat(scopes, s))
             },
             {{scopeTag(scopes)}}
         );

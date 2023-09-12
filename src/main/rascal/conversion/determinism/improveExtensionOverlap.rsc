@@ -31,7 +31,7 @@ tuple[
         if(just(<fixedRe, fixLength>) := fixOverlap(re, follow, grammar, maxLookaheadLength)) {
             return <fixedRe, nothing(), just(fixLength)>;
         } else {
-            simplified = relabelSetPSNFA(minimize(overlap));
+            simplified = minimizeUnique(overlap);
             return <re, just(simplified), nothing()>;
         }
     }

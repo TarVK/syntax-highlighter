@@ -48,7 +48,9 @@ bool equals(Regex a, Regex b)
     = equals(a, b, false);
 bool equals(Regex a, Regex b, bool moduloTags) {
     aNFA = regexToPSNFA(a);
-    bNFA = regexToPSNFA(b);     
+    bNFA = regexToPSNFA(b);
+    if(!moduloTags) return aNFA == bNFA; // regex nfas are minimized and normalized such that every language has a unique minimal+normal NFA
+
     return equals(aNFA, bNFA, moduloTags);
 }
 
@@ -144,16 +146,18 @@ bool alwaysAcceptsEmpty(NFA[State] n)
 }
 NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());
 
+
 @doc {
-    Obtains PSNFAs o and e such that,
-    L(no) = {(p, w, s) | (p, w, s) ∈ L(n) ∧ (∃ wp, ws . w = wp ws ∧ (p, wp, ws s) ∈ L(m))}
-    L(me) = {(p, w, s) | ∃ (mp, mw, ms) ∈ L(m) . p = mp mw ∧ w s = ms ∧ (mp, mw w, s) ∈ L(n)}
-
-    I.e. no specifies all words in n, such that m contains a prefix of said word,
-    and me specifies all extension words t such that there exists a word h in m for which the concatenation ht is in n (a word in m can be extended using e to be part of n). 
-
-    If these languages are empty, nothing is returned instead
+    Checks whether an extension of rb overlaps with ra. I.e. whether a prefix of ra could also be matched by rb. 
 }
-Maybe[tuple[NFA[State] no, NFA[State] me]] getPrefixOverlap(NFA[State] n, NFA[State] m) {
-    // TODO: implement
+Maybe[NFA[State]] getOverlap(Regex ra, Regex rb) {
+    nfaA = regexToPSNFA(ra);
+    nfaB = regexToPSNFA(rb);
+    extensionB = getExtensionNFA(nfaB);
+    overlap = productPSNFA(nfaA, extensionB, true);
+    if(!isEmpty(overlap)) 
+        return just(overlap);
+    return nothing();
 }
+
+int abs(int v) = v < 0 ? -v : v;

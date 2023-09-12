@@ -76,7 +76,7 @@ tuple[set[ConvProd], ProdsOverlaps, ProdExtensions]
                     continue outer;
                 } else {
                     // If the overlap couldn't be fixed, we want to report it
-                    simplified = relabelSetPSNFA(minimize(overlap));
+                    simplified = minimizeUnique(overlap);
                     overlaps += <simplified, a, b>;
                 }
 

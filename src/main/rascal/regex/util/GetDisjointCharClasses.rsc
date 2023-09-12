@@ -56,6 +56,11 @@ public CharClass fDifference(CharClass r1, CharClass r2)
 public CharClass fComplement(CharClass r1) 
     = [ r | r <- complement(r1), !(r is \empty-range)];
 
+public CharClass normalize(CharClass cc)
+    = [*prefixSeq, range(s, i), range(j, e), *suffixSeq] := cc && i+1 == j 
+        ? normalize([*prefixSeq, range(s, e), *suffixSeq])
+        : cc;
+
 public bool overlaps(CharClass r1, CharClass r2) {
     return size(fIntersection(r1, r2)) > 0;
 }

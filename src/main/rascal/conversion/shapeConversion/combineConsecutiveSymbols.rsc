@@ -22,7 +22,7 @@ import Warning;
 import Visualize;
 
 /** Scopes can't be applied due to difference in scopes merging */
-data Warning = incompatibleScopesForUnion(set[tuple[Symbol, Scopes]], ConvProd production);
+data Warning = incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], ConvProd production);
 
 @doc {
     Combines all two (or more) consecutive non-terminal symbols together into their own symbol, which allows matching  of either. Assuming all rules are right-recursive, this broadens the language.
@@ -104,7 +104,7 @@ tuple[
 ) {
     list[Warning] warnings = [];
 
-    Maybe[tuple[Symbol, Scopes]] prevSymbol = nothing();
+    Maybe[tuple[Symbol, ScopeList]] prevSymbol = nothing();
     Maybe[Regex] spacerRegex = nothing();
     void flush() {
         if(just(<sym, scopes>) := prevSymbol) 

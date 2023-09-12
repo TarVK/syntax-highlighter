@@ -146,7 +146,7 @@ tuple[SubtractCache, Maybe[DependencyConstraints]] getSubprodDependencies(
             if(rightRecursive) {
                 bool matches = false;
 
-                list[tuple[Symbol, Scopes]] superSymbolSeq = [];
+                list[tuple[Symbol, ScopeList]] superSymbolSeq = [];
                 while(symb(symSuper, scopesSuper) := pSuper) {
                     superSymbolSeq += <symSuper, scopesSuper>;
                     superI += 1;
@@ -155,15 +155,15 @@ tuple[SubtractCache, Maybe[DependencyConstraints]] getSubprodDependencies(
                 }
                 if(size(superSymbolSeq)==0) return <cache, nothing()>;
 
-                list[tuple[Symbol, Scopes]] subSymbolSeq = [<symSub, scopesSub>];
+                list[tuple[Symbol, ScopeList]] subSymbolSeq = [<symSub, scopesSub>];
                 while(subI+1 < subSize && symb(nSymSub, nScopesSub) := subParts[subI+1]) {
                     subSymbolSeq += <nSymSub, nScopesSub>;
                     subI += 1;
                 }
 
                 DependencyConstraints getConstraint(
-                    list[tuple[Symbol, Scopes]] subSymbolSeq, 
-                    list[tuple[Symbol, Scopes]] superSymbolSeq
+                    list[tuple[Symbol, ScopeList]] subSymbolSeq, 
+                    list[tuple[Symbol, ScopeList]] superSymbolSeq
                 ) {
                     if([] == subSymbolSeq) return trueConstr();
                     if([] == superSymbolSeq) return falseConstr();

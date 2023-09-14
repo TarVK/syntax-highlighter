@@ -4,6 +4,8 @@ import IO;
 import ParseTree;
 import lang::rascal::grammar::definition::Characters;
 
+import regex::util::charClass;
+
 
 data CharClassRegion = ccr(CharClass cc, set[CharClass] includes);
 
@@ -43,23 +45,6 @@ set[CharClassRegion] getDisjointCharClasses(set[CharClass] inClasses) {
 
     return outClasses;
 }
-
-public CharClass fIntersection(CharClass r1, CharClass r2) 
-    = [ r | r <- intersection(r1,r2), !(r is \empty-range)];
-
-public CharClass fUnion(CharClass r1, CharClass r2) 
-    = [ r | r <- union(r1,r2), !(r is \empty-range)];
-
-public CharClass fDifference(CharClass r1, CharClass r2) 
-    = [ r | r <- difference(r1,r2), !(r is \empty-range)];
-
-public CharClass fComplement(CharClass r1) 
-    = [ r | r <- complement(r1), !(r is \empty-range)];
-
-public CharClass normalize(CharClass cc)
-    = [*prefixSeq, range(s, i), range(j, e), *suffixSeq] := cc && i+1 == j 
-        ? normalize([*prefixSeq, range(s, e), *suffixSeq])
-        : cc;
 
 public bool overlaps(CharClass r1, CharClass r2) {
     return size(fIntersection(r1, r2)) > 0;

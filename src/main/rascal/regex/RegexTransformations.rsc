@@ -6,7 +6,6 @@ import util::Maybe;
 import regex::util::charClass;
 import regex::RegexTypes;
 import regex::Regex;
-import conversion::util::RegexCache;
 
 @doc {
     Retrieves a regular expression that doesn't include the empty string, as well as possibly a full empty match, and/or an empty match that restricts the context, such that the alternation of these expressions is equivalent to the input expression. Also puts the corresponding PSNFA in an expression cache. 
@@ -35,7 +34,7 @@ tuple[
         case empty(): return <never(), empty(), never()>;
         case always(): return <\multi-iteration(character(anyCharClass())), empty(), never()>;
         case character(ranges): return <character(ranges), never(), never()>;
-        case cached(e, _, _): return factorOutEmpty(e);
+        case meta(e, v): return cacheMeta(_, _) := v ? factorOutEmpty(e) : meta(factorOutEmpty(e), v);
         case concatenation(e1, e2): {
             <main1, empty1, emptyRestr1> = factorOutEmpty(e1);
             <main2, empty2, emptyRestr2> = factorOutEmpty(e2);

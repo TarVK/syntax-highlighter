@@ -16,9 +16,6 @@ import regex::NFA;
 import regex::NFASimplification;
 import regex::Tags;
 
-// Would prefer to not import this here, see if we can get around this
-import conversion::util::RegexCache;
-
 @doc {
     Checks whether the two given NFAs define the same language.
     If moduloTags is specified, the tag data is ignored.

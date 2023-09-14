@@ -1,4 +1,5 @@
 module regex::PSNFATypes
+extend regex::NFATypes;
 
 import ParseTree;
 

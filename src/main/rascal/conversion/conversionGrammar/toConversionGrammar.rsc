@@ -1,5 +1,6 @@
 module conversion::conversionGrammar::toConversionGrammar
 
+import IO;
 import ParseTree;
 import Grammar;
 import Set;
@@ -8,10 +9,10 @@ import List;
 import String;
 import lang::rascal::grammar::definition::Regular;
 
-import conversion::util::RegexCache;
 import conversion::conversionGrammar::ConversionGrammar;
 import regex::PSNFATools;
 import regex::Regex;
+import regex::RegexCache;
 import Scope;
 import Warning;
 
@@ -59,14 +60,14 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
     return <warnings, convGrammar(startSymbol, prods)>;
 }
 
-Grammar splitNewlines(Grammar gr) = visit(grammar) {
+Grammar splitNewlines(Grammar gr) = visit(gr) {
     case \lit(text) => \seq([\lit(t) | t <- splitOnNewline(text)])
         when contains(text, "\n")
     case \cilit(text) => \seq([\cilit(t) | t <- splitOnNewline(text)])
         when contains(text, "\n")
 };
 list[str] splitOnNewline(str text) {
-    parts = split(text, "\n");
+    parts = split("\n", text);
     for(i <- [0..size(parts)-1]) parts[i] += "\n";
     return parts;
 }

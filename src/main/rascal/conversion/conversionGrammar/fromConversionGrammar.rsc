@@ -7,7 +7,7 @@ import String;
 
 import Visualize; // For the annotate constructor
 import conversion::conversionGrammar::ConversionGrammar;
-import conversion::util::RegexCache;
+import regex::RegexCache;
 import regex::Regex;
 import Scope;
 
@@ -22,7 +22,7 @@ Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
         newPartAndSources = [<p, s> | part <- parts, <p, s> := convSymbolToSymbol(part)];
         newParts = [p | <p, _> <- newPartAndSources];
         sources = {*s | <_, s> <- newPartAndSources};
-        newProd = prod(lSym, newParts, {\tag(sources)});
+        newProd = prod(lSym, newParts, {\tag(pr)});
         outProds += newProd;
     }
     return grammar({\start}, removeCustomSymbols(outProds));
@@ -43,11 +43,11 @@ tuple[Symbol, set[Production]] convSymbolToSymbol(ConvSymbol inp) {
             if(size(scopes)>0) out = annotate(out, {stringify(toScopes(scopes)), scopes});
         }
         case regexp(regex): {
-            <sym, newProds> = regexToSymbol(removeCache(reduce(regex)));
+            <sym, newProds> = regexToSymbol(removeRegexCache(reduce(regex)));
             out = sym;
             prods += newProds;
         }
-        case delete(from, del): 
+        case delete(cSym, del): 
             out = \conditional(rec(cSym), {\delete(rec(del))});
         case follow(cSym, f): 
             out = \conditional(rec(cSym), {\follow(rec(f))});
@@ -129,7 +129,7 @@ tuple[Symbol, set[Production]] regexToSymbol(Regex inp) {
                 s!=noScopes()
             } + tags);
     }
-    return nothing();
+    return <out, prods>;
 }
 Symbol simpSeq(Symbol a, Symbol b) = simpSeq([a, b]);
 Symbol simpSeq(Symbol a, \seq(b)) = simpSeq([a, *b]);

@@ -10,16 +10,13 @@ import regex::PSNFACombinators;
 import regex::NFASimplification;
 import regex::PSNFASimplification;
 
-// Would prefer to not import this here, see if we can get around this
-import conversion::util::RegexCache;
-
 @doc {
     Converts the given regex to a NFA with an equivalent language
 
     Assumes the regex to be reduced
 }
 NFA[State] regexToPSNFA(Regex regex) {
-    NFA[State] n = neverPSNFA();
+    NFA[State] n;
     switch(regex) {
         case never(): n = neverPSNFA();
         case Regex::empty(): n = emptyPSNFA();
@@ -38,6 +35,8 @@ NFA[State] regexToPSNFA(Regex regex) {
             rdfa = removeUnreachable(relabelSetPSNFA(convertPSNFAtoDFA(rnfa, {})));
             n = iterationPSNFA(rdfa);
         }
+        case meta(r, cacheMeta(nfa, _)): return nfa;
+        case meta(r, v): return regexToPSNFA(r);
         default: throw "Unsupported regex: <regex>";
     }
 

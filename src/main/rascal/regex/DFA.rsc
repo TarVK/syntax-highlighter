@@ -5,6 +5,7 @@ import List;
 import ParseTree;
 
 import regex::util::GetDisjointCharClasses;
+import regex::util::charClass;
 import regex::NFATypes;
 import regex::util::expandEpsilon;
 

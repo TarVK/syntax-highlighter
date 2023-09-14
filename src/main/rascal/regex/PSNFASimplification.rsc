@@ -7,6 +7,7 @@ import List;
 import Relation;
 
 import regex::util::GetDisjointCharClasses;
+import regex::util::charClass;
 import regex::NFA;
 import regex::PSNFA;
 import regex::PSNFATypes;

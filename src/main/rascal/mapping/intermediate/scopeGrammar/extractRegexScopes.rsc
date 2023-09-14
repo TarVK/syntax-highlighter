@@ -27,7 +27,7 @@ tuple[Regex, list[Scope]] extractRegexScopes(Regex regex, list[Scope] scopes) {
             if(
                 {scopeTag(s:someScopes(_, _)), *rest} := tags, 
                 scopeList := toList(s), 
-                // Make sure we get an outermost scope
+                // Make sure we get an outermost scope, since both parent and child scope may be present on the same mark due to the scope lifting procedure
                 !any(
                     scopeTag(s2:someScopes(_, _)) <- tags, 
                     scopeList2 := toList(s2),

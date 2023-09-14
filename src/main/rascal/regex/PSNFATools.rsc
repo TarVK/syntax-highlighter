@@ -51,6 +51,19 @@ bool equals(Regex a, Regex b, bool moduloTags) {
     bNFA = regexToPSNFA(b);
     if(!moduloTags) return aNFA == bNFA; // regex nfas are minimized and normalized such that every language has a unique minimal+normal NFA
 
+    /*
+        Results after adding nfa normalization and using it for equality checking compared to before:
+        Normalized:
+        5:48, 5:04 with expandFollow
+        2:19, 2:14 without expandFollow
+
+        Regular:
+        4:20, 4:19, with expandFollow
+        3:01, 3:03, without expandFollow
+
+        So if we don't do many (non-cached) regex to psnfa conversions, it seems the extra initialization time is worth it for the faster equivalence checking
+    */
+
     return equals(aNFA, bNFA, moduloTags);
 }
 

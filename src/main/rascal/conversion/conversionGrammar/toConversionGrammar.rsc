@@ -84,7 +84,7 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, ScopeList te
 
     ConvSymbol getRegex(Regex exp) {
         if(termScopes != []) exp = mark({scopeTag(toScopes(termScopes))}, exp);
-        exp =  meta(exp, {prod});
+        exp =  meta(exp, {rascalProd(prod)});
         cachedExp = getCachedRegex(exp);
         return regexp(cachedExp);
     }
@@ -126,7 +126,7 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, ScopeList te
             }
         }
         case \start(s): res = rec(s);
-        default: res = symb(sym, nonTermScopes, {prod});
+        default: res = symb(sym, nonTermScopes, {rascalProd(prod)});
     }
 
     return <warnings, res>;

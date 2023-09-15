@@ -4,6 +4,7 @@ extend ParseTree;
 import lang::rascal::grammar::definition::Regular;
 
 import regex::Regex;
+import regex::PSNFATypes;
 import Scope;
 
 data ConversionGrammar = convGrammar(Symbol \start, rel[Symbol, ConvProd] productions);
@@ -15,7 +16,7 @@ alias ProdMap = map[Symbol, set[ConvProd]];
     - parts: The right handside of the production, consisting of non-terminals and terminal regular expressions
 }
 data ConvProd = convProd(Symbol symb, list[ConvSymbol] parts);
-data ConvSymbol = symb(Symbol ref, ScopeList scopes, set[Production] source) // Non-terminal, with the scopes to assign it
+data ConvSymbol = symb(Symbol ref, ScopeList scopes, set[SourceProd] source) // Non-terminal, with the scopes to assign it
                 | delete(ConvSymbol from, ConvSymbol del)                    // Deleting one non-terminal from another non-terminal
                 | follow(ConvSymbol sym, ConvSymbol follow)                  // Matching sym only if followed by follow
                 | notFollow(ConvSymbol sym, ConvSymbol follow)               // Matching sym only if not followed by follow
@@ -23,16 +24,18 @@ data ConvSymbol = symb(Symbol ref, ScopeList scopes, set[Production] source) // 
                 | notPrecede(ConvSymbol sym, ConvSymbol precede)             // Matching sym only if not preceded by precede
                 | atEndOfLine(ConvSymbol sym)                                // Matching sym only if it's at the end of the line
                 | atStartOfLine(ConvSymbol sym)                              // Matching sym only if it's at the start of the line
-                | regexp(Regex regex);                                       // Terminal
+                | regexp(Regex regex)                                       // Terminal
+                | regexNfa(NFA[State]);                                      // Used to reference to a regex in a way that can be used for indexing, based on the regex's language rather than shape
 // Note that after regex conversion is performed, all modifiers are gone. Hence only `symb` and `regexp` is left in the grammar.
 
+data SourceProd = rascalProd(Production);
 
 @doc {
     Removes all production sources from the grammar
 }
 &T stripSources(&T anything) = visit (anything) {
     case symb(ref, scopes, _) => symb(ref, scopes, {})
-    case meta(ref, set[Production] p) => meta(ref, {})
+    case meta(ref, set[SourceProd] p) => meta(ref, {})
 };
 
 @doc {

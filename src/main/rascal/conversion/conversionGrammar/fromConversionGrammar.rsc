@@ -16,19 +16,19 @@ import Scope;
     Converts a conversion grammar into a standard grammar
 }
 Grammar fromConversionGrammar(ConversionGrammar gr) = fromConversionGrammar(gr, true);
-Grammar fromConversionGrammar(convGrammar(\start, prods), bool addTags) {
+Grammar fromConversionGrammar(convGrammar(\start, prods), bool useConversionSource) {
     set[Production] outProds = {};
     for(<_, pr:convProd(lSym, parts)> <- prods) {
         newPartAndSources = [<p, s> | part <- parts, <p, s> := convSymbolToSymbol(part)];
         newParts = [p | <p, _> <- newPartAndSources];
         sources = {*s | <_, s> <- newPartAndSources};
-        newProd = prod(lSym, newParts, {\tag(pr)});
+        newProd = prod(lSym, newParts, useConversionSource ? {\tag(pr)} : sources);
         outProds += newProd;
     }
     return grammar({\start}, removeCustomSymbols(outProds));
 }
-tuple[Symbol, set[Production]] convSymbolToSymbol(ConvSymbol inp) {
-    set[Production] prods = {};
+tuple[Symbol, set[SourceProd]] convSymbolToSymbol(ConvSymbol inp) {
+    set[SourceProd] prods = {};
     Symbol rec(ConvSymbol s) {
         <out, newProds> = convSymbolToSymbol(s);
         prods += newProds;
@@ -66,11 +66,11 @@ tuple[Symbol, set[Production]] convSymbolToSymbol(ConvSymbol inp) {
     return <out, prods>;
 }
 
-tuple[Symbol, set[Production]] regexToSymbol(Regex inp) {
+tuple[Symbol, set[SourceProd]] regexToSymbol(Regex inp) {
     eolR = eolRegex();
     solR = solRegex();
 
-    set[Production] prods = {};
+    set[SourceProd] prods = {};
     Symbol rec(Regex r) {
         <out, newProds> = regexToSymbol(r);
         prods += newProds;
@@ -79,7 +79,7 @@ tuple[Symbol, set[Production]] regexToSymbol(Regex inp) {
     Symbol out;
     
     switch(inp) {
-        case meta(r, set[Production] newProds): {
+        case meta(r, set[SourceProd] newProds): {
             prods += newProds;
             out = rec(r);
         }

@@ -46,15 +46,15 @@ WithWarnings[ScopeGrammar] toScopeGrammar(ConversionGrammar grammar) {
         list[ScopeProd] symProds = [];
         prods[textSym] = symProds;
 
-        for(prod:convProd(_, [regexp(r), symb(_, _)], _) <- symInpProds) {
+        for(prod:convProd(_, [regexp(r), ref(_, _, _)], _) <- symInpProds) {
             <prodSym, newWarnings, tokenCache, prods, textSymbols> 
                 = defineTokenProd(r, tokenCache, prods, prod, textSymbols);
             symProds += inclusion(prodSym);
             warnings += newWarnings;
         }
 
-        for(prod:convProd(_, [regexp(open), symb(ref, scopes), regexp(close), symb(_, _)], _) <- symInpProds) {
-            <textRef, symMapping, textSymbols> = getSymbolString(ref, symMapping, textSymbols);
+        for(prod:convProd(_, [regexp(open), ref(refSym, scopes, _), regexp(close), ref(_, _, _)], _) <- symInpProds) {
+            <textRef, symMapping, textSymbols> = getSymbolString(refSym, symMapping, textSymbols);
             <prodSym, newWarnings, scopeCache, prods, textSymbols> 
                 = defineScopeProd(open, textRef, scopes, close, scopeCache, prods, prod, textSymbols);
             symProds += inclusion(prodSym);

@@ -9,6 +9,7 @@ import List;
 import String;
 import lang::rascal::grammar::definition::Regular;
 
+import Logging;
 import conversion::conversionGrammar::ConversionGrammar;
 import regex::PSNFATools;
 import regex::Regex;
@@ -19,8 +20,10 @@ import Warning;
 @doc {
     Retrieves a conversion grammar that we can operate on to obtain a highlighting grammar
 }
-WithWarnings[ConversionGrammar] toConversionGrammar(type[Tree] g) = toConversionGrammar(grammar(g));
-WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
+WithWarnings[ConversionGrammar] toConversionGrammar(type[Tree] g, Logger log) 
+    = toConversionGrammar(grammar(g), log);
+WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar, Logger log) {
+    log(Section(), "to conversion grammar");
     list[Warning] warnings = [];
 
     grammar = splitNewlines(grammar);
@@ -46,6 +49,7 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar) {
             for(orSymb <- parts) {
                 if(<newWarnings, symbols> := getConvSymbol(orSymb, p, termScopes, nonTermScopes)){
                     warnings += newWarnings;
+                    for(warning <- warnings) log(Warning(), warning);
                     newParts += symbols;
                 }
             }
@@ -126,7 +130,7 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, ScopeList te
             }
         }
         case \start(s): res = rec(s);
-        default: res = symb(sym, nonTermScopes, {rascalProd(prod)});
+        default: res = ref(sym, nonTermScopes, {rascalProd(prod)});
     }
 
     return <warnings, res>;

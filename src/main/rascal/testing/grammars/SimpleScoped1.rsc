@@ -28,7 +28,7 @@ lexical Sep = @token="entity.name.function" ";";
 lexical Def = @scope="variable.parameter" Id;
 lexical Variable = @scope="variable" Id;
 
-keyword KW = "for"|"in"|"if"|"tr\nue"|"false"|"else";
+keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
 lexical Bool = @scope="constant.other" ("true"|"false");

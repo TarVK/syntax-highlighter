@@ -10,8 +10,8 @@ import util::List;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
 import conversion::regexConversion::concatenateRegexes;
-import conversion::conversionGrammar::LabelTools;
-import conversion::conversionGrammar::ProdEquivalence;
+import conversion::util::meta::LabelTools;
+import conversion::util::equality::ProdEquivalence;
 import regex::RegexCache;
 import regex::Regex;
 import regex::RegexToPSNFA;
@@ -124,14 +124,14 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
 
             // Check whether there are productions where skipping the first symbol makes the rest match, in order to union an empty match
             prodILength = size(prodI.parts);
-            for(prodJ:convProd(lDef, parts, source) <- productions, prodJ != prodI){
+            for(prodJ:convProd(lDef, parts) <- productions, prodJ != prodI){
                 if(size(parts)+1 != prodILength) continue;
 
                 newParts = insertAt(parts, startIndex, emptySym); // Pretend there was an empty regex in there
                 prodsRemaindersEqual = equalsAfter(prodI.parts, newParts, startIndex+1);
                 if(!prodsRemaindersEqual) continue;
 
-                augmented = convProd(lDef, newParts, source);
+                augmented = convProd(lDef, newParts);
                 combine += augmented;
                 if(size(parts)>startIndex) 
                     indexed -= <parts[startIndex], prodJ>;

@@ -18,7 +18,10 @@ data Warning
     | multipleScopes(set[ScopeList] scopes, Production inProd)
     // =========== Regex conversion ===========
     /* A modifier was supplied for something that can not be converted to a regular expression */
-    | unresolvedModifier(ConvSymbol modifier, ConvProd production);
+    | unresolvedModifier(ConvSymbol modifier, ConvProd forProd)
+    // =========== Prefix conversion ==========
+    /* A scope was provided for a non-terminal, but the symbol was involved in a left-recursive loop, or found conflicting scope usage (E.g. `A -> (<a> B)` and `A -> (<b> B)`) */
+    | inapplicableScope(ConvSymbol sym, ConvProd forProd);
 
 alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];
 

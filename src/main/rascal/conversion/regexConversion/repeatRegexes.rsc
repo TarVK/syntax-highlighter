@@ -5,7 +5,7 @@ import util::Maybe;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
-import conversion::conversionGrammar::LabelTools;
+import conversion::util::meta::LabelTools;
 import conversion::regexConversion::liftScopes;
 import regex::Regex;
 import regex::RegexProperties;
@@ -80,7 +80,7 @@ Maybe[set[ConvProd]] repeatRegexes(Symbol sym, set[ConvProd] productions) {
 Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] productions) {
     if({
             s:convProd(_, [regexp(fRegex)]), 
-            r:convProd(_, [symb(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
+            r:convProd(_, [ref(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -124,7 +124,7 @@ Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] production
 Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
     if({
             s:convProd(_, []), 
-            r:convProd(_, [symb(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
+            r:convProd(_, [ref(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -159,7 +159,7 @@ Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
 Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productions) {
     if({
             s:convProd(_, [regexp(lRegex)]), 
-            r:convProd(_, [regexp(rRegex), symb(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
+            r:convProd(_, [regexp(rRegex), ref(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -202,7 +202,7 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
 Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
     if({
             s:convProd(_, []), 
-            r:convProd(_, [regexp(rRegex), symb(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
+            r:convProd(_, [regexp(rRegex), ref(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -239,9 +239,9 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
 }
 Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            p:convProd(_, [regexp(pRegex), symb(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
+            p:convProd(_, [regexp(pRegex), ref(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
             m:convProd(_, [regexp(mRegex)]), 
-            s:convProd(_, [symb(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
+            s:convProd(_, [ref(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 
@@ -309,9 +309,9 @@ Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] production
 }
 Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            p:convProd(_, [regexp(pRegex), symb(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
+            p:convProd(_, [regexp(pRegex), ref(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
             m:convProd(_, []), 
-            s:convProd(_, [symb(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
+            s:convProd(_, [ref(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 

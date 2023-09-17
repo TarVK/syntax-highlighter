@@ -1,5 +1,6 @@
-module conversion::conversionGrammar::LabelTools
+module conversion::util::meta::LabelTools
 
+import IO;
 import ParseTree;
 import String;
 import util::Maybe;
@@ -10,11 +11,13 @@ import util::List;
 @doc {
     Copies all labels from the given sources onto the target symbol
 }
-Symbol combineLabels(Symbol target, set[Symbol] labelSources) {
-    labelsSet = {*split(",", name) | label(name, _) <- labelSources};
+Symbol combineLabels(Symbol target, set[Symbol] labelSources)
+    = relabelSymbol(target, {name | label(name, _) <- labelSources});
+Symbol relabelSymbol(Symbol target, set[str] labels) {
+    labelsSet = {*split(",", name) | name <- labels};
     labels = [name | name <- labelsSet];
     plainTarget = getWithoutLabel(target);
-    return size(labels)>0 ? label(stringify(labels, ","), plainTarget) : plainTarget;
+    return labels == [] ? plainTarget : label(stringify(labels, ","), plainTarget);
 }
 
 @doc {

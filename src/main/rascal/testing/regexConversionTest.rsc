@@ -1,5 +1,6 @@
 module testing::regexConversionTest
 
+import Logging;
 import testing::util::visualizeGrammars;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::toConversionGrammar;
@@ -23,9 +24,10 @@ syntax C = @token="o" "(" C
 syntax D = "}";
 
 void main() {
-    <cWarnings, conversionGrammar> = toConversionGrammar(#Program);
+    log = standardLogger();
+    <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
     inputGrammar = fromConversionGrammar(conversionGrammar);
-    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar);
+    <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
     stdGrammar = fromConversionGrammar(conversionGrammar);
 
     warnings = cWarnings + rWarnings;

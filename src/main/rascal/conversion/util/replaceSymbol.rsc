@@ -1,4 +1,4 @@
-module conversion::conversionGrammar::replaceSymbol
+module conversion::util::replaceSymbol
 
 import ParseTree;
 
@@ -10,9 +10,9 @@ import conversion::conversionGrammar::ConversionGrammar;
 ConversionGrammar replaceSymbol(Symbol replace, Symbol replaceBy, ConversionGrammar grammar) {
     substitutedProductions = { 
         <def, convProd(lDef, [
-            symb(sym, scopes) := part 
+            ref(sym, scopes, sources) := part 
                 ? getWithoutLabel(sym) == replace
-                    ? symb(copyLabel(sym, replaceBy), scopes)
+                    ? ref(copyLabel(sym, replaceBy), scopes, sources)
                     : part
                 : part
             | part <- parts

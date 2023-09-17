@@ -42,7 +42,7 @@ set[ConvProd] concatenateRegexes(set[ConvProd] productions)
 
     This is done exhasutively for this production.
 }
-ConvProd concatenateRegexes(p:convProd(symb, parts)) {
+ConvProd concatenateRegexes(p:convProd(def, parts)) {
     list[ConvSymbol] newParts = [];
     list[Regex] regexes = [];
     void flush(){
@@ -68,5 +68,5 @@ ConvProd concatenateRegexes(p:convProd(symb, parts)) {
         }
     }
     flush();
-    return convProd(symb, newParts);
+    return convProd(def, newParts);
 }

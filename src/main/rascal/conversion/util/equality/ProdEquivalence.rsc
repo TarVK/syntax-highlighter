@@ -1,4 +1,4 @@
-module conversion::conversionGrammar::ProdEquivalence
+module conversion::util::equality::ProdEquivalence
 
 import conversion::conversionGrammar::ConversionGrammar;
 import regex::RegexToPSNFA;
@@ -12,7 +12,7 @@ import regex::RegexToPSNFA;
 }
 ConvSymbol getEquivalenceSymbol(ConvSymbol sym) {
     switch(sym) {
-        case symb(r, s, _): return symb(r, s, {});
+        case ref(r, s, _): return ref(r, s, {});
         case delete(s, d): return delete(getEquivalenceSymbol(s), getEquivalenceSymbol(d));
         case follow(s, f): return follow(getEquivalenceSymbol(s), getEquivalenceSymbol(f));
         case notFollow(s, f): return notFollow(getEquivalenceSymbol(s), getEquivalenceSymbol(f));

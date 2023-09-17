@@ -23,7 +23,7 @@ import regex::Regex;
 
     This is done exhaustively for the given production
 }
-ConvProd lowerModifiers(p:convProd(symb, parts)) {
+ConvProd lowerModifiers(convProd(def, parts)) {
     newParts = visit(parts) {
         case follow(regexp(a), regexp(b)) => regexp(liftScopes(lookahead(a, b)))
             when !containsNewline(a)
@@ -38,6 +38,5 @@ ConvProd lowerModifiers(p:convProd(symb, parts)) {
             when !containsNewline(a)
         case atStartOfLine(regexp(a)) => regexp(liftScopes(concatenation(solRegex(), a))) // Should be fine regarding newlines, since SOL also includes SOF detection, which is what TM considers the start of the line to be
     };
-    if(newParts==parts) return p;
-    return convProd(symb, newParts);
+    return convProd(def, newParts);
 }

@@ -197,7 +197,6 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     Constructs a PSNFA matching all words that were not part of the language of PSNFA n
     - universe: The universe of available tags to consider
 }
-@memo
 NFA[State] invertPSNFA(NFA[State] n, TagsClass universe) {
     NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(n, universe));
     NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting, ()>;

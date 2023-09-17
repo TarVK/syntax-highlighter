@@ -1,9 +1,11 @@
 module regex::RegexTransformations
 
 import ParseTree;
+import IO;
 import util::Maybe;
 
 import regex::util::charClass;
+import regex::RegexCache;
 import regex::RegexTypes;
 import regex::Regex;
 
@@ -34,7 +36,17 @@ tuple[
         case empty(): return <never(), empty(), never()>;
         case always(): return <\multi-iteration(character(anyCharClass())), empty(), never()>;
         case character(ranges): return <character(ranges), never(), never()>;
-        case meta(e, v): return cacheMeta(_, _) := v ? factorOutEmpty(e) : meta(factorOutEmpty(e), v);
+        case meta(e, value v): { // force cast value to prevent type checking errors
+            <mainE, emptyE, emptyRestrE> = factorOutEmpty(e);
+
+            if(cacheMeta(_, _) !:= v) {
+                if(mainE!=never())       mainE = meta(mainE, v);
+                if(emptyE!=never())      emptyE = meta(emptyE, v);
+                if(emptyRestrE!=never()) emptyRestrE = meta(emptyRestrE, v);
+            }
+
+            return <mainE, emptyE, emptyRestrE>;
+        }
         case concatenation(e1, e2): {
             <main1, empty1, emptyRestr1> = factorOutEmpty(e1);
             <main2, empty2, emptyRestr2> = factorOutEmpty(e2);
@@ -78,16 +90,16 @@ tuple[
                     is to make sure that in at least 1 spot of this multi-iteration, a non-empty sequence is matched. 
                     Note that this is not necessarily the first or last match, or else we might miss out on tags of lookahead/behinds of empty-match iterations. Howevever, under the assumption that there's at least some non-empty match, we can say that before the first non-empty match, there have only been empty matches. Any empty matches without constraints won't affect anything, hence we only have to consider that there may be a number of constraint matches before the first match.
                  */
-                nonEmptyExpr = concatenation(
+                mainExpr = concatenation(
                     mainE, 
                     alternation(empty(), \multi-iteration(e))
                 );
                 if(emptyRestrE != never())
-                    nonEmptyExpr = concatenation(
+                    mainExpr = concatenation(
                         alternation(empty(), \multi-iteration(emptyRestrE)),
-                        nonEmptyExpr
+                        mainExpr
                     );
-                nonEmptyOptions += nonEmptyExpr;
+                nonEmptyOptions += mainExpr;
             }
             if(emptyE != never()) isEmpty = true;
             else if(emptyRestrE != never()) 

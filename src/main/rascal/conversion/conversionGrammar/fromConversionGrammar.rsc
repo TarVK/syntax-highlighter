@@ -37,9 +37,9 @@ tuple[Symbol, set[SourceProd]] convSymbolToSymbol(ConvSymbol inp) {
     Symbol out;
 
     switch(inp) {
-        case symb(ref, scopes, sources): {
+        case ref(refSym, scopes, sources): {
             prods += sources;
-            out = ref;
+            out = refSym;
             if(size(scopes)>0) out = annotate(out, {stringify(toScopes(scopes)), scopes});
         }
         case regexp(regex): {

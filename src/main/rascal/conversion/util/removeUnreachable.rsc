@@ -3,6 +3,7 @@ module conversion::util::removeUnreachable
 import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::CustomSymbols;
 
 
 @doc {
@@ -41,12 +42,17 @@ set[Symbol] getReachableSymbols(ConversionGrammar grammar, bool includeSources) 
             reachable += refSym;
             newAdded += refSym;
 
-            // TODO: add this detection when custom symbols are added
-            // if(includeSources && unionRec(syms) := refSym) {
-            //     syms = syms - reachable;
-            //     reachable += syms;
-            //     newAdded += syms;
-            // }
+            if(includeSources){
+                set[Symbol] sourceReachable = {};
+                if(unionRec(syms) := refSym) sourceReachable = syms;
+                if(closed(s, c) := refSym) sourceReachable = {s, c};
+
+                if(sourceReachable != {}){
+                    sourceReachable = sourceReachable - reachable;
+                    reachable += sourceReachable;
+                    newAdded += sourceReachable;
+                }
+            }
         }
 
         added = newAdded;

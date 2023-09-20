@@ -7,7 +7,7 @@ import regex::PSNFACombinators;
 import regex::Regex;
 import regex::RegexTypes;
 import regex::RegexCache;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFATools;
 
 

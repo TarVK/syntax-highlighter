@@ -76,7 +76,7 @@ set[list[Regex]] expandSymbols(list[ConvSymbol] parts, ConversionGrammar grammar
             addToQueue([*p, *s]);
 
         seqQueue += cutSeq;
-        if(all(p <- cutSeq, regexp(_) := p)) 
+        if(size(cutSeq) == 0 || all(p <- cutSeq, regexp(_) := p)) 
             out += [r | regexp(r) <- cutSeq];
     }
     addToQueue(parts);

@@ -2,7 +2,7 @@ module testing::psnfaEqualityTest
 
 import IO;
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFATools;
 import regex::PSNFASimplification;

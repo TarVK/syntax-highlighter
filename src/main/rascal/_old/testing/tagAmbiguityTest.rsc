@@ -3,7 +3,7 @@ module testing::tagAmbiguityTest
 import regex::Regex;
 import regex::PSNFA;
 import regex::detectTagAmbiguity;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::NFASimplification;
 import regex::PSNFACombinators;
 import Visualize;

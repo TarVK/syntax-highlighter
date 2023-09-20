@@ -15,7 +15,7 @@ import conversion::regexConversion::substituteRegexes;
 import conversion::regexConversion::lowerModifiers;
 import conversion::regexConversion::repeatRegexes;
 import conversion::regexConversion::checkModifiers;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::RegexCache;
 import regex::Regex;
 import regex::PSNFATools;

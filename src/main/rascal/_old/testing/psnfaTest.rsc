@@ -10,7 +10,7 @@ import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
 import regex::NFASimplification;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFAToRegex;
 import Visualize;
 

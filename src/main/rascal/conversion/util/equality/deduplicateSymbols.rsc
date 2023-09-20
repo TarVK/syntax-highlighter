@@ -3,6 +3,7 @@ module conversion::util::equality::deduplicateSymbols
 import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::Alias;
 import conversion::util::meta::LabelTools;
 import conversion::util::equality::getEquivalentSymbols;
 
@@ -15,11 +16,12 @@ data DedupeType = keep() | replace() | reference();
 ConversionGrammar deduplicateSymbols(
     ConversionGrammar grammar, 
     Symbol(Symbol, Symbol) prioritize,
-    DedupeType(Symbol) dedupeBehavior
+    DedupeType(Symbol) dedupeBehavior,
+    bool(Symbol, Symbol, ClassMap) equals
 ) {
     rel[Symbol, ConvProd] productions = grammar.productions;
 
-    <classes, rightRecursive> = getEquivalentSymbolsAndRightRecursion(grammar);
+    classes = getEquivalentSymbols(grammar, equals);
     
     for(class <- classes) {
         // Filter out any aliases
@@ -45,7 +47,7 @@ ConversionGrammar deduplicateSymbols(
 
 rel[Symbol, ConvProd] referenceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {
     filteredProds = {p | p:<def, _> <- prods, def != replaceSym};
-    newProd = <replaceSym, convProd(replaceSym, [ref(replaceBySym, [], {})], {})>;
+    newProd = <replaceSym, convProd(replaceSym, [ref(replaceBySym, [], {})])>;
 
     return filteredProds + newProd;
 }

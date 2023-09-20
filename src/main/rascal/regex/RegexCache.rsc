@@ -3,7 +3,7 @@ module regex::RegexCache
 import regex::RegexTypes;
 import regex::PSNFATypes;
 import regex::RegexProperties;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 
 @doc {
     Removes all caches from the regex

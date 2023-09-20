@@ -1,7 +1,7 @@
 module conversion::util::equality::ProdEquivalence
 
 import conversion::conversionGrammar::ConversionGrammar;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 
 @doc {
     Retrieves the symbol that can be used for equivalence checking, removing irrelevant details such as:

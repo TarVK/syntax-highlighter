@@ -49,6 +49,19 @@ tuple[set[SourceProd], Regex] extractRegexSources(Regex regex) {
 }
 
 @doc {
+    Retrieves all sources from the given regular expression
+}
+set[SourceProd] extractAllRegexSources(Regex r) {
+    set[SourceProd] out = {};
+    visit(r) {
+        case meta(_, set[SourceProd] sources): {
+            out += sources;
+        }
+    }
+    return out;
+}
+
+@doc {
     Adds the specified sources to the given regular epxression
 }
 Regex addRegexSources(Regex regex, set[SourceProd] sources) {

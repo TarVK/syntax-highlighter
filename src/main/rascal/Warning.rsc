@@ -2,7 +2,7 @@ module Warning
 
 import ParseTree;
 import conversion::conversionGrammar::ConversionGrammar;
-
+import conversion::prefixConversion::findNonProductiveRecursion;
 import Scope;
 
 @Doc {
@@ -20,8 +20,13 @@ data Warning
     /* A modifier was supplied for something that can not be converted to a regular expression */
     | unresolvedModifier(ConvSymbol modifier, ConvProd forProd)
     // =========== Prefix conversion ==========
-    /* A scope was provided for a non-terminal, but the symbol was involved in a left-recursive loop, or found conflicting scope usage (E.g. `A -> (<a> B)` and `A -> (<b> B)`) */
-    | inapplicableScope(ConvSymbol sym, ConvProd forProd);
+    /* A scope was provided for a non-terminal, but the symbol was involved in a left-recursive loop */
+    | inapplicableScope(ConvSymbol sym, ConvProd forProd)
+    // =========== Shape conversion ===========
+    /* A scope was provided for a non-terminal, but the symbol had to merged with another symbol with different scopes */
+    | incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], ConvProd production)
+    /* We ararived at a cyclic path where no symbol has to be consumed, but can't safely solve such paths */
+    | unresolvableLeftRecursiveLoop(set[EmptyPath] paths, ConvProd production);
 
 alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];
 

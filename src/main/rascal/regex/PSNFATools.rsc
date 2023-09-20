@@ -9,7 +9,7 @@ import IO;
 import util::Maybe;
 
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
@@ -83,50 +83,6 @@ bool isSubset(NFA[State] sub, NFA[State] super, bool moduloTags) {
 }
 
 @doc {
-    Checks whether the language of sub is a subset of the langauge of super.
-    if moduloTags is specified, the tag data is ignored.
-    Stores part of the computation in the cache, to speed up consecutive checks
-}
-tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, SubtractCache cache) 
-    = isSubset(sub, super, false, cache);
-tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, bool moduloTags, SubtractCache cache) 
-    = isSubset(regexToPSNFA(sub), regexToPSNFA(super), moduloTags, cache);
-tuple[SubtractCache, bool] isSubset(NFA[State] sub, NFA[State] super, SubtractCache cache)
-    = isSubset(sub, super, false, cache);
-tuple[SubtractCache, bool] isSubset(
-    NFA[State] sub, 
-    NFA[State] super, 
-    bool moduloTags, 
-    SubtractCache cache
-) {
-
-    TagsClass universe = moduloTags 
-        ? {{}}
-        : {*tagsClass | character(char, tagsClass) <- sub.transitions<1>};
-    Maybe[TagsClass] cacheUniverse = moduloTags ? nothing() : just(universe);
-
-    NFA[State] inverted;
-    if(<super, cacheUniverse> in cache) {
-        inverted = cache[<super, cacheUniverse>];
-    } else {
-        if(moduloTags)
-            super = replaceTagsClasses(super, {{}});
-
-        inverted = invertPSNFA(super, universe);
-        // inverted = relabelSetPSNFA(minimizeDFA(inverted)); // TODO: check if it matters that inverted's transitions are not complete (but are disjoint, like a DFA)
-        cache[<super, cacheUniverse>] = inverted;
-    }
-    
-    product = productPSNFA(sub, inverted, moduloTags);
-    return <cache, isEmpty(product)>;
-
-    // return <cache, isSubset(sub, super, moduloTags)>;
-}
-alias SubtractCache = map[tuple[NFA[State], Maybe[TagsClass]], NFA[State]];
-
-
-
-@doc {
     Computes the difference between the two PSNFAs, which includes all words in one and not the other
 }
 NFA[State] differencePSNFA(NFA[State] a, NFA[State] b) {
@@ -156,18 +112,31 @@ bool alwaysAcceptsEmpty(NFA[State] n)
 }
 NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());
 
-
 @doc {
-    Checks whether an extension of rb overlaps with ra. I.e. whether a prefix of ra could also be matched by rb. 
+    Checks whether two given NFAs overlap, I.e. if one can be extended by 0 or more characters to match a word in the other. This ignores presence of tags
 }
-Maybe[NFA[State]] getOverlap(Regex ra, Regex rb) {
-    nfaA = regexToPSNFA(ra);
-    nfaB = regexToPSNFA(rb);
-    extensionB = getExtensionNFA(nfaB);
-    overlap = productPSNFA(nfaA, extensionB, true);
-    if(!isEmpty(overlap)) 
-        return just(overlap);
-    return nothing();
+bool overlaps(NFA[State] a, NFA[State] b) {
+    extensionB = getExtensionNFA(b);
+    overlapB = productPSNFA(a, extensionB, true);
+    if(!isEmpty(overlapB)) return true;
+    
+    extensionA = getExtensionNFA(a);
+    overlapA = productPSNFA(b, extensionA, true);
+    if(!isEmpty(overlapA)) return true;
+
+    return false;
 }
 
-int abs(int v) = v < 0 ? -v : v;
+
+// @doc {
+//     Checks whether an extension of rb overlaps with ra. I.e. whether a prefix of ra could also be matched by rb. 
+// }
+// Maybe[NFA[State]] getOverlap(Regex ra, Regex rb) {
+//     nfaA = regexToPSNFA(ra);
+//     nfaB = regexToPSNFA(rb);
+//     extensionB = getExtensionNFA(nfaB);
+//     overlap = productPSNFA(nfaA, extensionB, true);
+//     if(!isEmpty(overlap)) 
+//         return just(overlap);
+//     return nothing();
+// }

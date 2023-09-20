@@ -5,6 +5,7 @@ import Set;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::Alias;
 import regex::Regex;
 import conversion::util::RegexCache;
 

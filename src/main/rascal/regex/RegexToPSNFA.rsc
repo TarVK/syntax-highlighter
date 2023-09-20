@@ -1,4 +1,4 @@
-module regex::RegexToPSNFA
+module regex::regexToPSNFA
 
 import IO;
 

@@ -5,7 +5,7 @@ import Relation;
 
 import regex::NFA;
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::RegexTransformations;
 import regex::util::charClass;
 import regex::PSNFATools;

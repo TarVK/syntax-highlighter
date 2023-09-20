@@ -37,16 +37,3 @@ data SourceProd = rascalProd(Production);
     case ref(refSym, scopes, _) => ref(refSym, scopes, {})
     case meta(r, set[SourceProd] p) => meta(r, {})
 };
-
-@doc {
-    Follows any sequence of aliases until a defining symbol in the grammar is reached, and returns said symbol
-}
-Symbol followAlias(Symbol aliasSym, ConversionGrammar grammar) {
-    aliasSym = getWithoutLabel(aliasSym);
-    while({convProd(_, [ref(refSym, _, _)])} := grammar.productions[aliasSym]) aliasSym = getWithoutLabel(refSym);
-    return aliasSym;
-}
-
-@doc { Checks whether the given symbol is an alias symbol }
-bool isAlias(Symbol sym, ConversionGrammar grammar) 
-    = {convProd(_, [ref(_, _, _)])} := grammar.productions[sym];

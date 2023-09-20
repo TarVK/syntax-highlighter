@@ -33,7 +33,7 @@ set[ConvProd] deduplicateProds(set[ConvProd] prods) {
                     part = firstProd.parts[i];
 
                     if(regexp(r) := part) {
-                        sources = {*(extractRegexSources(p.parts[i].regex)<0>) | p <- restProds};
+                        sources = {*(extractAllRegexSources(p.parts[i].regex)) | p <- restProds};
                         newParts += regexp(addRegexSources(r, sources));
                     } else if(ref(r, scopes, sources) := part) {
                         newSources = {*p.parts[i].sources | p <- restProds};

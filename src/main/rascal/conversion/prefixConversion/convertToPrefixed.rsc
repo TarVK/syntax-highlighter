@@ -4,11 +4,11 @@ import Relation;
 import Map;
 import IO;
 
-import Logging;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::prefixConversion::findNonProductiveRecursion;
 import conversion::util::equality::deduplicateProds;
 import conversion::util::equality::deduplicateSymbols;
+import conversion::util::equality::getEquivalentSymbols;
 import conversion::util::meta::applyScopesAndSources;
 import conversion::util::meta::LabelTools;
 import conversion::util::meta::wrapRegexScopes;
@@ -17,6 +17,7 @@ import regex::RegexTypes;
 import regex::RegexCache;
 import regex::PSNFATools;
 import regex::RegexTransformations;
+import Logging;
 import Warning;
 import Scope;
 
@@ -64,7 +65,8 @@ WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Log
         },
         DedupeType (Symbol sym) {
             return replace();
-        }
+        },
+        defaultSymEquals
     );
     grammar = removeUnreachable(grammar);
 

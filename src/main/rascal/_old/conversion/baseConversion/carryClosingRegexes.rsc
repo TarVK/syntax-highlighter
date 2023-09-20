@@ -6,6 +6,7 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::customSymbols;
+import conversion::util::Alias;
 import conversion::util::makeLookahead;
 import conversion::util::RegexCache;
 

@@ -4,9 +4,11 @@ import Grammar;
 import util::Maybe;
 import ParseTree;
 import String;
+import IO;
 
 import Visualize; // For the annotate constructor
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::conversionGrammar::CustomSymbols;
 import regex::RegexCache;
 import regex::Regex;
 import Scope;
@@ -25,7 +27,7 @@ Grammar fromConversionGrammar(convGrammar(\start, prods), bool useConversionSour
         newProd = prod(lSym, newParts, useConversionSource ? {\tag(pr)} : sources);
         outProds += newProd;
     }
-    return grammar({\start}, removeCustomSymbols(outProds));
+    return grammar({\start}, removeCustomSymbols(outProds, prods));
 }
 tuple[Symbol, set[SourceProd]] convSymbolToSymbol(ConvSymbol inp) {
     set[SourceProd] prods = {};
@@ -43,7 +45,7 @@ tuple[Symbol, set[SourceProd]] convSymbolToSymbol(ConvSymbol inp) {
             if(size(scopes)>0) out = annotate(out, {stringify(toScopes(scopes)), scopes});
         }
         case regexp(regex): {
-            <sym, newProds> = regexToSymbol(removeRegexCache(reduce(regex)));
+            <sym, newProds> = regexToSymbolWithProds(removeRegexCache(reduce(regex)));
             out = sym;
             prods += newProds;
         }
@@ -66,33 +68,35 @@ tuple[Symbol, set[SourceProd]] convSymbolToSymbol(ConvSymbol inp) {
     return <out, prods>;
 }
 
-tuple[Symbol, set[SourceProd]] regexToSymbol(Regex inp) {
+tuple[Symbol, set[SourceProd]] regexToSymbolWithProds(Regex inp) {
+    set[SourceProd] prods = {};
+    inp = visit(inp) {
+        case meta(r, set[SourceProd] newProds): {
+            prods += newProds;
+            insert r;
+        }
+    }
+
+    return <regexToSymbol(inp), prods>;
+}
+Symbol regexToSymbol(Regex inp) {
     eolR = eolRegex();
     solR = solRegex();
 
-    set[SourceProd] prods = {};
-    Symbol rec(Regex r) {
-        <out, newProds> = regexToSymbol(r);
-        prods += newProds;
-        return out;
-    }
-    Symbol out;
-    
+    Symbol out;    
     switch(inp) {
-        case meta(r, set[SourceProd] newProds): {
-            prods += newProds;
-            out = rec(r);
-        }
+        case meta(r, set[SourceProd] newProds): 
+            out = regexToSymbol(r);
 
         // Special cases that lead to slightly easier to read grammars
         case alternation(\multi-iteration(r), Regex::empty()):
-            out = \iter-star(rec(r));
-        case alternation(Regex::empty(), \multi-iteration(r)): 
-            out = \iter-star(rec(r));
+            out = \iter-star(regexToSymbol(r));
+        case regex::alternation(Regex::empty(), \multi-iteration(r)): 
+            out = \iter-star(regexToSymbol(r));
         case concatenation(r, eolR): 
-            out = \conditional(rec(r), {\end-of-line()});
+            out = \conditional(regexToSymbol(r), {\end-of-line()});
         case concatenation(solR, r):
-            out \conditional(rec(r), {\begin-of-line()});
+            out \conditional(regexToSymbol(r), {\begin-of-line()});
 
         // Normal cases
         case never(): out = custom("never", seq([])); // TODO: could also use an empty range or smth: \char-class([])
@@ -107,29 +111,29 @@ tuple[Symbol, set[SourceProd]] regexToSymbol(Regex inp) {
                 out = \char-class(ranges);
         }
         case lookahead(r, lookahead): 
-            out = \conditional(rec(r), {\follow(rec(lookahead))});
+            out = \conditional(regexToSymbol(r), {\follow(regexToSymbol(lookahead))});
         case lookbehind(r, lookbehind): 
-            out = \conditional(rec(r), {\precede(rec(lookbehind))});
+            out = \conditional(regexToSymbol(r), {\precede(regexToSymbol(lookbehind))});
         case \negative-lookahead(r, lookahead): 
-            out = \conditional(rec(r), {\not-follow(rec(lookahead))});
+            out = \conditional(regexToSymbol(r), {\not-follow(regexToSymbol(lookahead))});
         case \negative-lookbehind(r, lookbehind): 
-            out = \conditional(rec(r), {\not-precede(rec(lookbehind))});
+            out = \conditional(regexToSymbol(r), {\not-precede(regexToSymbol(lookbehind))});
         case subtract(r, removal): 
-            out = \conditional(rec(r), {\delete(rec(removal))});
+            out = \conditional(regexToSymbol(r), {\delete(regexToSymbol(removal))});
         case concatenation(head, tail): 
-            out = simpSeq(rec(head), rec(tail));
+            out = simpSeq(regexToSymbol(head), regexToSymbol(tail));
         case alternation(opt1, opt2): 
-            out = simpAlt(rec(opt1), rec(opt2));
+            out = simpAlt(regexToSymbol(opt1), regexToSymbol(opt2));
         case \multi-iteration(r): 
-            out = \iter(rec(r));
+            out = \iter(regexToSymbol(r));
         case mark(tags, r): 
-            out = annotate(rec(r), {
+            out = annotate(regexToSymbol(r), {
                 Scope::stringify(s) 
                 | scopeTag(s) <- tags, 
                 s!=noScopes()
             } + tags);
     }
-    return <out, prods>;
+    return out;
 }
 Symbol simpSeq(Symbol a, Symbol b) = simpSeq([a, b]);
 Symbol simpSeq(Symbol a, \seq(b)) = simpSeq([a, *b]);
@@ -143,9 +147,29 @@ Symbol simpAlt(Symbol a, \alt(b)) = \alt({a, *b});
 Symbol simpAlt(\alt(a), Symbol b) = \alt({*a, b});
 Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
 
-&T removeCustomSymbols(&T grammar) = 
-    visit(grammar) {
-        case convSeq(parts) => \seq([s | p <- parts, s := convSymbolToSymbol(p)])
-        case closedBy(sym, c) => \conditional(sym, {\follow(regexToSymbol(c))})
+set[Production] removeCustomSymbols(set[Production] prods, rel[Symbol, ConvProd] orProds) {
+    int id = 0;
+    map[ConvSymbol, Symbol] nfas = ();
+    Symbol convSymbolToSymbolWithNFA(ConvSymbol convSym) {
+        if(regexNfa(_) := convSym) {
+            if(convSym in nfas) return nfas[convSym];
+            sym = sort("NFA<id>");
+            id += 1;
+            nfas[convSym] = sym;
+            return sym;
+        }
+        return convSymbolToSymbol(convSym)<0>;
+    }
+
+    Symbol convertConvSeq(cs:convSeq(parts)) {
+        if({convProd(_, orParts)} := orProds[cs])
+            parts = orParts;
+        return \seq([s | p <- parts, s := convSymbolToSymbolWithNFA(p)]);
+    }
+
+    return visit(prods) {
+        case cs:convSeq(parts) => convertConvSeq(cs)
+        case closed(a, b) =>  custom("C", \seq([a, b]))
         case unionRec(recOptions) => custom("UR", \alt(recOptions))
     };
+}

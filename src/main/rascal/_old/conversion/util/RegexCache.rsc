@@ -1,6 +1,6 @@
 module conversion::util::RegexCache
 
-extend regex::RegexToPSNFA;
+extend regex::regexToPSNFA;
 
 import IO;
 import lang::rascal::grammar::definition::Characters;
@@ -8,7 +8,7 @@ import ParseTree;
 
 import regex::RegexTypes;
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::NFA;
 import regex::PSNFATypes;
 import regex::PSNFACombinators;

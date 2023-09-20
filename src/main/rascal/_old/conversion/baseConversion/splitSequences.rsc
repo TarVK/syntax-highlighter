@@ -3,9 +3,10 @@ module conversion::baseConversion::splitSequences
 import Set;
 import IO;
 
+import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::makeLookahead;
 import conversion::util::RegexCache;
-import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::Alias;
 import conversion::determinism::combineOverlap;
 import conversion::shapeConversion::defineSequenceSymbol;
 import conversion::shapeConversion::defineUnionSymbols;

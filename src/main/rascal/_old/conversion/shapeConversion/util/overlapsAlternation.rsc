@@ -3,7 +3,7 @@ module conversion::shapeConversion::util::overlapsAlternation
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::RegexCache;
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
 

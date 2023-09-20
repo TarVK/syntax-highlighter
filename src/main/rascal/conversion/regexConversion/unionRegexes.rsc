@@ -14,7 +14,7 @@ import conversion::util::meta::LabelTools;
 import conversion::util::equality::ProdEquivalence;
 import regex::RegexCache;
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
 

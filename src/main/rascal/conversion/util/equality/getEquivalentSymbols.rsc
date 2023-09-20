@@ -6,6 +6,7 @@ import IO;
 import util::Maybe;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::Alias;
 import conversion::util::equality::ProdEquivalence;
 import conversion::util::meta::LabelTools;
 import regex::PSNFATools;
@@ -22,12 +23,11 @@ alias ClassMap = map[Symbol, set[Symbol]];
     This is based on equivalence set partition refinement.
 }
 set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar)
-    = getEquivalentSymbolsAndRightRecursion(grammar)<0>;
-tuple[
-    set[set[Symbol]] classes,
-    set[Symbol] rightRecursive 
- ] getEquivalentSymbolsAndRightRecursion(ConversionGrammar grammar) {
-
+    = getEquivalentSymbolsAndRightRecursion(grammar, defaultSymEquals);
+set[set[Symbol]] getEquivalentSymbols(
+    ConversionGrammar grammar, 
+    bool(Symbol, Symbol, ClassMap) equals
+) {
     symbols = grammar.productions<0>;
     map[Symbol, set[ConvProd]] prods = index(grammar.productions);
     CompProdMap compProds = (
@@ -35,7 +35,6 @@ tuple[
         | sym <- prods
     );
 
-    set[Symbol] rightRecursive = getRightRecursiveSymbols(prods);
     rel[
         Symbol to, 
         Symbol from
@@ -64,13 +63,12 @@ tuple[
             if(size(class) <= 1) continue classLoop;
 
             splitters = {
-                mergeParts 
+                parts
                 | sym <- class - aliases<1>, 
-                parts <- compProds[sym], 
-                mergeParts := mergeEqual(parts, classMap, rightRecursive)
+                parts <- compProds[sym]
             };
             for(splitter <- splitters) {
-                <contains, notContains> = split(class, splitter, compProds, classMap, rightRecursive);
+                <contains, notContains> = split(class, splitter, compProds, classMap, equals);
                 <contains, notContains> = followAliases(contains, notContains, aliases);
 
                 if(size(notContains)>0){
@@ -93,7 +91,7 @@ tuple[
         }
     }
 
-    return <classes, rightRecursive>;
+    return classes;
 }
 
 @doc {
@@ -109,7 +107,7 @@ tuple[
     list[ConvSymbol] splitter, 
     CompProdMap compProds,
     ClassMap classMap,
-    set[Symbol] rightRecursive
+    bool(Symbol, Symbol, ClassMap) equals
 ) {
     set[Symbol] contains = {};
     set[Symbol] notContains = {};
@@ -117,9 +115,7 @@ tuple[
     for(sym <- symbols) {
         bool doesContain = false;
         for(parts <- compProds[sym]) {
-            parts = mergeEqual(parts, classMap, rightRecursive);
-
-            if(prodsEqual(parts, splitter, classMap)) {
+            if(prodsEqual(parts, splitter, classMap, equals)) {
                 doesContain = true;
                 break;
             }
@@ -135,7 +131,12 @@ tuple[
 @doc {
     Checks whether the given two productions are equivalent under the currently known equivalent symbols
 }
-bool prodsEqual(list[ConvSymbol] aParts, list[ConvSymbol] bParts, ClassMap classMap) {
+bool prodsEqual(
+    list[ConvSymbol] aParts, 
+    list[ConvSymbol] bParts, 
+    ClassMap classMap, 
+    bool(Symbol, Symbol, ClassMap) equals
+) {
     aSize = size(aParts);
     bSize = size(bParts);
     if(aSize != bSize) return false;
@@ -153,46 +154,13 @@ bool prodsEqual(list[ConvSymbol] aParts, list[ConvSymbol] bParts, ClassMap class
                 if(scopesA != scopesB) return false;
                 symA = getWithoutLabel(symA);
                 symB = getWithoutLabel(symB);
-                classA = symA in classMap ? classMap[symA] : {symA};
-                classB = symB in classMap ? classMap[symB] : {symB};
-                if(classA != classB) return false;
+                if(!equals(symA, symB, classMap)) return false;
             } else 
                 return false;
         }
     }
 
     return true;
-}
-
-@doc {
-    Merges consecutive right-recursive symbols that belong to the same equivalence class, increasing the chances that two symbols are detected to be equivalent by removing redudant structural information
-}
-list[ConvSymbol] mergeEqual(list[ConvSymbol] parts, ClassMap classMap, set[Symbol] rightRecursive) {
-    Maybe[tuple[set[Symbol], ScopeList]] prevClass = nothing();
-    list[ConvSymbol] newParts = [];
-    for(part <- parts) {
-        if(ref(ref, scopes, _) := part, ref in classMap) {
-            if(ref in rightRecursive) {
-                class = classMap[ref];
-                equal = just(<class, scopes>) := prevClass;
-                if(equal) {
-                    ; // They are equivalent, we can skip adding the part
-                } else {
-                    prevClass = just(<class, scopes>);
-                    newParts += part;
-                }
-            } else {
-                // If the symbol is not right-recursive, we can't safely merge
-                prevClass = nothing();
-                newParts += part;
-            }
-        } else {
-            prevClass = nothing();
-            newParts += part;
-        }
-    }
-
-    return newParts;
 }
 
 @doc {
@@ -212,22 +180,13 @@ tuple[
 }
 
 @doc {
-    Retrieves all the symbols that are right-recursive
+    Checks whether two symbols are equal under the assumption that we know elements in the same class of `classes` are equal.
 }
-set[Symbol] getRightRecursiveSymbols(ProdMap prods) {
-    set[Symbol] out = {};
-    for(sym <- prods) {
-        symProds = prods[sym];
-        isRightRecursive = all(
-            convProd(_, [*_, last]) <- symProds, 
-            ref(s, [], _) := last, 
-            getWithoutLabel(s) == sym
-        );
-        if(isRightRecursive) out += sym;
-    }
-    return out;
+bool defaultSymEquals(Symbol a, Symbol b, ClassMap classes) {
+    set[Symbol] aClass = a in classes ? classes[a] : {a};
+    set[Symbol] bClass = b in classes ? classes[b] : {b};
+    return aClass == bClass;
 }
-
 
 
 

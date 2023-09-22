@@ -2,7 +2,9 @@ module conversion::shapeConversion::combineOverlap
 
 import util::Maybe;
 import List;
+import Map;
 import Set;
+import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
@@ -19,8 +21,13 @@ import regex::RegexCache;
 import regex::PSNFATools;
 import regex::PSNFACombinators;
 import regex::RegexTransformations;
+import regex::PSNFASimplification;
 import Warning;
 import Scope;
+import Visualize;
+
+import testing::util::visualizeGrammars;
+import regex::Regex;
 
 @doc {
     Combines productions that start with the same prefix, e.g.:
@@ -48,19 +55,33 @@ tuple[
             if(nfa in indexed) {
                 indexed[nfa] += p;
             } else if(nfa2 <- indexed, overlaps(nfa, nfa2)) {
-                indexed[nfa2] += p;
+                nfa2Prods = indexed[nfa2];
+
+                // Index in a way that includes the full language
+                if(isSubset(nfa, nfa2)) {
+                    indexed[nfa] = nfa2Prods + p;
+                    indexed = delete(indexed, nfa2);
+                } else if(isSubset(nfa2, nfa)) {
+                    indexed[nfa2] = nfa2Prods + p;
+                } else {
+                    cNfa = minimizeUnique(unionPSNFA(nfa, nfa2));
+                    indexed[cNfa] = nfa2Prods + p;
+                    indexed = delete(indexed, nfa2);
+                }
             } else {
                 indexed[nfa] = {p};
             }
-        } else 
+        } else {
             out += p; // Empty prods
+        }
     }
 
     // Add all productions to output
     list[Warning] warnings = [];
     for(group <- indexed<1>) {
-        if({p} := group) out += p;
-        else {
+        if({p} := group) {
+            out += p;
+        } else {
             <nWarnings, newProd, grammar> = combineProductions(group, grammar);
             warnings += nWarnings;
             out += newProd;
@@ -112,6 +133,7 @@ tuple[
             prods
         );
         suffix = reverse(reversedSuffix);
+        // if([*f , l1, l2] := suffix) suffix = [l1, l2];
         warnings += suffixWarnings;
 
         // Find a further common prefix
@@ -136,21 +158,27 @@ tuple[
             sequenceSources += extractSources(remainder);
 
             // If we have a common suffix, add a lookahead to prevent symbol merging in sequence
-            if([regexp(r), *_] := suffix) {
-                la = makeLookahead(r);
+            if([regexp(rs), *_] := suffix) {
+                la = makeLookahead(rs);
                 remainder += regexp(la);
             }
 
-            labels = (just(l) := getLabel(p)) ? {l} : {};
-            <dWarnings, seqSym, grammar> = defineSequence(remainder, labels, grammar);
+            <dWarnings, seqSym, grammar> = defineSequence(remainder, p, grammar);
             warnings += dWarnings;
 
             sequences += seqSym;
         }
 
+        // Extract the non-regex prefix of the suffix into the recursion
+        while([s:ref(refSym, scopes, _), *lastParts] := suffix){
+            sequences += refSym;
+            if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
+            suffix = lastParts;
+        }
+
         // Define the final production
         combinedParts = prefix + [ref(simplify(unionRec(sequences), grammar), [], sequenceSources)] + suffix;
-        combinedLabelDef = combineLabels(lDef, {lDef | convProd(lDef2, _) <- prods});
+        combinedLabelDef = combineLabels(lDef, {lDef2 | convProd(lDef2, _) <- prods});
         outProd = convProd(combinedLabelDef, combinedParts);
         
         return <warnings, outProd, grammar>;
@@ -221,10 +249,6 @@ WithWarnings[list[ConvSymbol]] findCommon(
 
             i += 1;
         }
-
-        // Make sure we end on a regular expression
-        while([*firstParts, lastPart] := out, <regexp(_), _> !:= lastPart)
-            out = firstParts;
 
         // Extract the generated warnings and prefix
         return <[warning | <_, just(warning)> <- out], [part | <part, _> <- out]>;

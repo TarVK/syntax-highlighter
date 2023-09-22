@@ -142,8 +142,7 @@ tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
     if(just(r) := regex) {
         <rMain, rEmpty, rEmptyRestr> = factorOutEmpty(r);
         if(rMain != never()) {
-            set[str] labels = (just(t) := getLabel(prod)) ? {t} : {};
-            <dWarnings, seqSymbol, grammar> = defineSequence([regexp(rMain)], labels, grammar);
+            <dWarnings, seqSymbol, grammar> = defineSequence([regexp(rMain)], prod, grammar);
             warnings += dWarnings;
             recOptions += seqSymbol;
         }

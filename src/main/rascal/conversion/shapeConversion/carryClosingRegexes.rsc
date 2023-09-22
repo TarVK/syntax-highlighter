@@ -26,10 +26,10 @@ tuple[
     set[ConvProd] out = {};
 
     list[Warning] warnings = [];
-    for(convProd(lDef, parts) <- prods) {
+    for(p:convProd(lDef, parts) <- prods) {
         if([s, ref(sym, scopes, sources), regexp(r), e] := parts) {
             rla = makeLookahead(r);
-            <nWarnings, rlaSym, grammar> = defineSequence([regexp(rla)], {}, grammar);
+            <nWarnings, rlaSym, grammar> = defineSequence([regexp(rla)], p, grammar);
             warnings += nWarnings;
             
             parts = [s, ref(closed(sym, rlaSym), scopes, sources), regexp(r), e];

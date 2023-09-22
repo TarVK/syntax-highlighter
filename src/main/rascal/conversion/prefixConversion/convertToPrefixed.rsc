@@ -12,7 +12,7 @@ import conversion::util::equality::getEquivalentSymbols;
 import conversion::util::meta::applyScopesAndSources;
 import conversion::util::meta::LabelTools;
 import conversion::util::meta::wrapRegexScopes;
-import conversion::util::removeUnreachable;
+import conversion::util::transforms::removeUnreachable;
 import regex::RegexTypes;
 import regex::RegexCache;
 import regex::PSNFATools;

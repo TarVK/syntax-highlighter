@@ -17,16 +17,26 @@ tuple[
     Symbol symbol,
     ConversionGrammar grammar
 ] defineSequence(
+    list[ConvSymbol] parts,  
+    ConvProd source,
+    ConversionGrammar grammar
+) = defineSequence(parts, (just(l) := getLabel(source)) ? {l} : {}, grammar, source);
+tuple[
+    list[Warning] warnings,
+    Symbol symbol,
+    ConversionGrammar grammar
+] defineSequence(
     list[ConvSymbol] parts, 
     set[str] labels, 
-    ConversionGrammar grammar
+    ConversionGrammar grammar,
+    ConvProd source
 ) {
     list[Warning] warnings = [];
     set[Symbol] prefixes = {};
 
-    while([ref(refSym, scopes, _), *rest] := parts) {
+    while([s:ref(refSym, scopes, _), *rest] := parts) {
         prefixes += followAlias(refSym, grammar);
-        if(size(scopes) > 0) warnings += inapplicableScope(scopes, source);
+        if(size(scopes) > 0) warnings += inapplicableScope(s, source);
         parts = rest;
     }
 
@@ -45,7 +55,9 @@ tuple[
         grammar.productions += {<seqSym, convProd(relabelSymbol(seqSym, labels), parts)>};
     }
 
-    outSym = simplify(unionRec(prefixes + {seqSym}), grammar);
+    outSym = prefixes == {} 
+        ? simplify(seqSym, grammar)
+        : simplify(unionRec(prefixes + {seqSym}), grammar);
 
     return <warnings, outSym, grammar>;
 }

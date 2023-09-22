@@ -1,4 +1,4 @@
-module conversion::util::removeUnreachable
+module conversion::util::transforms::removeUnreachable
 
 import Set;
 

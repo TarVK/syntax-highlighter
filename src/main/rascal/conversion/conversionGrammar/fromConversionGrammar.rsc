@@ -4,6 +4,7 @@ import Grammar;
 import util::Maybe;
 import ParseTree;
 import String;
+import lang::rascal::grammar::definition::Characters;
 import IO;
 
 import Visualize; // For the annotate constructor
@@ -101,7 +102,7 @@ Symbol regexToSymbol(Regex inp) {
         // Normal cases
         case never(): out = custom("never", seq([])); // TODO: could also use an empty range or smth: \char-class([])
         case Regex::empty(): out = ParseTree::\empty();
-        case always(): out = \iter-start(complement(\char-class([])));
+        case always(): out = \iter-star(complement(\char-class([])));
         case character(ranges): {
             if([range(k, k)]:=ranges)
                 out = \lit(stringChar(k));
@@ -151,9 +152,9 @@ set[Production] removeCustomSymbols(set[Production] prods, rel[Symbol, ConvProd]
     int id = 0;
     map[ConvSymbol, Symbol] nfas = ();
     Symbol convSymbolToSymbolWithNFA(ConvSymbol convSym) {
-        if(regexNfa(_) := convSym) {
+        if(regexNfa(nfa) := convSym) {
             if(convSym in nfas) return nfas[convSym];
-            sym = sort("NFA<id>");
+            sym = annotate(sort("NFA<id>"), {nfa});
             id += 1;
             nfas[convSym] = sym;
             return sym;
@@ -161,14 +162,28 @@ set[Production] removeCustomSymbols(set[Production] prods, rel[Symbol, ConvProd]
         return convSymbolToSymbol(convSym)<0>;
     }
 
-    Symbol convertConvSeq(cs:convSeq(parts)) {
-        if({convProd(_, orParts)} := orProds[cs])
-            parts = orParts;
-        return \seq([s | p <- parts, s := convSymbolToSymbolWithNFA(p)]);
-    }
+    
+    prods = visit(prods) {
+        case cs:convSeq(parts): {
+            // Follow aliases
+            while({convProd(_, orParts)} := orProds[cs], [ref(sym, [], {})] := orParts) {
+                cs = sym;
+            }
+
+            // Replace all regexNfas by regexes when possible
+            if({convProd(_, orParts)} := orProds[cs], size(parts)==size(orParts)) {
+                for(i <- [0..size(orParts)]) {
+                    if(regexNfa(_) := parts[i], regexp(_) := orParts[i]) 
+                        parts[i] = orParts[i];
+                }
+            }
+
+            insert convSeq(parts);
+        }
+    };
 
     return visit(prods) {
-        case cs:convSeq(parts) => convertConvSeq(cs)
+        case cs:convSeq(parts) => \seq([s | p <- parts, s := convSymbolToSymbolWithNFA(p)])
         case closed(a, b) =>  custom("C", \seq([a, b]))
         case unionRec(recOptions) => custom("UR", \alt(recOptions))
     };

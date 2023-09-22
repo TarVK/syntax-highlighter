@@ -1,7 +1,8 @@
-module conversion::util::replaceSymbol
+module conversion::util::transforms::replaceSymbol
 
 import ParseTree;
 
+import conversion::util::meta::LabelTools;
 import conversion::conversionGrammar::ConversionGrammar;
 
 @doc {
@@ -21,6 +22,7 @@ ConversionGrammar replaceSymbol(Symbol replace, Symbol replaceBy, ConversionGram
         def != replace // Remove the definition of replace, since it will no longer be referenced
     };
     grammar.productions = substitutedProductions;
+    if(grammar.\start == replace) grammar.\start = replaceBy;
     return grammar;
 }
 

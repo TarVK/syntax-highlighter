@@ -23,7 +23,7 @@ alias ClassMap = map[Symbol, set[Symbol]];
     This is based on equivalence set partition refinement.
 }
 set[set[Symbol]] getEquivalentSymbols(ConversionGrammar grammar)
-    = getEquivalentSymbolsAndRightRecursion(grammar, defaultSymEquals);
+    = getEquivalentSymbols(grammar, defaultSymEquals);
 set[set[Symbol]] getEquivalentSymbols(
     ConversionGrammar grammar, 
     bool(Symbol, Symbol, ClassMap) equals
@@ -58,6 +58,7 @@ set[set[Symbol]] getEquivalentSymbols(
     bool stable = false;
     while(!stable) {
         stable = true;
+        queue = classes;
         classLoop: while({class, *rest} := queue) {
             queue = rest;
             if(size(class) <= 1) continue classLoop;
@@ -76,13 +77,14 @@ set[set[Symbol]] getEquivalentSymbols(
                     for(c <- contains) classMap[c] = contains;
                     for(c <- notContains) classMap[c] = notContains;
 
-                    /*
-                        We need to check the newly created classes to see whether further splits are possible,
-                        And for any classes that contain symbols that depent on elemens of the newly split class, we also need to check if they are still stable
-                    */
-                    queue += {contains, notContains};
-                    for(dependent <- dependents[class])
-                        queue += {classMap[dependent]};
+                    // /*
+                    //     We need to check the newly created classes to see whether further splits are possible,
+                    //     And for any classes that contain symbols that depent on elemens of the newly split class, we also need to check if they are still stable
+                    // */
+                    // TODO: this doesn't work with a custom `equals` function, since that function results in different dependencies
+                    // queue += {contains, notContains};
+                    // for(dependent <- dependents[class])
+                    //     queue += {classMap[dependent]};
 
                     stable = false;
                     continue classLoop;

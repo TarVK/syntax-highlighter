@@ -19,10 +19,10 @@ ConversionGrammar deduplicateClosings(ConversionGrammar grammar, set[Symbol] new
             if(a in newlyDefined) return b;
             if(b in newlyDefined) return a;
 
-            // Prioritize smaller unions
-            if(unionRec(A) := a || unionRec(B) := b) {
-                if(A < B) return A;
-                if(B < A) return B;
+            // Prioritize bigger unions (more trivial merging)
+            if(unionRec(A) := a && unionRec(B) := b) {
+                if(A > B) return a;
+                if(B > A) return b;
             }
 
             // Deprioritize unions
@@ -36,6 +36,7 @@ ConversionGrammar deduplicateClosings(ConversionGrammar grammar, set[Symbol] new
         },
         bool(Symbol a, Symbol b, ClassMap classes) {
             if(closed(ac, c) := a, closed(bc, c) := b){
+                if(defaultSymEquals(a, b, classes)) return true;
                 a = ac;
                 b = bc;
             }

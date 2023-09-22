@@ -26,6 +26,8 @@ import conversion::util::meta::LabelTools;
     ```
 }
 set[ConvProd] defineClosing(c:closed(baseSym, closeSym), ConversionGrammar grammar) {
+    baseSym = followAlias(baseSym, grammar);
+    closeSym = followAlias(closeSym, grammar);
     baseProds = grammar.productions[baseSym];
     closeProds = grammar.productions[closeSym];
 

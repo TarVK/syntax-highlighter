@@ -7,7 +7,7 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
-import conversion::util::removeUnreachable;
+import conversion::util::transforms::removeUnreachable;
 
 data BroadeningBehavior 
     /* Don't perform broadening at all, as if this function weren't even called */
@@ -37,7 +37,7 @@ tuple[
     ConversionGrammar grammar,
     map[Symbol, Symbol] broadenings
 ] broadenUnions(ConversionGrammar grammar, BroadeningBehavior broadenBehavior) {
-    if(broadenBehavior==neverBroaden()) return grammar;
+    if(broadenBehavior==neverBroaden()) return <grammar, ()>;
     
     set[Symbol] definedSymbols = grammar.productions<0>;
     set[Symbol] encounteredUnions = {s | s:unionRec(_) <- getReachableSymbols(grammar, true)};
@@ -65,7 +65,7 @@ tuple[
 
             if(allSymbols notin broadening) broadening[allSymbols] = allNewSymbols;
             else {
-                curBroadening = broadening[allNewSymbols];
+                curBroadening = broadening[allSymbols];
                 if(broadenBehavior == broadenIfReached()) {
                     isBetterBroadening = size(allNewSymbols) > size(curBroadening);
                     if(isBetterBroadening) 

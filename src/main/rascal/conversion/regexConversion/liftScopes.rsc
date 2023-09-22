@@ -68,8 +68,9 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
         list[Scope] liftableScopes = [outerScope];
 
         // Check whether this is a first most/outermost scope
-        isAlwaysNext = all(scopesSet <- mainScopesSets, 
-            any(scopes <- scopesSet, startPrefix([outerScope], scopes)));
+        isAlwaysNext = size(mainScopesSets)==0  // Explicit check to deal with Rascal `all` bug on empty domains
+            || all(scopesSet <- mainScopesSets, 
+                any(scopes <- scopesSet, startPrefix([outerScope], scopes)));
         if(!isAlwaysNext) continue;
         
         // Try to augment it with sub-scopes

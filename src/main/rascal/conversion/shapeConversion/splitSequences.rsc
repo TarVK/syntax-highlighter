@@ -1,6 +1,7 @@
 module conversion::shapeConversion::splitSequences
 
 import Relation;
+import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
@@ -40,7 +41,11 @@ tuple[
             [f:regexp(_), *rest, s:regexp(la), r:ref(_, _, _)] := parts, 
             [ref(_, _, _)] !:= rest
         ) {
-            <nWarnings, seqSym, grammar> = defineSequence(rest + regexp(makeLookahead(la)), p, grammar);
+            <nWarnings, seqSym, grammar> = defineSequence(
+                rest == [] 
+                    ? []
+                    : rest + regexp(makeLookahead(la)
+            ), p, grammar);
             warnings += nWarnings;
             out += convProd(lDef, [f, ref(seqSym, [], {}), s, r]);
         } else 

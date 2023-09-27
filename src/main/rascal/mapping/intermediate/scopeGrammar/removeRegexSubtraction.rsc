@@ -3,8 +3,12 @@ module mapping::intermediate::scopeGrammar::removeRegexSubtraction
 import List;
 import IO;
 
+// TODO: remove
+import testing::util::visualizeGrammars;
+
 import regex::PSNFATools;
-import conversion::util::RegexCache;
+import regex::regexToPSNFA;
+import regex::RegexCache;
 import regex::Regex;
 import Scope;
 
@@ -143,7 +147,7 @@ tuple[
             sub = rSub;
         }
 
-        case cached(r, _, _): return removeRegexSubtractionRec(r);
+        case meta(r, _): return removeRegexSubtractionRec(r);
         default: {
             // Unsupported, shouldn't happen
             println("Missed a case in removeSubtraction implementation: <regex>");
@@ -198,23 +202,23 @@ tuple[Regex out, bool equivalent] tryLookaround(
 ) {
     if(sub==never()) return <regex, true>;
 
-    regex = getCachedRegex(regex);
-    sub = getCachedRegex(concatenationSimplified(lb, concatenationSimplified(sub, la)));
+    regex = getCachedRegex(regex, false);
+    sub = concatenationSimplified(lb, concatenationSimplified(sub, la));
 
     spec = subtract(regex, sub);
-    specCached = getCachedRegex(spec);
+    specNFA = regexToPSNFA(spec, false);
 
     laApproach = concatenation(\negative-lookahead(empty(), sub), regex);
-    laApproachCached = getCachedRegex(laApproach);
-    if(equals(laApproachCached, specCached))
-        return <laApproachCached, true>;
+    laApproachNFA = regexToPSNFA(laApproach, false);
+    if(equals(laApproachNFA, specNFA)) // We do nfa level equality checks, because the cached nfas aren't normalized for performance reasons
+        return <laApproach, true>;
     
     lbApproach = concatenation(regex, \negative-lookbehind(empty(), sub));
-    lbApproachCached = getCachedRegex(lbApproach);
-    if(equals(lbApproachCached, specCached))
-        return <lbApproachCached, true>;
+    lbApproachNFA = getToPSNFA(lbApproach, false);
+    if(equals(lbApproachNFA, specNFA))
+        return <lbApproach, true>;
 
-    return <laApproachCached, false>;
+    return <laApproach, false>;
 }
 
 // Constructors with some equivalences applied

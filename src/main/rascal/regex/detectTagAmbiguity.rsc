@@ -13,7 +13,7 @@ import regex::NFACombinators;
 import regex::PSNFATypes;
 import regex::PSNFACombinators;
 import regex::NFASimplification;
-import regex::util::GetDisjointCharClasses;
+import regex::util::charClass;
 import regex::util::expandEpsilon;
 
 @doc {

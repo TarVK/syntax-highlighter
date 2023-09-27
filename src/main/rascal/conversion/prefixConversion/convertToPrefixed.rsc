@@ -41,7 +41,9 @@ WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Log
 
     set[Symbol] rightRecursiveSyms = {};
     ProdMap oldProds;
+    int i = 0;
     do {
+        log(Progress(), "----- starting iteration <i+1> -----");
         oldProds = prods;
         for(sym <- prods) {
             <newWarnings, symProds, isRightRecursive> = convertToPrefixed(sym, oldProds, sym in rightRecursiveSyms);
@@ -51,7 +53,7 @@ WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Log
             log(ProgressDetailed(), "performed left-symbol substitution for <sym>, which is<isRightRecursive?"":" not"> right recursive");
         }     
         
-        log(Progress(), "performed left-symbol substitution iteration");
+        i += 1;
     } while(oldProds!=prods);
 
     log(Progress(), "finished left-symbol substitution");

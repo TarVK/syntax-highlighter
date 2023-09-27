@@ -26,7 +26,7 @@ bool equals(NFA[State] a, NFA[State] b, bool moduloTags) {
     if (a == b) return true;
 
     // This check is quicker than the subtraction check, hence doing this first might speed things up since majority of calls return false, this check can be left out if it ends up making things slower
-    if(isEmpty(productPSNFA(a, b))) return false;
+    if(isEmpty(productPSNFA(a, b, moduloTags))) return false;
     
     inANotB = moduloTags ? strongSubtractPSNFA(a, b) : subtractPSNFA(a, b);
     if(!isEmpty(inANotB)) return false;
@@ -126,17 +126,3 @@ bool overlaps(NFA[State] a, NFA[State] b) {
 
     return false;
 }
-
-
-// @doc {
-//     Checks whether an extension of rb overlaps with ra. I.e. whether a prefix of ra could also be matched by rb. 
-// }
-// Maybe[NFA[State]] getOverlap(Regex ra, Regex rb) {
-//     nfaA = regexToPSNFA(ra);
-//     nfaB = regexToPSNFA(rb);
-//     extensionB = getExtensionNFA(nfaB);
-//     overlap = productPSNFA(nfaA, extensionB, true);
-//     if(!isEmpty(overlap)) 
-//         return just(overlap);
-//     return nothing();
-// }

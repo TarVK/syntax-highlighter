@@ -1,5 +1,5 @@
 %smth% stuff = ( %stuff% something);
-if(test+okay)
+if(testokay)
     for(smth;stuff;oops==true) {
         smth = (("st\nr)))${stuff ("inner")}ing"));
     }

@@ -5,7 +5,7 @@ import IO;
 import Set;
 
 import regex::PSNFATools;
-import conversion::util::RegexCache;
+import regex::RegexCache;
 import regex::Regex;
 import Scope;
 
@@ -46,6 +46,7 @@ tuple[Regex, list[Scope]] extractRegexScopes(Regex regex, list[Scope] scopes) {
                 regex = r;
             }
         }
+        case meta(r, _): return extractRegexScopes(r, scopes);
 
         case never(): ;
         case empty(): ;
@@ -109,7 +110,6 @@ tuple[Regex, list[Scope]] extractRegexScopes(Regex regex, list[Scope] scopes) {
         case \min-iteration(r, min): regex = \min-iteration(removeMarks(r), min);
         case \max-iteration(r, max): regex = \max-iteration(removeMarks(r), max);
         case \min-max-iteration(r, min, max): regex = \min-max-iteration(removeMarks(r), min, max);
-        case cached(r, _, _): regex = r;
         default: {
             // Unsupported, shouldn't happen
             println("Missed a case in extractRegexScopes implementation: <regex>");

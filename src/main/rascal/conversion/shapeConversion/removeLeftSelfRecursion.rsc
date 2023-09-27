@@ -5,6 +5,7 @@ import IO;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::meta::LabelTools;
 import regex::RegexTypes;
+import regex::Regex;
 import regex::regexToPSNFA;
 import regex::PSNFATools;
 import regex::PSNFACombinators;
@@ -33,13 +34,14 @@ set[ConvProd] removeLeftSelfRecursion(set[ConvProd] prods) {
         }
 
         while(
-            [regexp(r), *regexes, symRef:ref(sym, _, _), *rest] := parts,
-            getWithoutLabel(sym) == def,
-            regexes==[] || all(s <- regexes, regexp(_) := s), // Explicity empty domain check to deal with Rascal bug
-            acceptsEmpty((regexToPSNFA(r) | concatPSNFA(it, regexToPSNFA(f)) | regexp(f) <- regexes))
+            [regexp(r), *intermediate, symRef:ref(sym, _, _), *rest] := parts
+            && !any(ref(iSym, _, _) <- intermediate, getWithoutLabel(iSym) == def) // Make sure that symRef is the first self-recursion
+            && getWithoutLabel(sym) == def
+            && acceptsEmpty(regexToPSNFA(r)) // Quick check before creating expensive concatenation
+            && acceptsEmpty((regexToPSNFA(r) | concatPSNFA(it, regexToPSNFA(rf)) | regexp(rf) <- intermediate))
         ) {
             // For each of the encountered regexes, make a production where this regex is not nullable
-            allRegexes = [r] + [rf | regexp(rf) <- regexes];
+            allRegexes = [r] + [rf | regexp(rf) <- intermediate];
             for(i <- [0..size(allRegexes)]) {
                 newRegexes = allRegexes;
                 <rMain, _, _> = factorOutEmpty(newRegexes[i]);

@@ -1,5 +1,7 @@
 module conversion::shapeConversion::carryClosingRegexes
 
+import IO;
+
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
 import conversion::shapeConversion::defineSequence;

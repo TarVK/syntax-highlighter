@@ -15,6 +15,14 @@ import util::List;
 import regex::RegexTypes;
 import Scope;
 
+@doc {
+    Removes all meta data from a regular expression
+}
+Regex removeMeta(Regex regex) 
+    = visit(regex) {
+        case meta(r, m) => r
+    };
+
 //     Reduction
 // ---------------------
 @doc {
@@ -71,10 +79,7 @@ Regex eolRegex() = alternation(
     \negative-lookahead(empty(), Regex::character(anyCharClass())), // EOF (no more characters)
     lookahead(
         empty(),
-        alternation(
-            Regex::character([range(10, 10)]),  // \n
-            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
-        )
+        newLine()
     )
 );
 
@@ -85,11 +90,13 @@ Regex solRegex() = alternation(
     \negative-lookbehind(empty(), Regex::character(anyCharClass())), // SOF (no more characters)
     lookbehind(
         empty(),
-        alternation(
-            Regex::character([range(10, 10)]),  // \n
-            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
-        )
+        newLine()
     )
+);
+
+Regex newLine() = alternation(
+    \negative-lookbehind(Regex::character([range(10, 10)]), Regex::character([range(13, 13)])),  // \n (without \r in front)
+    concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
 );
 
 //       Parsing

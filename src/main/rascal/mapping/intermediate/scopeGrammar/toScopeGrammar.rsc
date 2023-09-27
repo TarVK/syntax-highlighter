@@ -2,23 +2,27 @@ module mapping::intermediate::scopeGrammar::toScopeGrammar
 
 import util::Maybe;
 
+import mapping::common::stringifyOnigurumaRegex;
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::meta::LabelTools;
+import conversion::util::meta::extractSources;
 import mapping::intermediate::scopeGrammar::ScopeGrammar;
 import mapping::intermediate::scopeGrammar::cleanupRegex;
 import mapping::intermediate::scopeGrammar::extractRegexScopes;
 import mapping::intermediate::scopeGrammar::removeRegexSubtraction;
 import mapping::intermediate::scopeGrammar::splitRegexLookarounds;
-import conversion::util::RegexCache;
+import regex::RegexCache;
+import regex::regexToPSNFA;
 import regex::Regex;
 import regex::PSNFA;
+import regex::PSNFATypes;
 import regex::PSNFATools;
 import regex::NFASimplification;
 import regex::PSNFACombinators;
 import conversion::util::makeLookahead;
 import Warning;
+import Logging;
 import Scope;
-
-data Warning = unresolvabledSubtraction(Regex regex, NFA[State] delta, ConvProd production);
 
 @doc {
     Converts a conversion grammar to a scope grammar. 
@@ -29,99 +33,121 @@ data Warning = unresolvabledSubtraction(Regex regex, NFA[State] delta, ConvProd 
     A -> X B Y A
     ```
 }
-WithWarnings[ScopeGrammar] toScopeGrammar(ConversionGrammar grammar) {
-    ScopeProductions prods = ();
+WithWarnings[ScopeGrammar] toScopeGrammar(ConversionGrammar grammar, Logger log) {
+    log(Section(), "to scope grammar");
 
-    list[Warning] warnings = [];
-
-    set[str] textSymbols = {};
-    SymbolMap symMapping = ();
-    TokenCache tokenCache = ();
-    ScopeCache scopeCache = ();
+    Context context = <
+        [], // list[Warning] warnings,
+        (), // TokenCache tokenCache,
+        (), // ScopeCache scopeCache, 
+        (), // RegexConversionCache regexConversionCache,
+        (), // ScopeProductions scopeProductions, 
+        (), // SymbolMap symbolMap,
+        {}, // set[str] takenSymbols,
+        log //Logger log
+    >;
 
     for(sym <- grammar.productions<0>) {
         symInpProds = grammar.productions[sym];
-        <textSym, symMapping, textSymbols> = getSymbolString(sym, symMapping, textSymbols);
+        <textSym, context> = getSymbolString(sym, context);
+        log(Progress(), "defining <textSym>");
 
         list[ScopeProd] symProds = [];
-        prods[textSym] = symProds;
+        context.scopeProductions[textSym] = symProds;
 
-        for(prod:convProd(_, [regexp(r), ref(_, _, _)], _) <- symInpProds) {
-            <prodSym, newWarnings, tokenCache, prods, textSymbols> 
-                = defineTokenProd(r, tokenCache, prods, prod, textSymbols);
+        for(prod:convProd(_, [regexp(r), ref(_, _, _)]) <- symInpProds) {
+            <prodSym, context> = defineTokenProd(r, prod, context);
             symProds += inclusion(prodSym);
-            warnings += newWarnings;
         }
 
-        for(prod:convProd(_, [regexp(open), ref(refSym, scopes, _), regexp(close), ref(_, _, _)], _) <- symInpProds) {
-            <textRef, symMapping, textSymbols> = getSymbolString(refSym, symMapping, textSymbols);
-            <prodSym, newWarnings, scopeCache, prods, textSymbols> 
-                = defineScopeProd(open, textRef, scopes, close, scopeCache, prods, prod, textSymbols);
+        for(prod:convProd(_, [regexp(open), ref(refSym, scopes, _), regexp(close), ref(_, _, _)]) <- symInpProds) {
+            <textRef, context> = getSymbolString(refSym, context);
+            <prodSym, context> = defineScopeProd(open, textRef, scopes, close, prod, context);
             symProds += inclusion(prodSym);
-            warnings += newWarnings;
         }
 
-        prods[textSym] = symProds;
+        context.scopeProductions[textSym] = symProds;
     }
 
 
-    return <warnings, scopeGrammar(getSymbolString(grammar.\start, symMapping, textSymbols)<0>, prods)>;
+    return <context.warnings, scopeGrammar(getSymbolString(grammar.\start, context)<0>, context.scopeProductions)>;
 }
 
-alias SymbolMap = map[Symbol, str];
+/* Define some data and caches to prevent performing the same work multiple times */
+alias Context = tuple[
+    list[Warning] warnings,
 
-alias TokenCache = map[Regex, str];
-tuple[str, list[Warning], TokenCache, ScopeProductions, set[str]] defineTokenProd(
-    Regex regex, 
     TokenCache tokenCache,
-    ScopeProductions prods, 
+    ScopeCache scopeCache, 
+    RegexConversionCache regexConversionCache,
+    
+    ScopeProductions scopeProductions, 
+
+    SymbolMap symbolMap,
+    set[str] takenSymbols,
+
+    Logger log
+];
+alias SymbolMap = map[Symbol, str];
+alias TokenCache = map[NFA[State], str];
+alias ScopeCache = map[tuple[NFA[State], str, ScopeList, NFA[State]], str];
+alias RegexConversionCache = map[NFA[State], tuple[Regex, list[Scope]]];
+
+
+@doc {
+    Defines the entry for the given token production into the context, and returns the label to refer to it
+}
+tuple[
+    str, 
+    Context
+] defineTokenProd(
+    Regex regex, 
     ConvProd prod,
-    set[str] textSymbols
+    Context context
 ) {
-    regexCacheless = removeRegexCache(regex);
-    if(regexCacheless in tokenCache) return <tokenCache[regexCacheless], [], tokenCache, prods, textSymbols>;
+    key = regexToPSNFA(regex);
+    if(key in context.tokenCache) return <context.tokenCache[key], context>;
 
-    <textSym, textSymbols> = createUniqueSymbol(just(text) := getLabel(prod) ? text : "T", textSymbols);
-    tokenCache[regexCacheless] = textSym;
+    <textSym, context> = createUniqueID(just(text) := getLabel(prod) ? text : "T", context);
+    context.tokenCache[key] = textSym;
 
-    <warnings, scopedRegex> = convertRegex(regex, prod);
-    prods[textSym] = [tokenProd(scopedRegex, sources=prod.sources)];
+    <scopedRegex, context> = convertRegex(regex, prod, context);
+    context.scopeProductions[textSym] = [tokenProd(scopedRegex, sources=extractSources(prod.parts))];
 
-    return <textSym, warnings, tokenCache, prods, textSymbols>;
+    return <textSym, context>;
 }
 
-alias ScopeCache = map[tuple[Regex, str, ScopeList, Regex], str];
-tuple[str, list[Warning], ScopeCache, ScopeProductions, set[str]] defineScopeProd(
+@doc {
+    Defines the entry for the given scope production into the context, and returns the label to refer to it
+}
+tuple[
+    str, 
+    Context
+] defineScopeProd(
     Regex open, 
     str ref,
     ScopeList scopes,
     Regex close,
-    ScopeCache scopeCache,
-    ScopeProductions prods, 
     ConvProd prod,
-    set[str] textSymbols
+    Context context
 ) {
-    openCacheless = removeRegexCache(open);
-    closeCacheless = removeRegexCache(close);
+    key = <regexToPSNFA(open), ref, scopes, regexToPSNFA(close)>;
+    if(key in context.scopeCache) return <context.scopeCache[key], context>;
 
-    key = <openCacheless, ref, scopes, closeCacheless>;
-    if(key in scopeCache) return <scopeCache[key], [], scopeCache, prods, textSymbols>;
-
-    <textSym, textSymbols> = createUniqueSymbol(just(text) := getLabel(prod) ? text : "S", textSymbols);
-    scopeCache[key] = textSym;
+    <textSym, context> = createUniqueID(just(text) := getLabel(prod) ? text : "S", context);
+    context.scopeCache[key] = textSym;
 
     Scope scope;
     if([first, second, *rest] := scopes) {
         // If we want a secuence of scopes, we simply use lookaheads to open a sequence of symbols
         scope = first;
-        <ref, _, scopeCache, prods> = defineScopeProd(
+        <ref, context> = defineScopeProd(
             open, 
             ref, 
             [second, *rest], 
             makeLookahead(close, false), 
-            prods, 
-            scopeCache,
-            prod
+            prod, 
+            context
         );
         open = makeLookahead(open, false);
     } else if([first] := scopes) 
@@ -129,44 +155,73 @@ tuple[str, list[Warning], ScopeCache, ScopeProductions, set[str]] defineScopePro
     else if([] := scopes)
         scope = "";
 
-    <openWarnings, openScoped> = convertRegex(open, prod);
-    <closeWarnings, closeScoped> = convertRegex(close, prod);
-    prods[textSym] = [scopeProd(openScoped, <ref, scope>, closeScoped, sources=prod.sources)];
+    <openScoped, context> = convertRegex(open, prod, context);
+    <closeScoped, context> = convertRegex(close, prod, context);
+    context.scopeProductions[textSym] = [scopeProd(openScoped, <ref, scope>, closeScoped, sources=extractSources(prod.parts))];
 
-    return <textSym, openWarnings+closeWarnings, scopeCache, prods, textSymbols>;
+    return <textSym, context>;
 }
 
-WithWarnings[tuple[Regex, list[Scope]]] convertRegex(Regex regex, ConvProd prod) {
+
+
+@doc {
+    Converts a given regular expression with embedded scopes into a format with captures groups and corresponding scopes. 
+}
+tuple[
+    tuple[Regex, list[Scope]],
+    Context
+] convertRegex(Regex regex, ConvProd prod, Context context) {
+    key = regexToPSNFA(regex);
+    regex = removeMeta(regex);
+    if(key in context.regexConversionCache) 
+        return <context.regexConversionCache[key], context>;
+
     <subtractionlessRegex, isEqual> = removeRegexSubtraction(regex);
-    list[Warning] warnings = [];
     if(!isEqual) {
         delta = differencePSNFA(regexToPSNFA(regex), regexToPSNFA(subtractionlessRegex));
         minimizedDelta = minimizeUnique(delta);
-        warnings = [unresolvabledSubtraction(regex, minimizedDelta, prod)];
+        context.warnings += [unresolvableSubtraction(regex, minimizedDelta, prod)];
     }
-    emptyLookarounds = splitRegexLookarounds(removeRegexCache(subtractionlessRegex));
+
+    emptyLookarounds = splitRegexLookarounds(removeMeta(subtractionlessRegex));
     improvedRegex = cleanupRegex(emptyLookarounds);
-    return <warnings, extractRegexScopes(improvedRegex)>;
+    result = extractRegexScopes(improvedRegex);
+    
+    if(subtractionlessRegex != regex) {
+        rt = stringifyOnigurumaRegex(improvedRegex);
+        if(isEqual) context.log(ProgressDetailed(), "safely removed subtraction from regex: <rt>");
+        else        context.log(ProgressDetailed(), "removed subtraction from regex with errors: <rt>");
+    }
+
+    context.regexConversionCache[key] = result;
+    return <result, context>;
 }
 
-
-tuple[str name, set[str] taken] createUniqueSymbol(str name, set[str] taken) {
-    if(name in taken) {
+@doc {
+    Creates a unique string (id), trying to use the given name.
+    Requires a set of taken ids to be specified, and outputs the updated set. 
+}
+tuple[str name, Context context] createUniqueID(str name, Context context) {
+    if(name in context.takenSymbols) {
         int i = 1;
-        while("<name><i>" in taken) i+=1;
+        while("<name><i>" in context.takenSymbols) i+=1;
         name = "<name><i>";
     }
 
-    return <name, taken + name>;
+    context.takenSymbols += {name};
+    return <name, context>;
 }
 
-tuple[str name, SymbolMap symbolMap, set[str] textSymbols] getSymbolString(
+@doc {
+    Converts a given symbol into a string representing this symbol.
+    This is stored in the symbol map for later used, and in the textSymbols for quick lookup of whether a string is still available. 
+}
+tuple[str name, Context context] getSymbolString(
     Symbol sym, 
-    SymbolMap symbolMap, 
-    set[str] textSymbols
+    Context context
 ) {
     sym = getWithoutLabel(sym);
-    if(sym in symbolMap) return <symbolMap[sym], symbolMap, textSymbols>;
+    if(sym in context.symbolMap) return <context.symbolMap[sym], context>;
 
     str text = "G";
     switch(sym) {
@@ -176,7 +231,7 @@ tuple[str name, SymbolMap symbolMap, set[str] textSymbols] getSymbolString(
         case keywords(t): text = "K<t>";
     }
 
-    <labelText, textSymbols> = createUniqueSymbol(text, textSymbols);
-    symbolMap[sym] = labelText;
-    return <labelText, symbolMap, textSymbols>;
+    <labelText, context> = createUniqueID(text, context);
+    context.symbolMap[sym] = labelText;
+    return <labelText, context>;
 }

@@ -1,6 +1,7 @@
-module testing::shapeConversionTest
+module testing::mappingTest
 
 import ValueIO;
+import lang::json::IO;
 
 import Logging;
 import testing::util::visualizeGrammars;
@@ -15,6 +16,11 @@ import conversion::util::transforms::removeUnreachable;
 import conversion::util::transforms::removeAliases;
 import conversion::util::transforms::replaceNfaByRegex;
 
+import regex::Regex;
+import mapping::intermediate::scopeGrammar::toScopeGrammar;
+import mapping::textmate::createTextmateGrammar;
+import mapping::common::HighlightGrammarData;
+
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
 
@@ -22,8 +28,8 @@ import testing::grammars::SimpleScoped1;
 
 // syntax Program = Stmt*;
 // syntax Stmt = exp: Exp
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
 //             // | @token="KW" "in" !>> [a-z0-9]
@@ -36,13 +42,18 @@ import testing::grammars::SimpleScoped1;
 //             ;
 // syntax Exp = id: Id
 //            | brackets: "(" Exp ")"
-//            | Exp "in" Exp 
+//         //    | @token="keyword.operator" Exp "in" !>>[a-z0-9] Exp 
 //            ;
 
 // lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 // keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 
-// layout Layout = [\n\ ]* !>> [\n\ ];
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+//    | @scope="comment.line" "%%" ![\n]* $
+//    ;
 
 
 
@@ -51,33 +62,45 @@ void main() {
     bool recalc = true;
 
     log = standardLogger();
-    list[Warning] cWarnings, rWarnings, pWarnings, sWarnings;
+    list[Warning] cWarnings = [], 
+                  rWarnings = [], 
+                  pWarnings = [], 
+                  sWarnings = [], 
+                  mWarnings = [];
     ConversionGrammar inputGrammar, conversionGrammar;
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
-        inputGrammar = conversionGrammar;
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
-        inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
-        cWarnings = rWarnings = pWarnings = [];
+        conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
-
-    // Simplify for readability
-    conversionGrammar = replaceNfaByRegex(conversionGrammar);
     conversionGrammar = removeUnreachable(conversionGrammar);
-    <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
+    
+    <inputGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
 
-    warnings = cWarnings + rWarnings + pWarnings + sWarnings;
+    <mWarnings, scopeGrammar> = toScopeGrammar(conversionGrammar, log);
+    tmGrammar = createTextmateGrammar(scopeGrammar, highlightGrammarData(
+        "highlight",
+        [<parseRegexReduced("[(]"), parseRegexReduced("[)]")>],
+        scopeName="source.highlight"
+    ));
+
+
+    warnings = cWarnings + rWarnings + pWarnings + sWarnings + mWarnings;
     visualizeGrammars(<
         fromConversionGrammar(inputGrammar),
-        fromConversionGrammar(conversionGrammar),
+        tmGrammar,
         warnings,
-        conversionGrammar.\start
-        , symMap
+        conversionGrammar.\start,
+        symMap
     >);
+
+    
+    loc output = |project://syntax-highlighter/outputs/tmGrammar.json|;
+    writeJSON(output, tmGrammar, indent=4);
 }

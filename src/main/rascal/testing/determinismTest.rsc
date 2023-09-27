@@ -1,6 +1,7 @@
-module testing::shapeConversionTest
+module testing::determinismTest
 
 import ValueIO;
+import lang::json::IO;
 
 import Logging;
 import testing::util::visualizeGrammars;
@@ -14,6 +15,8 @@ import conversion::util::transforms::relabelSymbols;
 import conversion::util::transforms::removeUnreachable;
 import conversion::util::transforms::removeAliases;
 import conversion::util::transforms::replaceNfaByRegex;
+import determinism::check::checkDeterminism;
+
 
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
@@ -22,13 +25,13 @@ import testing::grammars::SimpleScoped1;
 
 // syntax Program = Stmt*;
 // syntax Stmt = exp: Exp
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt
-//             // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
+//             | iff: "if" >> ("("|[\n\ ]) Stmt "else" Stmt
 //             // | @token="KW" "in" !>> [a-z0-9]
-//             // | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
-//             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+//             | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
+//             | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
 //             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
 //             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
 //             // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
@@ -36,48 +39,53 @@ import testing::grammars::SimpleScoped1;
 //             ;
 // syntax Exp = id: Id
 //            | brackets: "(" Exp ")"
-//            | Exp "in" Exp 
+//            | close: ")"
+//            | @token="keyword.operator" Exp "in" !>>[a-z0-9] Exp 
 //            ;
 
 // lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 // keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 
-// layout Layout = [\n\ ]* !>> [\n\ ];
-
-
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+//    | @scope="comment.line" "%%" ![\n]* $
+//    ;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
     bool recalc = true;
 
     log = standardLogger();
-    list[Warning] cWarnings, rWarnings, pWarnings, sWarnings;
+    list[Warning] cWarnings = [], 
+                  rWarnings = [], 
+                  pWarnings = [], 
+                  sWarnings = [], 
+                  mWarnings = [],
+                  dWarnings = [];
     ConversionGrammar inputGrammar, conversionGrammar;
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
-        inputGrammar = conversionGrammar;
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
-        inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
-        cWarnings = rWarnings = pWarnings = [];
+        conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
-
-    // Simplify for readability
-    conversionGrammar = replaceNfaByRegex(conversionGrammar);
     conversionGrammar = removeUnreachable(conversionGrammar);
-    <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
+    inputGrammar = relabelGeneratedSymbols(conversionGrammar);
+    dWarnings = checkDeterminism(conversionGrammar, log);
+    log(Section(), "finished");
 
-    warnings = cWarnings + rWarnings + pWarnings + sWarnings;
+    warnings = cWarnings + rWarnings + pWarnings + sWarnings + mWarnings + dWarnings;
     visualizeGrammars(<
         fromConversionGrammar(inputGrammar),
-        fromConversionGrammar(conversionGrammar),
+        fromConversionGrammar(inputGrammar),
         warnings,
         conversionGrammar.\start
-        , symMap
     >);
 }

@@ -26,9 +26,6 @@ import Warning;
 import Scope;
 import Visualize;
 
-import testing::util::visualizeGrammars;
-import regex::Regex;
-
 @doc {
     Combines productions that start with the same prefix, e.g.:
     ```
@@ -54,23 +51,20 @@ tuple[
             nfa = regexToPSNFA(r);
             if(nfa in indexed) {
                 indexed[nfa] += p;
-            } else if(nfa2 <- indexed, overlaps(nfa, nfa2)) {
-                nfa2Prods = indexed[nfa2];
-
-                // Index in a way that includes the full language
-                if(isSubset(nfa, nfa2)) {
-                    indexed[nfa] = nfa2Prods + p;
-                    indexed = delete(indexed, nfa2);
-                } else if(isSubset(nfa2, nfa)) {
-                    indexed[nfa2] = nfa2Prods + p;
-                } else {
-                    cNfa = minimizeUnique(unionPSNFA(nfa, nfa2));
-                    indexed[cNfa] = nfa2Prods + p;
-                    indexed = delete(indexed, nfa2);
-                }
             } else {
-                indexed[nfa] = {p};
-            }
+                overlapNfas = {nfa2 | nfa2 <- indexed, overlaps(nfa, nfa2)};
+                if({} := overlapNfas) {
+                    indexed[nfa] = {p};
+                } else {
+                    combinedProds = {p};
+                    for(nfa2 <- overlapNfas) {
+                        combinedProds += indexed[nfa2];
+                        nfa = unionPSNFA(nfa, nfa2);
+                        indexed = delete(indexed, nfa2);
+                    }
+                    indexed[nfa] = combinedProds;
+                }
+            } 
         } else {
             out += p; // Empty prods
         }
@@ -91,6 +85,8 @@ tuple[
     return <warnings, out, grammar>;
 }
 
+alias SourcedSequence = tuple[list[ConvSymbol], ConvProd];
+
 @doc {
     Creates a production that represents the union of the given set of productions, E.g.:
     ```
@@ -101,18 +97,31 @@ tuple[
     ```
     A -> X unionRec(A|convSeq(Y B)|D) Z A
     ```
-
 }
 tuple[
     list[Warning] warnings,
     ConvProd prod,
     ConversionGrammar grammar  
 ] combineProductions(set[ConvProd] prods, ConversionGrammar grammar) {
+    <warnings, combinedParts, grammar> = combineSequences({<parts, p> | p:convProd(_, parts) <- prods}, grammar);
+
+    lDef = getOneFrom(prods).def;
+    combinedLabelDef = combineLabels(lDef, {lDef2 | convProd(lDef2, _) <- prods});
+    outProd = convProd(combinedLabelDef, combinedParts);
+    
+    return <warnings, outProd, grammar>;
+}
+    
+tuple[
+    list[Warning] warnings,
+    list[ConvSymbol] sequence,
+    ConversionGrammar grammar  
+] combineSequences(set[SourcedSequence] sequences, ConversionGrammar grammar) {
     list[Warning] warnings = [];
-    if({baseProd:convProd(lDef, baseParts:[regexp(r), *_]), *restProds} := prods) {        
+    if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) {        
         // Make sure the first regex is always included in the prefix, even if the regexes only overlap but aren't equivalent
         list[ConvSymbol] prefix = [];
-        for(p:convProd(_, [regexp(r2), *_]) <- restProds) {
+        for(<[regexp(r2), *_], p> <- restSequences) {
             if(isSubset(r2, r)) {
                 r = addRegexSources(r, extractAllRegexSources(r2));
             } else if(isSubset(r, r2)) {
@@ -130,7 +139,7 @@ tuple[
                 if(size(prefix) <= index && index < size(parts)) return just(parts[index]);
                 return nothing();
             }, 
-            prods
+            sequences
         );
         suffix = reverse(reversedSuffix);
         // if([*f , l1, l2] := suffix) suffix = [l1, l2];
@@ -143,22 +152,26 @@ tuple[
                 if(index < size(parts) - size(suffix)) return just(parts[index]);
                 return nothing();
             },
-            prods
+            sequences
         );
         prefix += prefixAugmentation;
         warnings += prefixWarnings;
 
         // Extract the remainder sequence for every production
         set[SourceProd] sequenceSources = {};
-        set[Symbol] sequences = {};
-        for(p:convProd(_, parts) <- prods) {
+        set[list[ConvSymbol]] mergeSequences = {};
+        set[Symbol] outSequences = {};
+        for(<parts, p> <- sequences) {
             startIndex = size(prefix);
             endIndex = size(parts) - size(suffix);
             remainder = parts[startIndex..endIndex];
+            if(remainder == []) continue;
+
             sequenceSources += extractSources(remainder);
 
-            // If we have a common suffix, add a lookahead to prevent symbol merging in sequence
-            if([regexp(rs), *_] := suffix) {
+            // If we have a common suffix, add a lookahead to prevent symbol merging in sequence, 
+            // but only if there's any regular expression, otherwise no sequence is created anyhow
+            if([regexp(rs), *_] := suffix, [*_, regexp(_), *_] := remainder) {
                 la = makeLookahead(rs);
                 remainder += regexp(la);
             }
@@ -166,22 +179,19 @@ tuple[
             <dWarnings, seqSym, grammar> = defineSequence(remainder, p, grammar);
             warnings += dWarnings;
 
-            sequences += seqSym;
+            outSequences += seqSym;
         }
 
-        // Extract the non-regex prefix of the suffix into the recursion
+        // Extract the non-regex prefix of the suffix (if any) into the recursion
         while([s:ref(refSym, scopes, _), *lastParts] := suffix){
-            sequences += refSym;
+            outSequences += refSym;
             if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
             suffix = lastParts;
         }
 
         // Define the final production
-        combinedParts = prefix + [ref(simplify(unionRec(sequences), grammar), [], sequenceSources)] + suffix;
-        combinedLabelDef = combineLabels(lDef, {lDef2 | convProd(lDef2, _) <- prods});
-        outProd = convProd(combinedLabelDef, combinedParts);
-        
-        return <warnings, outProd, grammar>;
+        combinedParts = prefix + [ref(simplify(unionRec(outSequences), grammar), [], sequenceSources)] + suffix;       
+        return <warnings, combinedParts, grammar>;
     }
 }
 
@@ -190,9 +200,9 @@ tuple[
 }
 WithWarnings[list[ConvSymbol]] findCommon(
     Maybe[ConvSymbol](list[ConvSymbol] parts, int index) getPart,
-    set[ConvProd] prods
+    set[SourcedSequence] sequences
 ) {
-    if({baseProd:convProd(_, baseParts), *restProds} := prods) {
+    if({<baseParts, baseProd>, *restSequences} := sequences) {
         list[tuple[ConvSymbol, Maybe[Warning]]] out = [];
         int i = 0;
         outer: while(true) {
@@ -204,7 +214,7 @@ WithWarnings[list[ConvSymbol]] findCommon(
 
             // Check if all symbols are equivalent 
             set[SourceProd] newSources = {};
-            for(p:convProd(_, parts) <- restProds) {
+            for(<parts, p> <- restSequences) {
                 comparePart = getPart(parts, i);
                 if(just(regexp(r)) := part) {
                     if (just(regexp(r2)) := comparePart){
@@ -249,6 +259,10 @@ WithWarnings[list[ConvSymbol]] findCommon(
 
             i += 1;
         }
+
+        // // Make sure we end on a regular expression
+        // while([*firstParts, lastPart] := out, <regexp(_), _> !:= lastPart)
+        //     out = firstParts;
 
         // Extract the generated warnings and prefix
         return <[warning | <_, just(warning)> <- out], [part | <part, _> <- out]>;

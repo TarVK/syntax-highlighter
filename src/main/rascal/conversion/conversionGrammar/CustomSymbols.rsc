@@ -21,8 +21,6 @@ data Symbol
 }
 Symbol simplify(Symbol sym, ConversionGrammar grammar) {
     // Union
-    if(unionRec({a}) := sym)
-        return a;
     if(unionRec({a, *rest}) := sym, isAlias(a, grammar))
         return simplify(unionRec({followAlias(a, grammar)} + rest), grammar);
     if(unionRec({unionRec(options), *rest}) := sym)

@@ -1,6 +1,8 @@
 module Warning
 
 import ParseTree;
+import regex::RegexTypes;
+import regex::PSNFATypes;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::prefixConversion::findNonProductiveRecursion;
 import Scope;
@@ -19,14 +21,24 @@ data Warning
     // =========== Regex conversion ===========
     /* A modifier was supplied for something that can not be converted to a regular expression */
     | unresolvedModifier(ConvSymbol modifier, ConvProd forProd)
-    // =========== Prefix conversion ==========
+    // =========== Prefix conversion ===========
     /* A scope was provided for a non-terminal, but the symbol was involved in a left-recursive loop */
     | inapplicableScope(ConvSymbol sym, ConvProd forProd)
     // =========== Shape conversion ===========
     /* A scope was provided for a non-terminal, but the symbol had to merged with another symbol with different scopes */
     | incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], ConvProd production)
     /* We ararived at a cyclic path where no symbol has to be consumed, but can't safely solve such paths */
-    | unresolvableLeftRecursiveLoop(set[EmptyPath] paths, ConvProd production);
+    | unresolvableLeftRecursiveLoop(set[EmptyPath] paths, ConvProd production)
+    /* =========== Determinism checking ========== */
+    /* We found overlap between a production and a regular expression that should close it */
+    | closingOverlap(Regex alternativeExpression, Regex closingExpression, set[ConvProd] alternativeProductions, set[ConvProd] closingProductions, NFA[State] overlap)
+    /* We found a regular expression that could both match a word and an extension of that same word */ 
+    | extensionOverlap(Regex regex, set[ConvProd] productions, NFA[State] longerMatch)
+    /* We found a regular expression that can match the same word with different scopes */
+    | ambiguity(Regex regex, set[ConvProd] productions, NFA[State] path)
+    /* =========== Scope grammar conversion =========== */
+    /* We were not able to safely replace the subtraction by lookaheads or behinds */
+    | unresolvableSubtraction(Regex regex, NFA[State] delta, ConvProd production);
 
 alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];
 

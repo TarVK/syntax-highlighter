@@ -4,7 +4,7 @@ import List;
 import IO;
 
 import regex::PSNFATools;
-import conversion::util::RegexCache;
+import regex::RegexCache;
 import regex::Regex;
 import Scope;
 
@@ -37,9 +37,10 @@ Regex cleanupRegex(Regex regex) {
         // Optionality
         case alternation(r, empty()) => optional(r)
         case alternation(empty(), r) => optional(r)
-        case alternation({empty(), *parts}) => optional(alternation([part | part <- parts, part!=empty()]))
+        case alternation([empty(), *parts]) => optional(alternation([part | part <- parts, part!=empty()]))
 
         // Alternation merging
+        case alternation([*s, d, *m, d, *e]) => alternation([*s, d, *m, *e]) // dedupe
         case alternation(alternation(options1), alternation(options2)) => alternation(options1 + options2)
         case alternation(alternation(options), option) => alternation(options + option)
         case alternation(option, alternation(options)) => alternation(option + options)

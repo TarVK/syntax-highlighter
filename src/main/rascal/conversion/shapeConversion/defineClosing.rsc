@@ -25,9 +25,15 @@ import conversion::util::meta::LabelTools;
     closed(A, B) -> Y A W B closed(A, B)
     ```
 }
-set[ConvProd] defineClosing(c:closed(baseSym, closeSym), ConversionGrammar grammar) {
-    baseSym = followAlias(baseSym, grammar);
-    closeSym = followAlias(closeSym, grammar);
+tuple[
+    set[ConvProd] prods,
+    bool isAlias
+] defineClosing(c:closed(orBaseSym, orCloseSym), ConversionGrammar grammar) {
+    baseSym = followAlias(orBaseSym, grammar);
+    closeSym = followAlias(orCloseSym, grammar);
+    if(baseSym != orBaseSym || closeSym != orCloseSym)
+        return <{convProd(c, [ref(closed(baseSym, closeSym), [], {})])}, true>;
+
     baseProds = grammar.productions[baseSym];
     closeProds = grammar.productions[closeSym];
 
@@ -36,7 +42,10 @@ set[ConvProd] defineClosing(c:closed(baseSym, closeSym), ConversionGrammar gramm
         convProd(baseLDef, baseParts) <- baseProds,
         convProd(closeLDef, closeParts) <- closeProds
     ) {
-        labels = ((label(bl, _) := baseLDef) ? {bl} : {}) + ((label(cl, _) := closeLDef) ? {cl} : {});
+
+        // labels = ((label(bl, _) := baseLDef) ? {bl} : {}) + ((label(cl, _) := closeLDef) ? {cl} : {});
+        // There's a lot of useless label data in the close def, so we don't add it
+        labels = ((label(bl, _) := baseLDef) ? {bl} : {});
 
         baseParts = followPartsAliases(baseParts, grammar);
         closeParts = followPartsAliases(closeParts, grammar);
@@ -45,5 +54,5 @@ set[ConvProd] defineClosing(c:closed(baseSym, closeSym), ConversionGrammar gramm
 
     out += convProd(label("empty", c), []);
 
-    return deduplicateProds(out);
+    return <deduplicateProds(out), false>;
 }

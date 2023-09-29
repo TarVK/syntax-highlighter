@@ -41,11 +41,13 @@ set[Symbol] getReachableSymbols(ConversionGrammar grammar, bool includeSources) 
         ) {
             reachable += refSym;
             newAdded += refSym;
+        }
 
+        for(sym <- added) {
             if(includeSources){
                 set[Symbol] sourceReachable = {};
-                if(unionRec(syms) := refSym) sourceReachable = syms;
-                if(closed(s, c) := refSym) sourceReachable = {s, c};
+                if(unionRec(syms) := sym) sourceReachable = syms;
+                if(closed(s, c) := sym) sourceReachable = {s, c};
 
                 if(sourceReachable != {}){
                     sourceReachable = sourceReachable - reachable;

@@ -15,19 +15,19 @@ ConversionGrammar deduplicateClosings(ConversionGrammar grammar, set[Symbol] new
             if(grammar.\start == a) return a;
             if(grammar.\start == b) return b;
 
-            // Deprioritize newly defined symbols
-            if(a in newlyDefined) return b;
-            if(b in newlyDefined) return a;
-
             // Prioritize bigger unions (more trivial merging)
             if(unionRec(A) := a && unionRec(B) := b) {
                 if(A > B) return a;
                 if(B > A) return b;
             }
 
-            // Deprioritize unions
-            if(unionRec(_) := a) return b;
-            if(unionRec(_) := b) return a;
+            // Prioritize unionRecs in general
+            if(unionRec(_) := a) return a;
+            if(unionRec(_) := b) return b;
+
+            // Deprioritize newly defined symbols
+            if(a in newlyDefined, b notin newlyDefined) return b;
+            if(b in newlyDefined, a notin newlyDefined) return a;
 
             return a;
         },

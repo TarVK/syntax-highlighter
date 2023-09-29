@@ -9,6 +9,7 @@ import conversion::shapeConversion::defineSequence;
 import conversion::util::meta::extractSources;
 import conversion::util::meta::LabelTools;
 import regex::Regex;
+import regex::regexToPSNFA;
 import regex::PSNFATools;
 import regex::RegexTransformations;
 import Warning;
@@ -66,9 +67,12 @@ tuple[
 
     Maybe[tuple[Symbol, ScopeList, set[SourceProd]]] prevSymbol = nothing();
     Maybe[Regex] spacerRegex = nothing();
-    void flush() {
-        if(just(<sym, scopes, sources>) := prevSymbol) 
+    void flush(Maybe[Regex] suffix) {
+        if(just(<sym, scopes, sources>) := prevSymbol)  {
+            if(unionRec(_, _) := sym, just(r) := suffix)
+                sym = simplify(unionRec({sym}, regexToPSNFA(r)), grammar);
             outParts += ref(sym, scopes, sources);
+        }
         prevSymbol = nothing();
 
         if(just(r) := spacerRegex)
@@ -110,12 +114,12 @@ tuple[
             if(alwaysAcceptsEmpty(regex), just(<A, _>) := prevSymbol) {
                 spacerRegex = just(regex);
             } else {
-                flush();
+                flush(just(regex));
                 outParts += part;    
             }
         } else outParts += part;
     }
-    flush();
+    flush(nothing());
 
     return <warnings, outParts, grammar>;
 }

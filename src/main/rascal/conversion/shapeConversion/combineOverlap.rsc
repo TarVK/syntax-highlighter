@@ -14,6 +14,7 @@ import conversion::util::meta::extractSources;
 import conversion::util::meta::LabelTools;
 import conversion::util::meta::applyScopesAndSources;
 import conversion::util::makeLookahead;
+import conversion::util::BaseNFA;
 import regex::PSNFATypes;
 import regex::RegexTypes;
 import regex::regexToPSNFA;
@@ -142,7 +143,6 @@ tuple[
             sequences
         );
         suffix = reverse(reversedSuffix);
-        // if([*f , l1, l2] := suffix) suffix = [l1, l2];
         warnings += suffixWarnings;
 
         // Find a further common prefix
@@ -188,9 +188,17 @@ tuple[
             if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
             suffix = lastParts;
         }
+        suffixStartNFA = regexToPSNFA(suffix[0].regex);
+
+        // extract the non-regex suffix of the prefix into the recursion
+        while([*firstParts, s:ref(refSym, scopes, _)] := prefix){
+            outSequences += refSym;
+            if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
+            prefix = firstParts;
+        }
 
         // Define the final production
-        combinedParts = prefix + [ref(simplify(unionRec(outSequences), grammar), [], sequenceSources)] + suffix;       
+        combinedParts = prefix + [ref(simplify(unionRec(outSequences, emptyNFA), grammar), [], sequenceSources)] + suffix;       
         return <warnings, combinedParts, grammar>;
     }
 }

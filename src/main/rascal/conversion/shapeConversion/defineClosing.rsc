@@ -42,7 +42,6 @@ tuple[
         convProd(baseLDef, baseParts) <- baseProds,
         convProd(closeLDef, closeParts) <- closeProds
     ) {
-
         // labels = ((label(bl, _) := baseLDef) ? {bl} : {}) + ((label(cl, _) := closeLDef) ? {cl} : {});
         // There's a lot of useless label data in the close def, so we don't add it
         labels = ((label(bl, _) := baseLDef) ? {bl} : {});

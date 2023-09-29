@@ -4,6 +4,7 @@ import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
+import conversion::util::BaseNFA;
 
 
 @doc {
@@ -34,6 +35,7 @@ set[Symbol] getReachableSymbols(ConversionGrammar grammar, bool includeSources) 
 
     while(size(added)>0) {
         set[Symbol] newAdded = {};
+
         for(
             convProd(_, parts) <- grammar.productions[added],
             ref(refSym, _, _) <- parts,
@@ -41,22 +43,29 @@ set[Symbol] getReachableSymbols(ConversionGrammar grammar, bool includeSources) 
         ) {
             reachable += refSym;
             newAdded += refSym;
+        }
 
-            if(includeSources){
-                set[Symbol] sourceReachable = {};
-                if(unionRec(syms) := refSym) sourceReachable = syms;
-                if(closed(s, c) := refSym) sourceReachable = {s, c};
-
-                if(sourceReachable != {}){
-                    sourceReachable = sourceReachable - reachable;
-                    reachable += sourceReachable;
-                    newAdded += sourceReachable;
-                }
-            }
+        if(includeSources){
+            newSourceReachable = expandSources(added) - reachable;
+            reachable += newSourceReachable;
+            newAdded += newSourceReachable;
         }
 
         added = newAdded;
     }
 
     return reachable;
+}
+
+@doc {
+    Expands what can be reached from custom symbol sources, but not necessarily through productions
+}
+set[Symbol] expandSources(set[Symbol] symbols) {
+    set[Symbol] sourceReachable = {};
+    for(sym <- symbols) {
+        if(unionRec(syms, _) := sym) sourceReachable += syms;
+        if(unionRec(syms, n) := sym, n != emptyNFA) sourceReachable += unionRec(syms, emptyNFA);
+        if(closed(s, c) := sym) sourceReachable += {s, c};
+    }
+    return sourceReachable;
 }

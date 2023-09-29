@@ -1,11 +1,17 @@
 module conversion::shapeConversion::defineUnion
 
+import IO;
+import Set;
+
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::Alias;
 import conversion::conversionGrammar::CustomSymbols;
 import conversion::util::equality::deduplicateProds;
 import conversion::util::Alias;
 import conversion::util::meta::LabelTools;
+import regex::PSNFA;
+import regex::RegexTypes;
+import regex::regexToPSNFA;
 
 @doc {
     Retrieves the productions to define the given union symbol:
@@ -24,7 +30,17 @@ import conversion::util::meta::LabelTools;
     unionRec(A|B) -> W B unionRec(A|B)
     ```
 }
-set[ConvProd] defineUnion(u:unionRec(syms), ConversionGrammar grammar) {
+tuple[
+    set[ConvProd] prods,
+    bool isAlias
+] defineUnion(u:unionRec(syms, closing), ConversionGrammar grammar) {
+    if(
+        isAlias(unionRec(syms, emptyNFA), grammar),
+        unionRec(newSyms, _) := followAlias(unionRec(syms, emptyNFA), grammar),
+        syms != newSyms
+    )
+        return <{convProd(u, [ref(unionRec(newSyms, closing), [], {})])}, true>;
+
     set[ConvProd] out = {};
 
     for(sym <- syms) {
@@ -43,5 +59,6 @@ set[ConvProd] defineUnion(u:unionRec(syms), ConversionGrammar grammar) {
 
     out += convProd(label("empty", u), []);
 
-    return deduplicateProds(out);
+    return <deduplicateProds(out), false>;
 }
+NFA[State] emptyNFA = regexToPSNFA(Regex::empty());

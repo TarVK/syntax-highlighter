@@ -12,10 +12,10 @@ tuple[ConversionGrammar, SymMap] relabelGeneratedSymbolsWithMapping(ConversionGr
     = relabelSymbolsWithMapping(grammar, {
         sym 
         | sym <- grammar.productions<0>,
-        unionRec(_) := sym || convSeq(_) := sym || closed(_, _) := sym
+        unionRec(_, _) := sym || convSeq(_) := sym || closed(_, _) := sym
     }, str(Symbol sym) {
         switch(sym) {
-            case unionRec(_): return "U";
+            case unionRec(_, _): return "U";
             case convSeq(_): return "S";
             case closed(_, _): return "C";
         }

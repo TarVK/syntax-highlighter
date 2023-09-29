@@ -20,17 +20,19 @@ import Warning;
 
 import testing::grammars::SimpleScoped1;
 
-// syntax Program = Stmt*;
-// syntax Stmt = exp: Exp
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+// start syntax Program = Stmt*;
+// syntax Stmt = 
+//             // exp: Exp
+//             assign: Id "=" Exp ";"
+//             // | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+//             // | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
 //             // | @token="KW" "in" !>> [a-z0-9]
-//             // | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
+//             | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
 //             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
 //             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
-//             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+//             | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
 //             // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
 //             // | forIn: "(" Exp ")" Stmt
 //             ;
@@ -48,7 +50,7 @@ import testing::grammars::SimpleScoped1;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
-    bool recalc = true;
+    bool recalc = false;
 
     log = standardLogger();
     list[Warning] cWarnings, rWarnings, pWarnings, sWarnings;
@@ -69,8 +71,8 @@ void main() {
     // Simplify for readability
     conversionGrammar = replaceNfaByRegex(conversionGrammar);
     conversionGrammar = removeUnreachable(conversionGrammar);
-    <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
+    <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
 
     warnings = cWarnings + rWarnings + pWarnings + sWarnings;
     visualizeGrammars(<

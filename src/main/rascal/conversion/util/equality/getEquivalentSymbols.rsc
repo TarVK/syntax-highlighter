@@ -185,6 +185,7 @@ tuple[
     Checks whether two symbols are equal under the assumption that we know elements in the same class of `classes` are equal.
 }
 bool defaultSymEquals(Symbol a, Symbol b, ClassMap classes) {
+    if(a==b) return true;
     set[Symbol] aClass = a in classes ? classes[a] : {a};
     set[Symbol] bClass = b in classes ? classes[b] : {b};
     return aClass == bClass;

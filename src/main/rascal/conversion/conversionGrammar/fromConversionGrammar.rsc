@@ -185,6 +185,6 @@ set[Production] removeCustomSymbols(set[Production] prods, rel[Symbol, ConvProd]
     return visit(prods) {
         case cs:convSeq(parts) => \seq([s | p <- parts, s := convSymbolToSymbolWithNFA(p)])
         case closed(a, b) =>  custom("C", \seq([a, b]))
-        case unionRec(recOptions) => custom("UR", \alt(recOptions))
+        case unionRec(recOptions, c) => custom("UR", annotate(\alt(recOptions), {c}))
     };
 }

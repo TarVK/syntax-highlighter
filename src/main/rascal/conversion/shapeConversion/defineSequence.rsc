@@ -100,7 +100,7 @@ tuple[
                 
                 return any(ref(refSym, _, _) <- otherParts, contains(refSym));
             }
-            case unionRec(options): return any(option <- options, contains(option));
+            case unionRec(options, _): return any(option <- options, contains(option));
         }
         return false;
     }

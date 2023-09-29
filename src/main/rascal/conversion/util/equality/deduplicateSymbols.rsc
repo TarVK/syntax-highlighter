@@ -18,11 +18,20 @@ ConversionGrammar deduplicateSymbols(
     Symbol(Symbol, Symbol) prioritize,
     DedupeType(Symbol) dedupeBehavior,
     bool(Symbol, Symbol, ClassMap) equals
+) = deduplicateSymbolsWithDeduped(grammar, prioritize, dedupeBehavior, equals).grammar;
+tuple[
+    ConversionGrammar grammar,
+    set[Symbol] deduped
+] deduplicateSymbolsWithDeduped(
+    ConversionGrammar grammar, 
+    Symbol(Symbol, Symbol) prioritize,
+    DedupeType(Symbol) dedupeBehavior,
+    bool(Symbol, Symbol, ClassMap) equals
 ) {
     rel[Symbol, ConvProd] productions = grammar.productions;
 
-    classes = getEquivalentSymbols(grammar, equals);
-    
+    classes = getEquivalentSymbols(grammar, equals);    
+    set[Symbol] deduped = {};
     for(class <- classes) {
         // Filter out any aliases
         class = {sym | sym <- class, !isAlias(sym, grammar)};
@@ -40,9 +49,11 @@ ConversionGrammar deduplicateSymbols(
             referenceSyms = {rSym | rSym <- eqSyms, dedupeBehavior(rSym)==reference()};
             for(referenceSym <- referenceSyms)
                 productions = referenceSymbol(productions, referenceSym, sym);
+
+            deduped += replaceSyms + referenceSyms;
         }
     }
-    return convGrammar(grammar.\start, productions);
+    return <convGrammar(grammar.\start, productions), deduped>;
 }
 
 rel[Symbol, ConvProd] referenceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {

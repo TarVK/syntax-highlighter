@@ -13,15 +13,8 @@ import regex::RegexSyntax;
 import regex::Tags;
 import util::List;
 import regex::RegexTypes;
+import regex::RegexStripping;
 import Scope;
-
-@doc {
-    Removes all meta data from a regular expression
-}
-Regex removeMeta(Regex regex) 
-    = visit(regex) {
-        case meta(r, m) => r
-    };
 
 //     Reduction
 // ---------------------
@@ -65,12 +58,32 @@ Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternat
 Regex reduceAlternation(Regex::alternation([])) = never();
 Regex reduceAlternation(Regex::alternation([option])) = option;
 Regex reduceAlternation(Regex::alternation([opt1, opt2, *rest])) 
-    = (alternation(opt1, opt2) | alternation(it, part) | part <- rest);
+    = (simplifiedAlternation(opt1, opt2) | simplifiedAlternation(it, part) | part <- rest);
 
 Regex reduceConcatenation(Regex::concatenation([])) = empty();
 Regex reduceConcatenation(Regex::concatenation([part])) = part;
 Regex reduceConcatenation(Regex::concatenation([first, second, *rest])) 
-    = (concatenation(first, second) | concatenation(it, part) | part <- rest);
+    = (simplifiedConcatenation(first, second) | simplifiedConcatenation(it, part) | part <- rest);
+
+Regex simplifiedAlternation(Regex n, Regex b) = b
+    when removeOuterMeta(n) == never();
+Regex simplifiedAlternation(Regex a, Regex n) = a
+    when removeOuterMeta(n) == never();
+// Regex simplifiedAlternation(Regex e, Regex b) = e // Only holds if there are no tagged lookaheads
+//     when removeOuterMeta(e) == empty();
+// Regex simplifiedAlternation(Regex a, Regex e) = e
+//     when removeOuterMeta(e) == empty();
+Regex simplifiedAlternation(Regex a, Regex b) = a
+    when removeOuterMeta(a) == removeOuterMeta(b);
+Regex simplifiedAlternation(Regex a, Regex b) = alternation(a, b);
+
+Regex simplifiedConcatenation(Regex a, Regex b) = never()
+    when removeOuterMeta(a) == never() || removeOuterMeta(b) == never();
+Regex simplifiedConcatenation(Regex e, Regex b) = b
+    when removeOuterMeta(e) == empty();
+Regex simplifiedConcatenation(Regex a, Regex e) = a
+    when removeOuterMeta(e) == empty();
+Regex simplifiedConcatenation(Regex a, Regex b) = concatenation(a, b);
 
 @doc {
     A regular expression representing the end of a line

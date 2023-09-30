@@ -10,6 +10,7 @@ import regex::Regex;
 import regex::RegexCache;
 import regex::PSNFA;
 import regex::PSNFACombinators;
+import regex::RegexStripping;
 
 @doc {
     Tries to apply scope lifting if possible:

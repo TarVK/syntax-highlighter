@@ -12,6 +12,7 @@ import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
 import regex::RegexCache;
 import regex::Regex;
+import regex::RegexStripping;
 import Scope;
 
 
@@ -136,17 +137,18 @@ Symbol regexToSymbol(Regex inp) {
     }
     return out;
 }
-Symbol simpSeq(Symbol a, Symbol b) = simpSeq([a, b]);
+Symbol simpSeq(\seq(a), \seq(b)) = simpSeq([*a, *b]);
 Symbol simpSeq(Symbol a, \seq(b)) = simpSeq([a, *b]);
 Symbol simpSeq(\seq(a), Symbol b) = simpSeq([*a, b]);
-Symbol simpSeq(\seq(a), \seq(b)) = simpSeq([*a, *b]);
+default Symbol simpSeq(Symbol a, Symbol b) = simpSeq([a, b]);
 Symbol simpSeq([*p, lit(a), lit(b), *s]) = simpSeq([*p, lit(a+b), *s]);
 Symbol simpSeq([*p, cilit(a), cilit(b), *s]) = simpSeq([*p, cilit(a+b), *s]);
 Symbol simpSeq(l) = [f]:=l ? f : \seq(l);
-Symbol simpAlt(Symbol a, Symbol b) = \alt({a, b});
+
+Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
 Symbol simpAlt(Symbol a, \alt(b)) = \alt({a, *b});
 Symbol simpAlt(\alt(a), Symbol b) = \alt({*a, b});
-Symbol simpAlt(\alt(a), \alt(b)) = \alt({*a, *b});
+default Symbol simpAlt(Symbol a, Symbol b) = \alt({a, b});
 
 set[Production] removeCustomSymbols(set[Production] prods, rel[Symbol, ConvProd] orProds) {
     int id = 0;

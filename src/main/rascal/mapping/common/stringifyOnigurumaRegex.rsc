@@ -8,6 +8,7 @@ import regex::Regex;
 import regex::RegexCache;
 import regex::util::charClass;
 import mapping::common::addRegexBrackets;
+import regex::RegexStripping;
 
 @doc {
     Stringifies the given regular expression such that it's in Oniguruma format.

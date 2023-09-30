@@ -2,6 +2,7 @@ module determinism::util::getFollowExpressions
 
 import ParseTree;
 import Relation;
+import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::meta::LabelTools;
@@ -12,16 +13,23 @@ import regex::RegexTransformations;
 import regex::util::charClass;
 import regex::PSNFATools;
 import regex::RegexCache;
+import regex::RegexProperties;
+
+import Visualize;
 
 @doc {
     Given a grammar, for every non-terminal `A` in the grammar, retrieves a set `S` of regular expressions (paired with their sources), such that:
-    ∃ a,b ∈ symbol* . ∃ a derivation S =>* a A X b 
+    - ∀ X ∈ S . ∃ a,b ∈ symbol* . ∃ a derivation Start =>* a A X b 
+    - ∀ derivations Start =>* a A X b . ∃ X ∈ S 
+    - !stopOnNewline => ∀ X ∈ S . (L(X) ∩ ({(p, $e, s) | p,s ∈ Σ*} \ EOF)) = ∅
 
     I.e. it retrieves all regular expressions that at some point can be to the right of `A` in a derivation. 
     
-    This function assumes every symbol to have an empty production, and that no non-productive left-recursive loops exist.
+    If stopOnNewline is set to true, no new-line will only appear as the last character of any regular expression. 
 }
-map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar grammar) {
+map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar grammar)
+    = getFollowExpressions(grammar, true);
+map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar grammar, bool stopOnNewline) {
     prods = index(grammar.productions);
 
     // Get all possible relevant contexts for a symbol to occur in without recomputing
@@ -42,11 +50,6 @@ map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar gr
     }
 
     // Initialize the output with the start symbol in there
-    // EOF = \negative-lookahead(empty(), character(anyCharClass()));
-    // rel[Symbol, tuple[Regex, ConvProd]] out = {<
-    //     grammar.\start, 
-    //     <EOF, convProd(\start(grammar.\start), [symb(grammar.\start, []), regexp(EOF)], {})>
-    // >};
     map[Symbol, map[Regex, set[ConvProd]]] out = ();
     void addOut(Symbol sym, Regex exp, set[ConvProd] sources) {
         if(sym notin out) out[sym] = ();
@@ -60,24 +63,24 @@ map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar gr
 
         out[sym][exp] = sources;
     }
+    addOut(grammar.\start, EOF, {});
 
-    // Analyze the follow terminals and loops
+    // Analyze the first terminals and nullable symbols
     rel[Symbol, Symbol] F = {};
     for(c:<sym, suffixParts> <- symbolContexts) {
-        expressions = getFirstExpressions(suffixParts, empty(), prods);
-        for(exp <- expressions) {
-            if(acceptsEmpty(exp)) {
-                <expNonEmpty, expEmpty, expEmptyRestr> = factorOutEmpty(exp);
-                exp = expNonEmpty;
-                
-                if(expEmpty != never() || expEmptyRestr != never())
-                    // Indicate that anything that can follow the source of sym, can also follow sym
-                    F += {<sym, getWithoutLabel(f)> | convProd(f, _) <- symbContextsSources[c]}; 
-            } 
+        exp = getFirstExpression(suffixParts, prods, stopOnNewline, {});
+        if(acceptsEmpty(exp)) {
+            <expNonEmpty, expEmpty, expEmptyRestr> = factorOutEmpty(exp);
+            exp = expNonEmpty;
             
-            if(exp != never()) addOut(sym, exp, symbContextsSources[c]);
-        }
+            if(expEmpty != never() || expEmptyRestr != never())
+                // Indicate that anything that can follow the source of sym, can also follow sym
+                F += {<sym, getWithoutLabel(f)> | convProd(f, _) <- symbContextsSources[c]}; 
+        } 
+        
+        if(exp != never()) addOut(sym, exp, symbContextsSources[c]);
     }
+
 
     // Now create the transitive closure of F, to account for right-recursion/nesting in productions
     F = F*;
@@ -86,71 +89,102 @@ map[Symbol, map[Regex, set[ConvProd]]] getFollowExpressions(ConversionGrammar gr
         sym != copySym,
         copySym in out,
         exp <- out[copySym]
-    )
+    ) 
         addOut(sym, exp, out[copySym][exp]);
 
-
     return out;
 }
 
-@doc {
-    Given a symbol A and a prefix expression X, it returns a set S of regular expressions, such that:
-    (w ∈ L(X A) => ∃ Y ∈ S, p,s ∈ E* . ps = w ∧ p ∈ L(X Y))
-    ∧ ∃ Y ∈ S . $e ∈ L(X Y)) => $e ∈ L(X A)
+public Regex EOF = getCachedRegex(\negative-lookahead(empty(), character(anyCharClass())));
+// public Regex EOF = getCachedRegex(character(anyCharClass()));
 
-    I.e. it returns a set of expressions such that its union defines possible non-empty prefixes of `X A`, and potentially an empty prefix if L(X A) contains the empty string. 
+@doc {
+    Given a symbol A, it returns a regular expression X, such that:
+    - ∀ (p, w, s) ∈ L(A) .
+        ∃ wp,ws ∈ Σ* .
+            wp ws = w 
+            ∧ (p, wp, ws s) ∈ L(X)
+            ∧ (w != $e => wp != $e)
+    - !stopOnNewline => 
+        ∀ (p, wp, _) ∈ L(X) .
+            ∃ w, ws, s ∈ Σ* .
+                wp ws = w
+                ∧ (p, w, s) ∈ L(A)
+                ∧ (wp = $e => w = $e)
+
+    I.e. it returns a regular expression that defines prefixes that match any word in A. If stopOnNewline is not set, it also ensures that no more than any word in A is returned, otherwise this can not be guaranteed.
 }
-set[Regex] getFirstExpressions(Symbol sym, Regex prefixR, ProdMap prods) {
+Regex getFirstExpression(Symbol sym, ProdMap prods, bool stopOnNewline, set[Symbol] reached) {
     set[Regex] out = {};
+
+    // Check if this symbol was already reached, if so we recursed and this does not lead to new first-expresisons
+    if(sym in reached) 
+        return getCachedRegex(never()); // This is already part of the output
+    reached += sym;
 
     for(convProd(_, parts) <- prods[sym])
-        out += getFirstExpressions(parts, prefixR, prods);
+        out += getFirstExpression(parts, prods, stopOnNewline, reached);
 
-    return out;
+    return getCachedRegex(reduceAlternation(alternation([*out])));
 }
 
 @doc {
-    Given a sequence of symbols `a` and a prefix expression X, it returns a set S of regular expressions, such that:
-    (w ∈ L(X a) => ∃ Y ∈ S, p,s ∈ E* . ps = w ∧ p ∈ L(X Y))
-    ∧ ∃ Y ∈ S . $e ∈ L(X Y)) => $e ∈ L(X a)
+    Given a sequence of symbols `a`, it returns a regular expression X, such that:
+    - ∀ (p, w, s) ∈ L(a) .
+        ∃ wp,ws ∈ Σ* .
+            wp ws = w 
+            ∧ (p, wp, ws s) ∈ L(X)
+            ∧ (w != $e => wp != $e)
+    - !stopOnNewline => 
+        ∀ (p, wp, _) ∈ L(X) .
+            ∃ w, ws, s ∈ Σ* .
+                wp ws = w
+                ∧ (p, w, s) ∈ L(a)
+                ∧ (wp = $e => w = $e)
 
-    I.e. it returns a set of expressions such that its union defines possible non-empty prefixes of `X a`, and potentially an empty prefix if L(X a) contains the empty string. 
+    I.e. it returns a regular expression that defines prefixes that match any word in `a`. If stopOnNewline is not set, it also ensures that no more than any word in `a` is returned, otherwise this can not be guaranteed.
 }
-set[Regex] getFirstExpressions(list[ConvSymbol] parts, Regex prefixR, ProdMap prods) {
-    set[Regex] out = {};
+Regex getFirstExpression(list[ConvSymbol] parts, ProdMap prods, bool stopOnNewline, set[Symbol] reached) {
+    if([first, *rest] := parts) {
+        Regex r;
+        if(regexp(regex) := first)
+            r = regex;
+        else if(ref(s, _, _) := first)
+            r = getFirstExpression(getWithoutLabel(s), prods, stopOnNewline, reached);
 
-    Regex prefixed(Regex r) = prefixR == empty() ? r : getCachedRegex(concatenation(prefixR, r));
-    for(part <- parts) {
-        if(regexp(r) := part) {
-            prefixedPart = prefixed(r);
-            if(isEmpty(regexToPSNFA(prefixedPart)))
-                return out;
+        if(!acceptsEmpty(r)) return r;
+        
+        follow = getFirstExpression(rest, prods, stopOnNewline, reached);
+        followEmpty = acceptsEmpty(follow);
 
-            out += prefixedPart;
+        <rNonEmpty, rEmpty, rEmptyRestr> = factorOutEmpty(r);
+        Regex extended;
 
-            prefixR = prefixedPart; // We use this as a new prefix, since it may include a lookahead
-            if(!acceptsEmpty(prefixR))
-                return out;
-        } else if(ref(s, _, _) := part) {
-            firstS = getFirstExpressions(getWithoutLabel(s), prefixR, prods);
+        if(followEmpty) {
+            extended = simplifiedAlternation(rEmpty, rEmptyRestr);
+        } else {
+            if(
+                stopOnNewline,
+                containsNewline(rEmptyRestr)
+            ) {
+                // Dropping the constraint means the language of our regex may contain some entries that aren't part of our input sequence
 
-            // items in firstS may be empty, but we don't want to add these empty options to the output yet
-            set[Regex] empties = {};
-            bool fullEmpty = false;
-            for(first <- firstS) {
-                <firstNonEmpty, firstEmpty, firstEmptyRestr> = factorOutEmpty(first);
-                out += firstNonEmpty;
-                if(firstEmpty != never()) empties += firstEmpty;
-                if(firstEmptyRestr != never()) empties += firstEmptyRestr;
+                extended = follow;
+            } else {
+                extended = simplifiedConcatenation(
+                    simplifiedAlternation(rEmpty, rEmptyRestr),
+                    follow                   
+                );
             }
-
-            prefixR = getCachedRegex(reduceAlternation(alternation([*empties])));
-            if(!acceptsEmpty(prefixR))
-                return out;
         }
+
+        return getCachedRegex(
+            simplifiedAlternation(
+                rNonEmpty,
+                extended
+            )
+        );
+    } else {
+        return getCachedRegex(empty());
     }
-    
-    // If we reach this point, this production may obtain an empty match, so we add this to the output
-    out += prefixR;
-    return out;
 }

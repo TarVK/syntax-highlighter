@@ -9,6 +9,8 @@ import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::convertToRegularExpressions;
 import determinism::improvement::addGrammarLookaheads;
+import determinism::util::getFollowExpressions;
+import determinism::util::removeGrammarTags;
 import Warning;
 
 // import testing::grammars::SimpleScoped2;
@@ -44,11 +46,13 @@ void main() {
     }
 
     conversionGrammar = addGrammarLookaheads(conversionGrammar, 2, log);
+    // conversionGrammar = removeGrammarTags(conversionGrammar);
 
     warnings = cWarnings + rWarnings;
     visualizeGrammars(<
         fromConversionGrammar(inputGrammar),
         fromConversionGrammar(conversionGrammar),
-        warnings
+        warnings,
+        getFollowExpressions(inputGrammar, true)
     >);
 }

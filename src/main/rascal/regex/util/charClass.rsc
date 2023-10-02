@@ -4,7 +4,7 @@ import lang::rascal::grammar::definition::Characters;
 import lang::rascal::format::Escape;
 import ParseTree;
 
-import regex::util::GetDisjointCharClasses;
+// import regex::util::GetDisjointCharClasses;
 
 CharClass anyCharClass() = [range(1,0x10FFFF)];
 

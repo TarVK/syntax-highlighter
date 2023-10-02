@@ -22,31 +22,31 @@ list[Warning] checkClosingExpressionOverlap(ConversionGrammar grammar) {
 
     allFollowExpressions = getFollowExpressions(grammar);
 
-    map[tuple[NFA[State], NFA[State]], tuple[Regex, Regex, set[ConvProd], set[ConvProd]]] regexes = ();
+    map[tuple[NFA[State], NFA[State]], tuple[Regex, Regex, set[ConvProd]]] regexes = ();
     for(
         sym <- allFollowExpressions,
-        followExpressions := allFollowExpressions[sym],
-        followExpr <- followExpressions,
+        followExpressionNFAs := allFollowExpressions[sym],
+        followExpressionNFA <- followExpressionNFAs,
+        followExpr := followExpressionNFAs[followExpressionNFA],
         alternations := getAlternations(grammar, sym),
         altExpr <- alternations<0>
     ) {
         key = <regexToPSNFA(altExpr), regexToPSNFA(followExpr)>;
         if(key in regexes) {
             regexes[key][2] += alternations[altExpr];
-            regexes[key][3] += followExpressions[followExpr];
         } else {
-            regexes[key] = <altExpr, followExpr, alternations[altExpr], followExpressions[followExpr]>;
+            regexes[key] = <altExpr, followExpr, alternations[altExpr]>;
         }
     }
 
     for(
         p <- regexes,
-        <altExpr, followExpr, altProds, followProds> := regexes[p]
+        <altExpr, followExpr, altProds> := regexes[p]
     ) {
         if(just(overlap) := getOverlap(altExpr, followExpr))
-            out += closingOverlap(altExpr, followExpr, altProds, followProds, overlap);
+            out += closingOverlap(altExpr, followExpr, altProds, overlap);
         else if(just(overlap) := getOverlap(followExpr, altExpr))
-            out += closingOverlap(altExpr, followExpr, altProds, followProds, overlap);
+            out += closingOverlap(altExpr, followExpr, altProds, overlap);
     }
 
     return out;

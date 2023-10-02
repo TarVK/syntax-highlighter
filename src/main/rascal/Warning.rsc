@@ -31,7 +31,7 @@ data Warning
     | unresolvableLeftRecursiveLoop(set[EmptyPath] paths, ConvProd production)
     /* =========== Determinism checking ========== */
     /* We found overlap between a production and a regular expression that should close it */
-    | closingOverlap(Regex alternativeExpression, Regex closingExpression, set[ConvProd] alternativeProductions, set[ConvProd] closingProductions, NFA[State] overlap)
+    | closingOverlap(Regex alternativeExpression, Regex closingExpression, set[ConvProd] alternativeProductions, NFA[State] overlap)
     /* We found a regular expression that could both match a word and an extension of that same word */ 
     | extensionOverlap(Regex regex, set[ConvProd] productions, NFA[State] longerMatch)
     /* We found a regular expression that can match the same word with different scopes */

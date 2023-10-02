@@ -21,37 +21,37 @@ import determinism::check::checkDeterminism;
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
 
-import testing::grammars::SimpleScoped1;
+// import testing::grammars::SimpleScoped1;
 
-// syntax Program = Stmt*;
-// syntax Stmt = exp: Exp
-//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
-//             // | iff: "if" >> ("("|[\n\ ]) Stmt
-//             | iff: "if" >> ("("|[\n\ ]) Stmt "else" Stmt
-//             // | @token="KW" "in" !>> [a-z0-9]
-//             | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
-//             | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
-//             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
-//             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
-//             // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
-//             // | forIn: "(" Exp ")" Stmt
-//             ;
-// syntax Exp = id: Id
-//            | brackets: "(" Exp ")"
-//            | close: ")"
-//            | @token="keyword.operator" Exp "in" !>>[a-z0-9] Exp 
-//            ;
+syntax Program = Stmt*;
+syntax Stmt = exp: Exp
+            // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+            // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+            // | iff: "if" >> ("("|[\n\ ]) Stmt
+            | iff: "if" >> ("("|[\n\ ]) Stmt "else" Stmt
+            // | @token="KW" "in" !>> [a-z0-9]
+            | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
+            | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+            // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
+            // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+            // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
+            // | forIn: "(" Exp ")" Stmt
+            ;
+syntax Exp = id: Id
+           | brackets: "(" Exp ")"
+           | close: ")"
+           | @token="keyword.operator" Exp "in" !>>[a-z0-9] Exp 
+           ;
 
-// lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-// keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
+lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 
-// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
-// lexical WhitespaceAndComment 
-//    = [\ \t\n\r]
-//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
-//    | @scope="comment.line" "%%" ![\n]* $
-//    ;
+layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+lexical WhitespaceAndComment 
+   = [\ \t\n\r]
+   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.line" "%%" ![\n]* $
+   ;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;

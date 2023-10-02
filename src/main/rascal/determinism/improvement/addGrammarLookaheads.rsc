@@ -5,7 +5,10 @@ import util::Maybe;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::meta::LabelTools;
 import determinism::util::getFollowExpressions;
+import determinism::util::removeGrammarTags;
+import determinism::improvement::GeneratedMeta;
 import regex::Regex;
 import regex::RegexCache;
 import regex::regexToPSNFA;
@@ -18,60 +21,61 @@ import Logging;
     Adds the given number of layers of lookaheads to all regular expressions in the grammar, ensuring that the described language remains equivalent
 }
 ConversionGrammar addGrammarLookaheads(ConversionGrammar grammar, int layers, Logger log) {
-    log(Section(), "to regular expressions");
+    log(Section(), "add lookahead expressions");
+    rel[ConvProd, ConvProd] productionMap = {<p, p> | <_, p> <- grammar.productions};
     for(i <- [0..layers]) {
         if(layers != 1)
             log(Progress(), "----- starting iteration <i+1> -----");
-        grammar = addGrammarLookaheads(grammar, log);
+        productionMap = addGrammarLookaheads(grammar.\start, productionMap, log);
     }
-    return grammar;
+
+    return getGrammar(grammar.\start, productionMap);
 }
+
+ConversionGrammar getGrammar(Symbol startSym, rel[ConvProd, ConvProd] productionMap) 
+    = convGrammar(startSym, {<getWithoutLabel(lDef), p> | <_, p:convProd(lDef, _)> <- productionMap});
 
 @doc {
     Adds 1 layer of lookaheads to all regular expressions in the grammar, ensuring that the described language remains equivalent
 }
-ConversionGrammar addGrammarLookaheads(ConversionGrammar grammar, Logger log) {
+rel[ConvProd, ConvProd] addGrammarLookaheads(Symbol startSym, rel[ConvProd, ConvProd] productionMap, Logger log) {
     log(Progress(), "calculating follow expressions");
-    followExpressions = getFollowExpressions(grammar);
-    prods = index(grammar.productions);
 
-    rel[Symbol, ConvProd] outProds = {};
+    productionMap = {<originalProd, removeProductionTags(laProd)> | <originalProd, laProd> <- productionMap};
+    grammar = getGrammar(startSym, productionMap);
+    firstExpressions = getFirstExpressions(grammar, true);
+    followExpressions = getFollowExpressions(grammar, firstExpressions, EOF, true);
+
+    prods = index({<getWithoutLabel(lDef), <p, pLA>> | <p:convProd(lDef, _), pLA> <- productionMap});
+
+    rel[ConvProd, ConvProd] outProds = {};
     for(sym <- prods) {
-        log(ProgressDetailed(), "adding lookaheads for productions of <sym>");
-        followRegexes = followExpressions[sym]<0>;
+        log(ProgressDetailed(), "calculating followRegex of <sym>");
+        followRegexes = sym in followExpressions ? followExpressions[sym]<1> : {};
+        followRegex = getCachedRegex(reduceAlternation(alternation([*followRegexes])));
 
-        // Don't calculate follow right away, only calculate if needed
-        Maybe[Regex] followRegex = nothing();
-        Regex getFollowRegex() {
-            if(just(r) := followRegex) return r;
-            println("calculating follow");
-            r = getCachedRegex(reduceAlternation(alternation([*followRegexes])));
-            println("finished calculating follow");
-            followRegex = just(r);
-            return r;
-        }
-
-        for(convProd(lDef, parts) <- prods[sym]) {
-            
+        for(<p:convProd(lDef, parts), convProd(_, LAparts)> <- prods[sym]) {
             list[ConvSymbol] outParts = [];
+            lookaheadParts = LAparts + regexp(followRegex);
+
             for(i <- [0..size(parts)]) {
                 part = parts[i];
                 if(regexp(r) := part) {
                     if(!containsNewline(r)) {
-                        lookaheadParts = parts + regexp(getFollowRegex());
-                        nextExpr = getFirstExpression(lookaheadParts[i+1..], prods, true, {});
-                        println("calculating la");
-                        r = getCachedRegex(lookahead(r, removeTags(nextExpr)));
-                        println("finished calculating la");
+                        log(ProgressDetailed(), "calculating next expressions for regex of <sym>");
+                        nextExpressions = getFirstExpressions(lookaheadParts[i+1..], firstExpressions, true)<1>;
+                        log(ProgressDetailed(), "calculating nextRegex for regex of <sym>");
+                        nextExpression = getCachedRegex(reduceAlternation(alternation([*nextExpressions])));
+                        r = getCachedRegex(lookahead(r, meta(nextExpression, generated())));
                     }
                     outParts += regexp(r);
                 } else
                     outParts += part;
             }
 
-            outProds += {<sym, convProd(lDef, outParts)>};
+            outProds += {<p, convProd(lDef, outParts)>};
         }
     }
 
-    return convGrammar(grammar.\start, outProds);
+    return outProds;
 }

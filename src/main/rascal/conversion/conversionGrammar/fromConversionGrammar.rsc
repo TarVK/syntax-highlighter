@@ -87,7 +87,7 @@ Symbol regexToSymbol(Regex inp) {
 
     Symbol out;    
     switch(inp) {
-        case meta(r, set[SourceProd] newProds): 
+        case meta(r, _): 
             out = regexToSymbol(r);
 
         // Special cases that lead to slightly easier to read grammars
@@ -134,6 +134,9 @@ Symbol regexToSymbol(Regex inp) {
                 | scopeTag(s) <- tags, 
                 s!=noScopes()
             } + tags);
+        default:{
+            println("Missed a case in regexToSymbol: <inp>");
+        }            
     }
     return out;
 }

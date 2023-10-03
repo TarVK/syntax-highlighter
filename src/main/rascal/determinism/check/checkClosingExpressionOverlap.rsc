@@ -14,39 +14,38 @@ import regex::PSNFACombinators;
 import regex::NFA;
 import Warning;
 
+import testing::util::visualizeGrammars;
+import conversion::conversionGrammar::fromConversionGrammar;
+
 @doc {
     Checks whether the given conversion grammar contains any overlap between alternatives and closing/follow regexes
 }
 list[Warning] checkClosingExpressionOverlap(ConversionGrammar grammar) {
     list[Warning] out = [];
 
-    allFollowExpressions = getFollowExpressions(grammar);
-
-    map[tuple[NFA[State], NFA[State]], tuple[Regex, Regex, set[ConvProd]]] regexes = ();
+    map[tuple[NFA[State], NFA[State]], tuple[Regex, Regex, set[ConvProd], set[ConvProd]]] regexes = ();
     for(
-        sym <- allFollowExpressions,
-        followExpressionNFAs := allFollowExpressions[sym],
-        followExpressionNFA <- followExpressionNFAs,
-        followExpr := followExpressionNFAs[followExpressionNFA],
+        <def, p:convProd(_, parts)> <- grammar.productions,
+        [*_, ref(sym, _, _), regexp(followExpr), _] := parts,
         alternations := getAlternations(grammar, sym),
         altExpr <- alternations<0>
     ) {
         key = <regexToPSNFA(altExpr), regexToPSNFA(followExpr)>;
         if(key in regexes) {
             regexes[key][2] += alternations[altExpr];
-        } else {
-            regexes[key] = <altExpr, followExpr, alternations[altExpr]>;
-        }
+            regexes[key][3] += {p};
+        } else
+            regexes[key] = <altExpr, followExpr, alternations[altExpr], {p}>;
     }
 
     for(
         p <- regexes,
-        <altExpr, followExpr, altProds> := regexes[p]
+        <altExpr, followExpr, altProds, closeProds> := regexes[p]
     ) {
         if(just(overlap) := getOverlap(altExpr, followExpr))
-            out += closingOverlap(altExpr, followExpr, altProds, overlap);
+            out += closingOverlap(altExpr, followExpr, altProds, closeProds, overlap);
         else if(just(overlap) := getOverlap(followExpr, altExpr))
-            out += closingOverlap(altExpr, followExpr, altProds, overlap);
+            out += closingOverlap(altExpr, followExpr, altProds, closeProds, overlap);
     }
 
     return out;

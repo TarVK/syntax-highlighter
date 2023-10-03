@@ -1,4 +1,4 @@
-module testing::determinismTest
+module testing::lookaheadStrippingTest
 
 import ValueIO;
 import lang::json::IO;
@@ -15,6 +15,7 @@ import conversion::util::transforms::relabelSymbols;
 import conversion::util::transforms::removeUnreachable;
 import conversion::util::transforms::removeAliases;
 import conversion::util::transforms::replaceNfaByRegex;
+import determinism::improvement::addGrammarLookaheads;
 import determinism::check::checkDeterminism;
 
 
@@ -26,12 +27,12 @@ import Warning;
 syntax Program = Stmt*;
 syntax Stmt = exp: Exp
             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-            | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+            // | iff: "if" "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
             // | iff: "if" >> ("("|[\n\ ]) Stmt
-            // | iff: "if" >> ("("|[\n\ ]) Stmt "else" Stmt
+            // | iff: "if" Stmt "else" Stmt
             // | @token="KW" "in" !>> [a-z0-9]
-            | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
-            | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+            | forIn: "for" "(" Id "in" Exp ")" Stmt
+            | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
             // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
@@ -39,8 +40,7 @@ syntax Stmt = exp: Exp
             ;
 syntax Exp = id: Id
            | brackets: "(" Exp ")"
-           | close: ")"
-           | @token="keyword.operator" Exp "in" !>>[a-z0-9] Exp 
+        //    | @token="keyword.operator" Exp "in" Exp 
            ;
 
 lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
@@ -49,7 +49,7 @@ keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.block" "%" ![%]+ "%"
    | @scope="comment.line" "%%" ![\n]* $
    ;
 
@@ -69,26 +69,27 @@ void main() {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         inputGrammar = conversionGrammar;
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
+        conversionGrammar              = addGrammarLookaheads(conversionGrammar, 1, log);
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
-        <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
-        inputGrammar = conversionGrammar;
         conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
+        inputGrammar = conversionGrammar;
     }
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
 
     conversionGrammar = removeUnreachable(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
-    conversionGrammar = relabelGeneratedSymbols(conversionGrammar);
+    <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
     dWarnings = checkDeterminism(conversionGrammar, log);
     log(Section(), "finished");
 
     warnings = cWarnings + rWarnings + pWarnings + sWarnings + mWarnings + dWarnings;
     visualizeGrammars(<
-        fromConversionGrammar(inputGrammar),
+        (),
         fromConversionGrammar(conversionGrammar),
         warnings,
-        conversionGrammar.\start
+        conversionGrammar.\start,
+        symMap
     >);
 }

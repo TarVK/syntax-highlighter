@@ -17,7 +17,8 @@ import regex::PSNFATools;
 import regex::RegexCache;
 import regex::RegexProperties;
 
-import Visualize;
+import testing::util::visualizeGrammars;
+import conversion::conversionGrammar::fromConversionGrammar;
 
 @doc {
     Given a grammar, for every non-terminal `A` in the grammar, retrieves a set `S` of regular expressions (indexed by their NFAs), such that:
@@ -63,7 +64,7 @@ IndexedRegexesMap getFollowExpressions(
         
         nonEmptyOptions = {n | n <- symFirstExpressions, !acceptsEmpty(n)};
         followAcceptsEmpty = nonEmptyOptions != symFirstExpressions<0>;
-        if(followAcceptsEmpty)
+        if(followAcceptsEmpty && sym != def) 
             parentFollow += {<sym, def>};
 
         for(n <- nonEmptyOptions)
@@ -84,6 +85,7 @@ IndexedRegexesMap getFollowExpressions(
     ) 
         addFollow(sym, exp);
 
+        
     return followExpressions;
 }
 

@@ -47,27 +47,10 @@ tuple[
 
     // Index all productions into groups with overlap
     for(p:convProd(_, parts) <- prods){
-        if([regexp(r), *_] := parts) {
-            nfa = regexToPSNFA(r);
-            if(nfa in indexed) {
-                indexed[nfa] += p;
-            } else {
-                overlapNfas = {nfa2 | nfa2 <- indexed, overlaps(nfa, nfa2)};
-                if({} := overlapNfas) {
-                    indexed[nfa] = {p};
-                } else {
-                    combinedProds = {p};
-                    for(nfa2 <- overlapNfas) {
-                        combinedProds += indexed[nfa2];
-                        nfa = unionPSNFA(nfa, nfa2);
-                        indexed = delete(indexed, nfa2);
-                    }
-                    indexed[nfa] = combinedProds;
-                }
-            } 
-        } else {
+        if([regexp(r), *_] := parts)
+            indexed = addToIndex(indexed, r, p);
+        else
             out += p; // Empty prods
-        }
     }
 
     // Add all productions to output
@@ -83,6 +66,30 @@ tuple[
     }
 
     return <warnings, out, grammar>;
+}
+
+@doc {
+    Adds a given regular expression to the index of regular expressions
+}
+map[NFA[State], set[&T]] addToIndex(map[NFA[State], set[&T]] indexed, Regex r, &T satelliteData) {
+    nfa = regexToPSNFA(r);
+    if(nfa in indexed) {
+        indexed[nfa] += satelliteData;
+    } else {
+        overlapNfas = {nfa2 | nfa2 <- indexed, overlaps(nfa, nfa2)};
+        if({} := overlapNfas) {
+            indexed[nfa] = {satelliteData};
+        } else {
+            combinedSatelliteData = {satelliteData};
+            for(nfa2 <- overlapNfas) {
+                combinedSatelliteData += indexed[nfa2];
+                nfa = unionPSNFA(nfa, nfa2);
+                indexed = delete(indexed, nfa2);
+            }
+            indexed[nfa] = combinedSatelliteData;
+        }
+    } 
+    return indexed;
 }
 
 alias SourcedSequence = tuple[list[ConvSymbol], ConvProd];
@@ -121,16 +128,7 @@ tuple[
     if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) {        
         // Make sure the first regex is always included in the prefix, even if the regexes only overlap but aren't equivalent
         list[ConvSymbol] prefix = [];
-        for(<[regexp(r2), *_], p> <- restSequences) {
-            if(isSubset(r2, r)) {
-                r = addRegexSources(r, extractAllRegexSources(r2));
-            } else if(isSubset(r, r2)) {
-                r = addRegexSources(r2, extractAllRegexSources(r));
-            } else {
-                r = getCachedRegex(alternation(r, r2));
-            }
-        }
-        prefix += regexp(r);
+        prefix += regexp(combineExpressions(r + {r2 | <[regexp(r2), *_], _> <- restSequences}));
 
         // Find a common suffix
         <suffixWarnings, reversedSuffix> = findCommon(
@@ -139,7 +137,8 @@ tuple[
                 if(size(prefix) <= index && index < size(parts)) return just(parts[index]);
                 return nothing();
             }, 
-            sequences
+            sequences,
+            false
         );
         suffix = reverse(reversedSuffix);
         // if([*f , l1, l2] := suffix) suffix = [l1, l2];
@@ -152,7 +151,8 @@ tuple[
                 if(index < size(parts) - size(suffix)) return just(parts[index]);
                 return nothing();
             },
-            sequences
+            sequences,
+            true
         );
         prefix += prefixAugmentation;
         warnings += prefixWarnings;
@@ -196,11 +196,30 @@ tuple[
 }
 
 @doc {
+    Combines the given regular expressions, trying to not duplicate the same expressions in the union
+}
+Regex combineExpressions(set[Regex] rs) {
+    if({r, *rRest} := rs) {
+        for(Regex r2 <- rRest) {
+            if(equals(r2, r) || isSubset(r2, r)) {
+                r = addRegexSources(r, extractAllRegexSources(r2));
+            } else if(isSubset(r, r2)) {
+                r = addRegexSources(r2, extractAllRegexSources(r));
+            } else {
+                r = getCachedRegex(alternation(r, r2));
+            }
+        }
+        return r;
+    }
+}
+
+@doc {
     Finds a common prefix/suffix between the given productions
 }
 WithWarnings[list[ConvSymbol]] findCommon(
     Maybe[ConvSymbol](list[ConvSymbol] parts, int index) getPart,
-    set[SourcedSequence] sequences
+    set[SourcedSequence] sequences,
+    bool combineSequenceOverlap // Whether to make overlapping regular expressions part of the prefix if not equal
 ) {
     if({<baseParts, baseProd>, *restSequences} := sequences) {
         list[tuple[ConvSymbol, Maybe[Warning]]] out = [];
@@ -214,16 +233,36 @@ WithWarnings[list[ConvSymbol]] findCommon(
 
             // Check if all symbols are equivalent 
             set[SourceProd] newSources = {};
-            for(<parts, p> <- restSequences) {
-                comparePart = getPart(parts, i);
-                if(just(regexp(r)) := part) {
-                    if (just(regexp(r2)) := comparePart){
-                        if(!regex::PSNFATools::equals(r, r2))
-                            same = false;
-                        else 
+            map[NFA[State], set[Regex]] indexed = ();
+            if(just(regexp(r)) := part) {
+                if(combineSequenceOverlap) {
+                    indexed = addToIndex(indexed, r, r);
+
+                    for(<parts, p> <- restSequences) {
+                        comparePart = getPart(parts, i);
+                        if (just(regexp(r2)) := comparePart)
+                            indexed = addToIndex(indexed, r2, r2);
+                        else break outer;
+                    }
+
+                    // If our index only contains 1 entry, all regular expressions overlap and can be comvbined
+                    if(size(indexed) != 1) break outer;
+                    regexes = indexed[getOneFrom(indexed)];
+                    part = just(regexp(combineExpressions(regexes)));
+                } else {
+                    for(<parts, p> <- restSequences) {
+                        comparePart = getPart(parts, i);
+                        if (
+                            just(regexp(r2)) := comparePart, 
+                            regex::PSNFATools::equals(r, r2)
+                        ) 
                             newSources += extractAllRegexSources(r2);
-                    } else same = false;
-                } else if(just(ref(refSym, scopes, _)) := part) {
+                        else break outer; 
+                    }
+                }
+            } else if(just(ref(refSym, scopes, _)) := part) {
+                for(<parts, p> <- restSequences) {
+                    comparePart = getPart(parts, i);
                     if (just(ref(refSym2, scopes2, sources)) := comparePart) {
                         if(refSym != refSym2) {
                             same = false;
@@ -234,17 +273,18 @@ WithWarnings[list[ConvSymbol]] findCommon(
                             newSources += sources;
                         }
                     } else same = false;
-                } else same = false;
 
-                if(!same) break outer;
-            }
+                    if(!same) break outer;
+                }
+            } else same = false;
 
             // If not equal, we hit the end
             if(!same) break outer;
 
             // Add the new part and continue
             if(just(p) := part) {
-                p = applyScopesAndSources(p, [], newSources);
+                if(newSources != {})
+                    p = applyScopesAndSources(p, [], newSources);
 
                 // Add warnings if scopes are incompatible
                 if(incompatibleScopes != {}) {

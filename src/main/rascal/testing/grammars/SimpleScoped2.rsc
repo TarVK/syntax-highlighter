@@ -1,10 +1,10 @@
 module testing::grammars::SimpleScoped2
 
 syntax Program = Stmt*;
-syntax Stmt = forIn: For "(" Id In !>> [a-z0-9] Exp ")" Stmt
+syntax Stmt = forIn: For "(" Variable In Exp ")" Stmt
             | forIter: For "(" Exp Sep Exp Sep Exp ")" Stmt
             | iff: If "(" Exp ")" Stmt
-            | iffElse: If "(" Exp ")" Stmt Else Stmt
+            | iffElse: If "(" Exp ")" Stmt Else !>> [a-zA-Z0-9] Stmt
             | "{" Stmt* "}"
             | assign: Def "=" Exp ";";
 
@@ -29,9 +29,9 @@ lexical Def = @scope="variable.parameter" Id;
 lexical Variable = @scope="variable" Id;
 
 keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
-lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
-lexical Bool = @scope="constant.other" ("true"|"false");
+lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+lexical Natural = @scope="constant.numeric" [a-z0-9] !<< [0-9]+ !>> [a-z0-9];
+lexical Bool = @scope="constant.other" [a-z0-9] !<< ("true"|"false") !>> [a-z0-9];
 lexical Str =  @scope="string.template" "\"" Char* "\"";
 lexical Char = char: ![\\\"$]
              | dollarChar: "$" !>> "{"

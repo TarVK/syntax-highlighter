@@ -50,6 +50,7 @@ rel[ConvProd, ConvProd] addGrammarLookaheads(Symbol startSym, rel[ConvProd, Conv
 
     rel[ConvProd, ConvProd] outProds = {};
     for(sym <- prods) {
+        log(Progress(), "adding lookaheads for <sym>");
         log(ProgressDetailed(), "calculating followRegex of <sym>");
         followRegexes = sym in followExpressions ? followExpressions[sym]<1> : {};
         followRegex = getCachedRegex(reduceAlternation(alternation([*followRegexes])));

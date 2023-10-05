@@ -105,7 +105,7 @@ WithWarnings[ConversionGrammar] convertToShape(
 
 
         // Define all undefined but referenced closings
-        log(Progress(), "defining closings");
+        log(Progress(), "defining <size(toBeDefinedClosings)> closings");
         for(closing <- toBeDefinedClosings) {
             <newProds, isAlias>            = defineClosing(closing, grammar);
             if(!isAlias) {

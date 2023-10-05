@@ -28,10 +28,10 @@ import regex::RegexStripping;
 }
 Regex liftScopes(Regex regex) {
     <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
-    cachedRegex = removeInnerRegexCache(cachedRegex);
     
     liftableScopesSet = findLiftableScopes(cachedRegex);
     if(size(liftableScopesSet)>0) {
+        cachedRegex = removeInnerRegexCache(cachedRegex);
         Tags removeScopes(Tags tags) = tags - {t | t:scopeTag(scopes) <- tags, 
             scopeList := toList(scopes),
             // Remove scopes tags that has a prefix of lifable scopes

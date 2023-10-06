@@ -169,7 +169,8 @@ Regex CSTtoRegex(RegexCST regex, ScopeList scopes) {
 list[CharRange] CSTtoChararacterClass(ChararacterClass chars) { 
     switch(chars) {
         case (ChararacterClass)`.`: return anyCharClass();
-        case (ChararacterClass)`[<RangeCST* ranges>]`: return [CSTtoCharRange(range) | range <- ranges];
+        case (ChararacterClass)`[<RangeCST* ranges>]`: 
+            return ([] | fUnion(it, [CSTtoCharRange(r)]) | r <- ranges);
         case (ChararacterClass)`!<ChararacterClass charClass>`: return fComplement(CSTtoChararacterClass(charClass));
         case (ChararacterClass)`<ChararacterClass lhs>-<ChararacterClass rhs>`: return fDifference(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
         case (ChararacterClass)`<ChararacterClass lhs>||<ChararacterClass rhs>`: return fUnion(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));

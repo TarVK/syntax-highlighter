@@ -64,6 +64,6 @@ syntax TokenCST = RawChar+;
 syntax Num = [0-9]+;
 
 lexical Char
-	= "\\" [\[\]\-bfnrt] 
-	| ![\[\]\-];
+	= "\\" [\\\[\]\-bfnrt] 
+	| ![\\\[\]\-];
 lexical RawChar = ![(){}\[\]\<\>,\-+*!|&?$^.\\];

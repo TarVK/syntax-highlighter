@@ -90,10 +90,7 @@ Regex simplifiedConcatenation(Regex a, Regex b) = concatenation(a, b);
 }
 Regex eolRegex() = alternation(
     \negative-lookahead(empty(), Regex::character(anyCharClass())), // EOF (no more characters)
-    lookahead(
-        empty(),
-        newLine()
-    )
+    lookahead(empty(), newLine())
 );
 
 @doc {
@@ -101,10 +98,7 @@ Regex eolRegex() = alternation(
 }
 Regex solRegex() = alternation(
     \negative-lookbehind(empty(), Regex::character(anyCharClass())), // SOF (no more characters)
-    lookbehind(
-        empty(),
-        newLine()
-    )
+    lookbehind(empty(), newLine())
 );
 
 Regex newLine() = alternation(

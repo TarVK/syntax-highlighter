@@ -27,7 +27,7 @@
             ]
         },
         "forIter,forIn": {
-            "begin": "(for(?=[\\t-\\n\\r ]|\\%\\%|\\%(?!\\%)|\\())",
+            "begin": "(for(?=\\%(?!\\%)|[\\t-\\n\\r ]|\\%\\%|\\())",
             "end": "\\)",
             "beginCaptures": {
                 "1": {
@@ -37,17 +37,17 @@
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G7"
+                    "include": "#G5"
                 }
             ]
         },
         "G10": {
             "patterns": [
                 {
-                    "include": "#empty"
+                    "include": "#T"
                 },
                 {
-                    "include": "#T"
+                    "include": "#empty"
                 },
                 {
                     "include": "#iffElse,iff3"
@@ -60,13 +60,13 @@
         "G13": {
             "patterns": [
                 {
+                    "include": "#T"
+                },
+                {
                     "include": "#add,inn,mult,subt,divide,equals"
                 },
                 {
                     "include": "#empty"
-                },
-                {
-                    "include": "#T"
                 },
                 {
                     "include": "#nat,booll,var"
@@ -75,10 +75,10 @@
                     "include": "#string"
                 },
                 {
-                    "include": "#brac"
+                    "include": "#iffElse,iff6"
                 },
                 {
-                    "include": "#iffElse,iff6"
+                    "include": "#brac"
                 },
                 {
                     "include": "#S"
@@ -97,7 +97,7 @@
             ]
         },
         "iffElse,iff5": {
-            "begin": "(if(?=[\\t-\\n\\r ]|\\%\\%|\\%(?!\\%)|\\())",
+            "begin": "(if(?=\\%(?!\\%)|[\\t-\\n\\r ]|\\%\\%|\\())",
             "end": "(?=\\})",
             "beginCaptures": {
                 "1": {
@@ -140,12 +140,12 @@
             "endCaptures": [],
             "patterns": [
                 {
-                    "include": "#G5"
+                    "include": "#G7"
                 }
             ]
         },
         "iffElse,iff": {
-            "begin": "(if(?=[\\t-\\n\\r ]|\\%\\%|\\%(?!\\%)|\\())",
+            "begin": "(if(?=\\%(?!\\%)|[\\t-\\n\\r ]|\\%\\%|\\())",
             "end": "\\)",
             "beginCaptures": {
                 "1": {
@@ -184,22 +184,22 @@
                     "include": "#add,inn,mult,subt,divide,equals"
                 },
                 {
-                    "include": "#nat,booll,var"
-                },
-                {
                     "include": "#T"
                 },
                 {
+                    "include": "#nat,booll,var"
+                },
+                {
                     "include": "#S"
+                },
+                {
+                    "include": "#string"
                 },
                 {
                     "include": "#forIter"
                 },
                 {
                     "include": "#brac"
-                },
-                {
-                    "include": "#string"
                 }
             ]
         },
@@ -214,13 +214,13 @@
         "G": {
             "patterns": [
                 {
-                    "include": "#T"
+                    "include": "#nat,booll,var"
                 },
                 {
                     "include": "#add,inn,mult,subt,divide,equals"
                 },
                 {
-                    "include": "#nat,booll,var"
+                    "include": "#T"
                 },
                 {
                     "include": "#S"
@@ -236,10 +236,10 @@
         "G11": {
             "patterns": [
                 {
-                    "include": "#empty"
+                    "include": "#T"
                 },
                 {
-                    "include": "#T"
+                    "include": "#empty"
                 },
                 {
                     "include": "#forIter,forIn1"
@@ -255,10 +255,10 @@
                     "include": "#add,inn,mult,subt,divide,equals"
                 },
                 {
-                    "include": "#empty"
+                    "include": "#T"
                 },
                 {
-                    "include": "#T"
+                    "include": "#empty"
                 },
                 {
                     "include": "#string"
@@ -270,13 +270,13 @@
                     "include": "#brac"
                 },
                 {
+                    "include": "#nat,booll,var,forIn"
+                },
+                {
                     "include": "#forIter,forIn3"
                 },
                 {
                     "include": "#forIter"
-                },
-                {
-                    "include": "#nat,booll,var,forIn"
                 }
             ]
         },
@@ -306,10 +306,10 @@
                     "include": "#S"
                 },
                 {
-                    "include": "#forIter"
+                    "include": "#nat,booll,var,forIn1"
                 },
                 {
-                    "include": "#nat,booll,var,forIn1"
+                    "include": "#forIter"
                 }
             ]
         },
@@ -345,13 +345,10 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#empty"
-                },
-                {
                     "include": "#nat,booll,var"
                 },
                 {
-                    "include": "#string"
+                    "include": "#empty"
                 },
                 {
                     "include": "#brac"
@@ -364,6 +361,9 @@
                 },
                 {
                     "include": "#forIter"
+                },
+                {
+                    "include": "#string"
                 }
             ]
         },
@@ -380,13 +380,16 @@
         "G16": {
             "patterns": [
                 {
-                    "include": "#empty"
-                },
-                {
                     "include": "#T"
                 },
                 {
+                    "include": "#empty"
+                },
+                {
                     "include": "#S1"
+                },
+                {
+                    "include": "#assign"
                 },
                 {
                     "include": "#S"
@@ -396,9 +399,6 @@
                 },
                 {
                     "include": "#forIter,forIn4"
-                },
-                {
-                    "include": "#assign"
                 }
             ]
         },
@@ -408,13 +408,13 @@
         "G17": {
             "patterns": [
                 {
-                    "include": "#T"
+                    "include": "#nat,booll,var"
                 },
                 {
                     "include": "#add,inn,mult,subt,divide,equals"
                 },
                 {
-                    "include": "#nat,booll,var"
+                    "include": "#T"
                 },
                 {
                     "include": "#iffElse,iff4"
@@ -433,22 +433,22 @@
         "G4": {
             "patterns": [
                 {
+                    "include": "#T"
+                },
+                {
                     "include": "#iffElse"
                 },
                 {
-                    "include": "#T"
+                    "include": "#forIter,forIn"
+                },
+                {
+                    "include": "#assign"
                 },
                 {
                     "include": "#S1"
                 },
                 {
                     "include": "#S"
-                },
-                {
-                    "include": "#assign"
-                },
-                {
-                    "include": "#forIter,forIn"
                 },
                 {
                     "include": "#iffElse,iff"
@@ -462,25 +462,25 @@
         "G18": {
             "patterns": [
                 {
-                    "include": "#T"
-                },
-                {
                     "include": "#iffElse"
                 },
                 {
                     "include": "#empty"
                 },
                 {
-                    "include": "#S"
+                    "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff"
+                    "include": "#assign"
                 },
                 {
                     "include": "#S1"
                 },
                 {
-                    "include": "#assign"
+                    "include": "#iffElse,iff"
+                },
+                {
+                    "include": "#S"
                 },
                 {
                     "include": "#forIter,forIn"
@@ -493,19 +493,10 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff5"
-                },
-                {
-                    "include": "#forIter,forIn"
+                    "include": "#forIter,forIn2"
                 },
                 {
                     "include": "#S"
-                },
-                {
-                    "include": "#S1"
-                },
-                {
-                    "include": "#assign"
                 }
             ]
         },
@@ -578,10 +569,19 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#forIter,forIn2"
+                    "include": "#S"
                 },
                 {
-                    "include": "#S"
+                    "include": "#S1"
+                },
+                {
+                    "include": "#forIter,forIn"
+                },
+                {
+                    "include": "#assign"
+                },
+                {
+                    "include": "#iffElse,iff5"
                 }
             ]
         },
@@ -622,15 +622,15 @@
                     "include": "#T"
                 },
                 {
-                    "include": "#iffElse,iff2"
+                    "include": "#S"
                 },
                 {
-                    "include": "#S"
+                    "include": "#iffElse,iff2"
                 }
             ]
         },
         "forIter,forIn4": {
-            "begin": "(for(?=[\\t-\\n\\r ]|\\%\\%|\\%(?!\\%)|\\())",
+            "begin": "(for(?=\\%(?!\\%)|[\\t-\\n\\r ]|\\%\\%|\\())",
             "end": "(?:x(?<!x))",
             "beginCaptures": {
                 "1": {
@@ -666,19 +666,19 @@
         "G9": {
             "patterns": [
                 {
-                    "include": "#empty"
+                    "include": "#T"
                 },
                 {
-                    "include": "#T"
+                    "include": "#empty"
                 },
                 {
                     "include": "#forIter,forIn"
                 },
                 {
-                    "include": "#S1"
+                    "include": "#assign"
                 },
                 {
-                    "include": "#assign"
+                    "include": "#S1"
                 },
                 {
                     "include": "#iffElse,iff1"
@@ -689,7 +689,7 @@
             ]
         },
         "iffElse,iff1": {
-            "begin": "(if(?=[\\t-\\n\\r ]|\\%\\%|\\%(?!\\%)|\\())",
+            "begin": "(if(?=\\%(?!\\%)|[\\t-\\n\\r ]|\\%\\%|\\())",
             "end": "(?:x(?<!x))",
             "beginCaptures": {
                 "1": {
@@ -704,16 +704,16 @@
             ]
         },
         "nat,booll,var": {
-            "match": "([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "match": "(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))",
             "captures": {
                 "1": {
-                    "name": "constant.numeric"
+                    "name": "variable"
                 },
                 "2": {
-                    "name": "constant.other"
+                    "name": "constant.numeric"
                 },
                 "3": {
-                    "name": "variable"
+                    "name": "constant.other"
                 }
             }
         },
@@ -749,17 +749,17 @@
             ]
         },
         "nat,booll,var,forIn": {
-            "begin": "([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "begin": "(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))",
             "end": "(?:x(?<!x))",
             "beginCaptures": {
                 "1": {
-                    "name": "constant.numeric"
+                    "name": "variable"
                 },
                 "2": {
-                    "name": "constant.other"
+                    "name": "constant.numeric"
                 },
                 "3": {
-                    "name": "variable"
+                    "name": "constant.other"
                 }
             },
             "endCaptures": [],
@@ -793,17 +793,17 @@
             "captures": []
         },
         "nat,booll,var,forIn1": {
-            "begin": "([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))",
+            "begin": "(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))|([0-9]+(?![0-9a-z]))|((?:false|true)(?![0-9a-z]))",
             "end": "(?=\\))",
             "beginCaptures": {
                 "1": {
-                    "name": "constant.numeric"
+                    "name": "variable"
                 },
                 "2": {
-                    "name": "constant.other"
+                    "name": "constant.numeric"
                 },
                 "3": {
-                    "name": "variable"
+                    "name": "constant.other"
                 }
             },
             "endCaptures": [],

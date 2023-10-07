@@ -80,7 +80,8 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
             foundAllScopes = true;
             for(scope <- universalNonContextScopes) {
                 // Check whether this is a first most/outermost scope (apart from the already found liftableScopes)
-                isAlwaysNext = all(scopesSet <- mainScopesSets, 
+                isAlwaysNext = size(mainScopesSets)==0
+                    || all(scopesSet <- mainScopesSets, 
                     any(scopes <- scopesSet, startPrefix([*liftableScopes, scope], scopes)));
                 if(!isAlwaysNext) continue;
 

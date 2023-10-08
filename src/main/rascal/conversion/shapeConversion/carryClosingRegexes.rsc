@@ -30,6 +30,8 @@ tuple[
     list[Warning] warnings = [];
     for(p:convProd(lDef, parts) <- prods) {
         if([s, ref(sym, scopes, sources), regexp(r), e] := parts) {
+            // TODO: strip empty word matching from `r` if it did
+
             rla = makeLookahead(r);
             <nWarnings, rlaSym, grammar> = defineSequence([regexp(rla)], p, grammar);
             warnings += nWarnings;

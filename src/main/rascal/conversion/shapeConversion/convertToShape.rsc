@@ -75,7 +75,7 @@ WithWarnings[ConversionGrammar] convertToShape(
         set[Symbol] toBeDefinedUnions = {s | s:unionRec(_) <- getReachableSymbols(grammar, true) - definedSymbols};
         while(toBeDefinedUnions != {}) {
             for(union <- toBeDefinedUnions) {
-                set[ConvProd] newProds = defineUnion(union, grammar);
+                set[ConvProd] newProds         = defineUnion(union, grammar);
                 <mWarnings, newProds, grammar> = combineConsecutiveSymbols(newProds, grammar);
                 newProds                       = deduplicateProds(newProds);
 

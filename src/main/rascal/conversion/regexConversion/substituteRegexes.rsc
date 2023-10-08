@@ -7,14 +7,17 @@ import util::Maybe;
 import IO;
 
 import Scope;
-import conversion::util::RegexCache;
+import conversion::util::meta::LabelTools;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
 import conversion::regexConversion::concatenateRegexes;
 import conversion::regexConversion::lowerModifiers;
+import conversion::util::meta::applyScopesAndSources;
+import conversion::util::meta::wrapRegexScopes;
 import regex::Regex;
+import regex::RegexCache;
+import regex::RegexProperties;
 import regex::PSNFA;
-import regex::Tags;
 
 @doc {
     Tries to apply the substitution rule:
@@ -52,11 +55,10 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
 
     targetProds = productions[target];
     if(
-        {p:convProd(_, subParts, _)} := targetProds, 
+        {convProd(_, subParts)} := targetProds, 
         size(subParts)>0, 
         all(part <- subParts, regexp(_) := part)
     ) {
-        targetSource = convProdSource(p);
         set[Symbol] affected = {};
         canRemove = true;
 
@@ -65,35 +67,40 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
             
             // Note that def and lDef may be different, because of applied labels
             targetProds = {
-                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /ref(target, _, _), *_]) <- prods
             } + {
-                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(label(_, target), _), *_],  _) <- prods
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /ref(label(_, target), _, _), *_]) <- prods
             };
             for(<s,lDef,parts> <- targetProds) {
                 list[ConvSymbol] newParts = [];
 
-                ConvSymbol sub(Regex regex, Scopes scopes) 
-                    = regexp(size(scopes)>0 ? wrapScopes(regex, scopes) : regex);
+                ConvSymbol sub(Regex regex, ScopeList scopes, set[SourceProd] sources) {
+                    if(sources != {}) regex = meta(regex, sources);
+                    if(scopes != []) regex = wrapRegexScopes(regex, scopes);
+                    return regexp(regex);
+                }
                 for(part <- parts) {
                     if([regexp(regex)] := subParts) {
                         newParts += visit(part) {
-                            case symb(target, scopes) => sub(regex, scopes)
-                            case symb(label(_, target), scopes) => sub(regex, scopes)
+                            case ref(target, scopes, sources) => sub(regex, scopes, sources)
+                            case ref(label(_, target), scopes, sources) => sub(regex, scopes, sources)
                         };
-                    }else{
-                        newPart = [part];
+                    }else
+                    // When there are multiple parts, we can't substitute them in modifiers since no sequences are allowed in modifiers
+                    {
+                        newPart = subParts;
                         
-                        Maybe[Scopes] scopes = nothing();
-                        if(symb(target, l) := part) scopes = just(l);
-                        else if(symb(label(_, target), l) := part) scopes = just(l);
+                        Maybe[tuple[ScopeList, set[SourceProd]]] scopes = nothing();
+                        if(ref(target, l, sources) := part) scopes = just(<l, sources>);
+                        else if(ref(label(_, target), l, sources) := part) scopes = just(<l, sources>);
                         // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
                         else visit(part) {
-                            case symb(target, scopes): canRemove = false;
-                            case symb(label(_, target), scopes): canRemove = false;
+                            case ref(target, _, _): canRemove = false;
+                            case ref(label(_, target), _, _): canRemove = false;
                         }
                         
-                        if(just(l) := scopes) 
-                            newPart = [sub(regex, l), regexp(regex) <- subParts];
+                        if(just(<l, sources>) := scopes) 
+                            newPart = [sub(regex, l, sources), regexp(regex) <- subParts];
 
                         newParts += newPart;
                     }
@@ -102,9 +109,7 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
                 
                 affected += def;
                 productions[def] -= s;
-                productions[def] += concatenateRegexes(lowerModifiers(
-                    convProd(lDef, newParts, {targetSource, convProdSource(s)})
-                ));
+                productions[def] += concatenateRegexes(lowerModifiers(convProd(lDef, newParts)));
             }
         }
 
@@ -141,11 +146,10 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
 
     didMergeRegexes = false;
     targetProds = productions[target];
-    if({p:convProd(_, subParts, _)} := targetProds) {
-        containsSelf = any(symb(s, _) <- subParts, getWithoutLabel(s)==target);
+    if({convProd(_, subParts)} := targetProds) {
+        containsSelf = any(ref(s, _, _) <- subParts, getWithoutLabel(s)==target);
         if(containsSelf) break;
 
-        targetSource = convProdSource(p);
         set[Symbol] affected = {};
         canRemove = true;
 
@@ -153,107 +157,43 @@ tuple[set[Symbol], bool, ProdMap] substituteSequence(ProdMap productions, Symbol
             prods = productions[def];
 
             // Note that def and lDef may be different, because of applied labels
-            targetProds = {
-                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(target, _), *_],  _) <- prods
+            occuredInProds = {
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /ref(target, _, _), *_]) <- prods
             } + {
-                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /symb(label(_, target), _), *_],  _) <- prods
+                <s, lDef, parts> | s:convProd(lDef, parts:[*_, /ref(label(_, target), _, _), *_]) <- prods
             };
-            for(<s,lDef,parts> <- targetProds) {
+            for(<s,lDef,parts> <- occuredInProds) {
                 list[ConvSymbol] newParts = [];
                 for(part <- parts) {
                     newPart = [part];
 
-                    Maybe[Scopes] scopes = nothing();
-                    if(symb(target, l) := part) scopes = just(l);
-                    else if(symb(label(_, target), l) := part) scopes = just(l);
+                    Maybe[tuple[ScopeList, set[SourceProd]]] scopes = nothing();
+                    if(ref(target, l, sources) := part) scopes = just(<l, sources>);
+                    else if(ref(label(_, target), l, sources) := part) scopes = just(<l, sources>);
                     // If the part isn't a direct reference to the target (instead a modifier) but does contain it, the symbol can't be removed
                     else visit(part) {
-                        case symb(target, scopes): canRemove = false;
-                        case symb(label(_, target), scopes): canRemove = false;
+                        case ref(target, _, _): canRemove = false;
+                        case ref(label(_, target), _, _): canRemove = false;
                     }
 
-                    if(just(l) := scopes) {
-                        if([] := l || subParts == []) 
-                            newPart = subParts;
-                        else canRemove = false;
-                    }
+                    if(just(<l, sources>) := scopes) 
+                        newPart = [applyScopesAndSources(p, l, sources) | p <- subParts];
 
                     newParts += newPart;
                 }
                 
                 affected += def;
                 productions[def] -= s;
-                concatenated = concatenateRegexes(
-                    convProd(lDef, newParts, {targetSource, convProdSource(s)})
-                );
+                concatenated = concatenateRegexes(convProd(lDef, newParts));
                 productions[def] += concatenated;
                 if(size(concatenated.parts) < size(newParts)) didMergeRegexes = true;
             }
         }
 
-        if(canRemove)  productions = delete(productions, target);
+        if(canRemove) productions = delete(productions, target);
 
         return <affected, didMergeRegexes, productions>;
     }
     
     return <{}, false, productions>;
 }
-
-@doc {
-    Wraps the given regular expresion in the given scope
-}
-Regex wrapScopes(Regex regex, Scopes scopes) {
-    Regex prefixScopes(Regex regex) {
-        switch(regex) {
-            case mark(tags, r): return mark({
-                scopeTag(s) := t ? scopeTag([*scopes, *s]) : t | t <- tags
-            }, prefixScopes(r));
-            case lookahead(r, la): return lookahead(prefixScopes(r), la);
-            case \negative-lookahead(r, la): return \negative-lookahead(prefixScopes(r), la);
-            case lookbehind(r, lb): return lookbehind(prefixScopes(r), lb);
-            case \negative-lookbehind(r, lb): return \negative-lookbehind(prefixScopes(r), lb);
-            case subtract(r, re): return subtract(prefixScopes(r), re);
-            case concatenation(h, t): return concatenation(prefixScopes(h), prefixScopes(t));
-            case alternation(o1, o2): return alternation(prefixScopes(o1), prefixScopes(o2));
-            case \multi-iteration(r): return \multi-iteration(prefixScopes(r));
-            case cached(r, a, s): return prefixScopes(r); // Note that we remove the internal caches, since they are no longer correct and we don't need the anyhow
-            default: return regex;
-        }
-    }
-
-
-    // This only prefixes the regex, not the cached PSNFAs
-    prefixedRegexScopes = prefixScopes(regex);
-
-    // Prefixing the PSNFAs like this is not fully safe, since it assumes all scopes currently in the main transitions to originate from scopes in the main expression (not in prefixes/suffixes).
-    // This is not always the case by definition, but is the case in rascal since prefix/suffixes are more limited
-    // And moreover, TM doesn't support scopes in prefixes/suffixes. Hence it's safe for us to make this assumption
-    regexNFA = regexToPSNFA(regex);
-    <prefixStates, mainStates, suffixStates> = getPSNFApartition(regexNFA);
-    mainCharTransitions = {t | t:<from, character(_, _), to> <- regexNFA.transitions, from in mainStates};
-
-    TagsClass modifyTags(TagsClass tc) = regex::Tags::merge(
-            visit (tc) {
-                case scopeTag(s) => scopeTag([*scopes, *s])
-            },
-            {{scopeTag(scopes)}}
-        );
-
-    scopedNFA = <
-        regexNFA.initial,
-        {
-            <from, character(cc, modifyTags(tc)), to> | <from, character(cc, tc), to> <- mainCharTransitions
-        } + {
-            trans | trans <- regexNFA.transitions - mainCharTransitions
-        },
-        regexNFA.accepting,
-        ()
-    >;
-
-    return cached(
-        mark({scopeTag(scopes)}, prefixedRegexScopes), 
-        scopedNFA, 
-        <true, containsNewline(prefixedRegexScopes)>
-    );
-}
-

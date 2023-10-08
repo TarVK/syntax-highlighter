@@ -1,7 +1,7 @@
 module conversion::util::makeLookahead
 
 import regex::Regex;
-import conversion::util::RegexCache;
+import regex::RegexCache;
 
 @doc {
     Turns the given regex into a lookahead regex. 
@@ -10,11 +10,11 @@ import conversion::util::RegexCache;
 Regex makeLookahead(Regex regex)
     = makeLookahead(regex, true);
 Regex makeLookahead(Regex regex, bool cachePSNFA) {
-    if(lookahead(empty(), _) := regex) return regex;
-    if(cached(lookahead(empty(), _), _, _) := regex) return regex;
+    r = regex;
+    while(meta(r2, _) := r) r = r2;
+    if(lookahead(empty(), _) := r) return regex;
 
     la = lookahead(empty(), regex);
-    if(cachePSNFA)
-        return getCachedRegex(la);
+    if(cachePSNFA) return getCachedRegex(la);
     return la;
 }

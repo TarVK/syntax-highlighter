@@ -103,6 +103,36 @@ NFA[&K] mapStates(NFA[&T] n, &K(&T) mapState) {
 }
 
 @doc {
+    Relabels all states of the given NFA to a numeric one
+}
+NFA[int] relabel(NFA[&T] n) {
+    maxID = 0; 
+    set[&T] found = {};
+    set[&T] queue = {n.initial};
+    map[&T, int] labels = ();
+
+    while(size(queue)>0) {
+        <state, queue> = takeOneFrom(queue);
+
+        if(state in found) continue;
+        found += {state};
+
+        labels[state] = maxID;
+        maxID += 1;
+
+        queue += n.transitions[state]<1>;
+    }
+
+    int mapState(&T state) {
+        if (state in labels) return labels[state];
+        maxID += 1;
+        return maxID-1;
+    }
+
+    return mapStates(n, mapState);
+}
+
+@doc {
     A function to output a string that can beused to visualize the nfa using the following website:
     https://dreampuf.github.io/GraphvizOnline
 }

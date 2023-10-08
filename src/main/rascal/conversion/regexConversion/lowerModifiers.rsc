@@ -4,7 +4,8 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
-import conversion::util::RegexCache;
+import regex::RegexCache;
+import regex::RegexProperties;
 import regex::Regex;
 
 @doc {
@@ -22,7 +23,7 @@ import regex::Regex;
 
     This is done exhaustively for the given production
 }
-ConvProd lowerModifiers(p:convProd(symb, parts, _)) {
+ConvProd lowerModifiers(convProd(def, parts)) {
     newParts = visit(parts) {
         case follow(regexp(a), regexp(b)) => regexp(liftScopes(lookahead(a, b)))
             when !containsNewline(a)
@@ -37,6 +38,5 @@ ConvProd lowerModifiers(p:convProd(symb, parts, _)) {
             when !containsNewline(a)
         case atStartOfLine(regexp(a)) => regexp(liftScopes(concatenation(solRegex(), a))) // Should be fine regarding newlines, since SOL also includes SOF detection, which is what TM considers the start of the line to be
     };
-    if(newParts==parts) return p;
-    return convProd(symb, newParts, {convProdSource(p)});
+    return convProd(def, newParts);
 }

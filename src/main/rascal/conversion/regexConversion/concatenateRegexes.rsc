@@ -5,7 +5,7 @@ import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
-import conversion::util::RegexCache;
+import regex::RegexProperties;
 import regex::Regex;
 import regex::PSNFA;
 
@@ -42,7 +42,7 @@ set[ConvProd] concatenateRegexes(set[ConvProd] productions)
 
     This is done exhasutively for this production.
 }
-ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
+ConvProd concatenateRegexes(p:convProd(def, parts)) {
     list[ConvSymbol] newParts = [];
     list[Regex] regexes = [];
     void flush(){
@@ -68,5 +68,5 @@ ConvProd concatenateRegexes(p:convProd(symb, parts, _)) {
         }
     }
     flush();
-    return convProd(symb, newParts, {convProdSource(p)});
+    return convProd(def, newParts);
 }

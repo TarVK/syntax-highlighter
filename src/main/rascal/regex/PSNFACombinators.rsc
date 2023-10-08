@@ -14,6 +14,7 @@ import regex::NFA;
 import regex::NFASimplification;
 import regex::PSNFA;
 import regex::PSNFATypes;
+import regex::PSNFASimplification;
 
 TransSymbol anyChar() = character(anyCharClass(), {{}});
 
@@ -196,7 +197,6 @@ NFA[State] negativeLookbehindPSNFA(NFA[State] n, NFA[State] lookbehind) {
     Constructs a PSNFA matching all words that were not part of the language of PSNFA n
     - universe: The universe of available tags to consider
 }
-@memo
 NFA[State] invertPSNFA(NFA[State] n, TagsClass universe) {
     NFA[State] dfa = relabelSetPSNFA(convertPSNFAtoDFA(n, universe));
     NFA[State] dfaInverted = <dfa.initial, dfa.transitions, getStates(dfa) - dfa.accepting, ()>;
@@ -328,18 +328,6 @@ NFA[State] tagsPSNFA(NFA[State] n, Tags tags) {
 
 //         Helpers
 // ------------------------
-@doc {
-    Turns the PSNFA containing sets of states into a PSNFA with State instances, to be reusable in other PSNFA combinators
-}
-NFA[State] relabelSetPSNFA(NFA[set[State]] n) = mapStates(n, State (set[State] states) { return stateSet(states); });
-
-@doc {
-    Turns the PSNFA containing int states into a PSNFA with State instances, to be reusable in other PSNFA combinators
-}
-NFA[State] relabelIntPSNFA(NFA[int] n) = mapStates(n, State (int state) { return simple("<state>"); });
-
-
-
 @doc {
     Retrieves the standard concat/lookahead/lookbehind transitions
     - shouldMerge: Whether tags should be merged instead of matching exactly

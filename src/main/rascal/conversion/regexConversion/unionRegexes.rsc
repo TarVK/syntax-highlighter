@@ -10,9 +10,11 @@ import util::List;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::regexConversion::liftScopes;
 import conversion::regexConversion::concatenateRegexes;
-import conversion::util::combineLabels;
-import conversion::util::RegexCache;
+import conversion::util::meta::LabelTools;
+import conversion::util::equality::ProdEquivalence;
+import regex::RegexCache;
 import regex::Regex;
+import regex::regexToPSNFA;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
 
@@ -79,54 +81,42 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
     // Index all productions on their start symbol, and add prods with no more start symbols to the output
     // This considers the fact that syntactically different regular expressions may define the same language
     rel[ConvSymbol, ConvProd] indexed = {};
-    void addToIndex(p:convProd(_, parts, _)) {
+    void addToIndex(p:convProd(_, parts)) {
         if(size(parts) <= startIndex){
             out += p;
             return;
         }
 
-        indexSym = parts[startIndex];
-        if (regexp(indexRegex) := indexSym) {
-            indexedSymbols = indexed<0>;
-            if(indexSym notin indexedSymbols) {
-                for(sym:regexp(symbRegex) <- indexedSymbols)
-                    if(equals(indexRegex, symbRegex)) {
-                        indexSym = sym;
-                        break;
-                    }
-            }
-        }
-
+        indexSym = getEquivalenceSymbol(parts[startIndex]);
         indexed += <indexSym, p>;    
     }
     for(prod <- productions) 
         addToIndex(prod);
-        
 
-    emptySym = regexp(empty());
+    emptySym = regexp(getCachedRegex(empty()));
 
     // For each index group, check overlap with a production in another group
     symbols = [s | s <- indexed<0>];
     for(i <- [0..size(symbols)]) {
         symbI = symbols[i];
-        if(!(regexp(_) := symbI)) continue;
+        if(!(regexNfa(_) := symbI)) continue;
 
         prodsI = indexed[symbI];
         for(prodI <- prodsI) {
-            set[tuple[ConvSymbol, ConvProd]] combine = {<symbI, prodI>};
+            set[ConvProd] combine = {prodI};
 
-            // Check whether there are productions where everything but the first symbol differs, in order to union on the first symbol
+            // Check whether there are productions where everything but the first symbol equals, in order to union on the first symbol
             group: for(j <- [i+1..size(symbols)]) {
                 symbJ = symbols[j];
-                if(!(regexp(_) := symbJ)) continue group;
+                if(!(regexNfa(_) := symbJ)) continue group;
 
                 prodsJ = indexed[symbJ];
 
                 for(prodJ <- prodsJ) {
-                    prodsRemaindersEqual = equalsAfter(prodI, prodJ, startIndex+1);
+                    prodsRemaindersEqual = equalsAfter(prodI.parts, prodJ.parts, startIndex+1);
                     if(!prodsRemaindersEqual) continue;
 
-                    combine += <symbJ, prodJ>;
+                    combine += prodJ;
                     indexed -= <symbJ, prodJ>;
                     continue group;
                 }
@@ -134,33 +124,33 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
 
             // Check whether there are productions where skipping the first symbol makes the rest match, in order to union an empty match
             prodILength = size(prodI.parts);
-            for(prodJ:convProd(lDef, parts, source) <- productions, prodJ != prodI){
-                if(size(prodJ.parts)+1 != prodILength) continue;
+            for(prodJ:convProd(lDef, parts) <- productions, prodJ != prodI){
+                if(size(parts)+1 != prodILength) continue;
 
-                augmented = convProd(lDef, insertAt(parts, startIndex, emptySym), source);
-                prodsRemaindersEqual = equalsAfter(prodI, augmented, startIndex+1);
+                newParts = insertAt(parts, startIndex, emptySym); // Pretend there was an empty regex in there
+                prodsRemaindersEqual = equalsAfter(prodI.parts, newParts, startIndex+1);
                 if(!prodsRemaindersEqual) continue;
 
-                combine += <emptySym, augmented>;
-                if(size(parts)>startIndex)
+                augmented = convProd(lDef, newParts);
+                combine += augmented;
+                if(size(parts)>startIndex) 
                     indexed -= <parts[startIndex], prodJ>;
                 else
                     out -= prodJ;
             }
 
             // Perform the unioning
-            if(size(combine) > 1 && convProd(def, pb, _) := prodI) {
+            if(size(combine) > 1 && convProd(def, pb) := prodI) {
                 indexed -= <symbI, prodI>;
 
-                regexes = [r | <regexp(r), _> <- combine];
+                regexes = [r | convProd(_, parts) <- combine, regexp(r) := parts[startIndex]];
                 combinedRegex = liftScopes(reduceAlternation(alternation(regexes)));
                 combinedSymbol = regexp(combinedRegex);
 
-                sources = {*s | <_, convProd(_, _, s)> <- combine};
                 pb[startIndex] = combinedSymbol;
 
-                labeledDef = combineLabels(def, {sym | <_, convProd(sym, _, _)> <- combine});
-                addToIndex(convProd(labeledDef, pb, sources));
+                labeledDef = combineLabels(def, {sym | convProd(sym, _) <- combine});
+                addToIndex(convProd(labeledDef, pb));
             }
         }
     }
@@ -174,4 +164,21 @@ set[ConvProd] unionRegexes(set[ConvProd] productions, int startIndex) {
     }
 
     return out;
+}
+
+@doc {
+    Checks whether two productions define the same language/tokenization from the given index forward
+}
+bool equalsAfter(list[ConvSymbol] pa, list[ConvSymbol] pb, int index) {
+    if(size(pa) != size(pb)) return false;
+
+    for(i <- [index..size(pa)]) {
+        sa = pa[i];
+        sb = pb[i];
+        if(equals(sa, sb)) continue;
+
+        return false;
+    }
+
+    return true;
 }

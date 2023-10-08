@@ -9,7 +9,7 @@ Todo:
 - [x] Deal with chains of symbols
 - [ ] Targeted right-recursion
 - [x] Check determinism/improve determinism
-- [ ] Translate conversion grammar to highlight grammar
+- [x] Translate conversion grammar to highlight grammar
 - [ ] Improve robustness
 
 

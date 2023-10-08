@@ -3,7 +3,9 @@ module regex::NFASimplification
 import Set;
 import IO;
 import ParseTree;
+import Relation;
 
+import regex::DFA;
 import regex::NFA;
 import regex::PSNFA;
 import regex::Tags;
@@ -25,21 +27,18 @@ import regex::util::GetDisjointCharClasses;
     ```
     Without doing this, there is not a unique minized DFA representing the input NFA
 }
-NFA[set[&T]] minimize(NFA[&T] nfa) {
-    TagsClass universe = {*tc | <_, character(_, tc), _> <- nfa.transitions};
-    dfa = convertPSNFAtoDFA(removeUnreachable(nfa), universe);
-    minimizedDFA = minimizeDFA(dfa);
-
-    flattenedMinimizedDFA = mapStates(minimizedDFA, set[&T] (set[set[&T]] states) {
-        return {*state | state <- states};
-    });
-
-    return removeUnreachable(flattenedMinimizedDFA);
+NFA[set[set[&T]]] minimize(NFA[&T] nfa, ComputeDisjoint getDisjoint, ComputeRemainder getRemainder) {
+    dfa = convertNFAtoDFA(removeUnreachable(nfa), getDisjoint, getRemainder);
+    overlapLessDfa = removePartialEdgeOverlap(dfa, getDisjoint);
+    minimizedDFA = minimizeDFA(overlapLessDfa);
+    return removeUnreachable(minimizedDFA);
 }
 
 @doc {
     Minimizes the given DFA using a DFA minimization algorithm, but does not get rid of unreachable/dead states.
     Hence this requires the input to be a valid DFA!
+
+    Assumes none of the transition symbols to partially overlap, if they do, the resulting dfa might not be minimal.
 }
 NFA[set[&T]] minimizeDFA(NFA[&T] dfa) {
     
@@ -57,72 +56,53 @@ set[set[&T]] partition(NFA[&T] n) {
     // Implementation of Hopcroft's algorithm: https://en.wikipedia.org/wiki/DFA_minimization#Hopcroft's_algorithm
     reverseEdges = n.transitions<2, 1, 0>;
 
-    set[set[&T]] P = {getStates(n) - n.accepting, n.accepting};
-    set[set[&T]] W = P;
+    set[set[&T]] partition = {getStates(n) - n.accepting, n.accepting};
+    set[set[&T]] queue = partition;
 
-    while (size(W) > 0) {
-        <A, W> = takeOneFrom(W);
+    while (size(queue) > 0) {
+        <toStates, queue> = takeOneFrom(queue);
 
-        inComing = reverseEdges[A];
+        inComing = reverseEdges[toStates];
         transSymbols = inComing<0>;
         for(transSymbol <- transSymbols) {
-            X = inComing[transSymbol];
-            for(set[&T] Y <- P) {
-                intersect = (X & Y);
-                assymDifference = Y - X;
-                if(size(intersect)>0 && size(assymDifference)>0) {
-                    P = (P - {Y}) + {intersect} + {assymDifference};
-                    if (Y in W)
-                        W = (W - {Y}) + {intersect} + {assymDifference};
-                    else if (size(intersect) < size(assymDifference))
-                        W += {intersect};
+            fromStates = inComing[transSymbol];
+            for(set[&T] eqClass <- partition) {
+                includingTransition = (fromStates & eqClass);
+                excludingTransition = eqClass - fromStates;
+                // If some of the states in the equivalnce class have this transition, but not all, then they aren't behavioraly equivalent
+                if(size(includingTransition)>0 && size(excludingTransition)>0) {
+                    partition = (partition - {eqClass}) + {includingTransition} + {excludingTransition};
+                    if (eqClass in queue)
+                        queue = (queue - {eqClass}) + {includingTransition} + {excludingTransition};
+                    else if (size(includingTransition) < size(excludingTransition))
+                        queue += {includingTransition};
                     else
-                        W += {assymDifference};
+                        queue += {excludingTransition};
                 }
             }
         }
     }
 
-    return P;
+    return partition;
 }
 
-// set[set[&T]] partition(rel[&T, TransSymbol, &T] transitions, set[set[&T]] initPartition) {
-//     tuple[set[&T], set[&T]] split(set[set[&T]] classes, TransSymbol on, set[&T] group) {
-//         set[&T] includes = {};
-//         set[&T] excludes = {};
+@doc {
+    Transforms n into a new NFA m with an identical language, such that:
+    - for every edge in m, two edges overlaping in character/set collection implies they are fully identical
+}
+NFA[&T] removePartialEdgeOverlap(NFA[&T] n, ComputeDisjoint getDisjoint) {
+    transitionSymbols = n.transitions<1>;
+    disjointTransitionSymbols = getDisjoint(transitionSymbols);
 
-//         bool hasTrans(&T from, set[&T] to) = size(transitions[from][on] & to)>0;
+    orTransToDisjoint = Relation::index(disjointTransitionSymbols<1, 0>);
+    rel[&T, TransSymbol, &T] transitions = {
+        <from, on, to>
+        | <from, onOr, to> <- n.transitions,
+        on <- orTransToDisjoint[onOr]
+    };
 
-//         first = getOneFrom(group);
-//         firstHas = (g: hasTrans(first, g) | g <- classes);
-
-//         for(state <- group) {
-//             shouldIncude = all(g <- classes, hasTrans(state, g) == firstHas[g]);
-//             if (shouldIncude) includes += state;
-//             else              excludes += state;
-//         }
-
-//         return <includes, excludes>;
-//     }
-
-//     set[set[&T]] classes = initPartition;
-//     stable = false;
-//     while(!stable) {
-//         stable = true;
-//         for(g <- classes, on <- transitions[g]<0>) {
-//             <includes, excludes> = split(classes, on, g);
-//             if (size(includes) > 0 && size(excludes) > 0) {
-//                 classes -= {g};
-//                 classes += {includes, excludes};
-//                 stable = false;
-//                 break;
-//             }
-//         }
-//     }
-
-//     return classes;
-// }
-
+    return <n.initial, transitions, n.accepting, ()>;
+}
 
 @doc {
     Removes all epsilon transitions
@@ -146,9 +126,9 @@ NFA[set[&T]] removeEpsilon(NFA[&T] n) {
         for(state <- setOfStates, <sym, to> <- n.transitions[state]) {
             if(sym == epsilon()) continue;
 
-            toSet = expandEpsilon(n, {to});
-            init(toSet);
-            transitions += <setOfStates, sym, toSet>;
+            toStates = expandEpsilon(n, {to});
+            init(toStates);
+            transitions += <setOfStates, sym, toStates>;
         }
     }
 
@@ -167,11 +147,11 @@ NFA[&T] removeUnreachable(NFA[&T] n, set[&T] initial, set[&T] accepting) {
     set[&T] queue = initial;
     set[&T] reachableInitial = queue;
     while(size(queue)>0) {
-        <state, queue> = takeOneFrom(queue);
-        toStates = n.transitions[state]<1>;
+        from = queue;
+        toStates = n.transitions[from]<1>;
         newToStates = toStates - reachableInitial;
         reachableInitial += newToStates;
-        queue += newToStates;
+        queue = newToStates;
     }
 
     // Backward search
@@ -179,11 +159,11 @@ NFA[&T] removeUnreachable(NFA[&T] n, set[&T] initial, set[&T] accepting) {
     queue = accepting;
     set[&T] reachableAccepting = queue;
     while(size(queue)>0) {
-        <state, queue> = takeOneFrom(queue);
-        fromStates = revTransitions[state]<1>;
+        to = queue;
+        fromStates = revTransitions[to]<1>;
         newFromStates = fromStates - reachableAccepting;
         reachableAccepting += newFromStates;
-        queue += newFromStates;
+        queue = newFromStates;
     }
 
     return filterStates(n, reachableInitial & reachableAccepting);

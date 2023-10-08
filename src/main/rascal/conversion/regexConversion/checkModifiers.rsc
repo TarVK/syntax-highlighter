@@ -35,10 +35,9 @@ WithWarnings[ConversionGrammar] checkModifiers(ConversionGrammar grammar) {
                 case m:notPrecede(_, _) => add(m, prod)
                 case m:atEndOfLine(_) => add(m, prod)
                 case m:atStartOfLine(_) => add(m, prod)
-            },
-            sources
+            }
         )>
-        | <def, prod:convProd(lDef, parts, sources)> <- grammar.productions
+        | <def, prod:convProd(lDef, parts)> <- grammar.productions
     };
 
     return <warnings, convGrammar(grammar.\start, newProds)>;

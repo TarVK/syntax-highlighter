@@ -1,6 +1,7 @@
 module mapping::common::addRegexBrackets
 
 import regex::Regex;
+import IO;
 
 data Regex = group(Regex r);
 
@@ -94,6 +95,23 @@ tuple[Regex regex, int precedence] addRegexBracketsRec(Regex regex) {
         case optional(r): {
             precedence = 6;
             regex = optional(rec(r, true)); // Prevent accidental reluctant operators by adding brackets to groups with the same precedence
+        }
+
+        case never(): ;
+        case empty(): ;
+        case always(): ;
+        case character(_): ;
+        case mark(tags, r): {
+            <regex, precedence> = addRegexBracketsRec(r);
+            regex = mark(tags, regex);
+        }
+        case meta(r, m): {
+            <regex, precedence> = addRegexBracketsRec(r);
+            regex = meta(regex, m);
+        }
+
+        default: {
+            println("Missed a case in addRegexBracketsRec: <regex>");
         }
     }
 

@@ -30,8 +30,8 @@ TextmateGrammar createTextmateGrammar(ScopeGrammar grammar, HighlightGrammarData
                 cr = stringifyOnigurumaRegex(close);
                 cs = createCaptures(closeScopes);
 
-                if([] := refScope) patterns += scopePattern(or, cr, os, cs, [include("#<ref>")]);
-                else patterns += scopePattern(or, cr, os, cs, [include("#<ref>")], contentName=stringify(refScope, "."));
+                if(refScope=="") patterns += scopePattern(or, cr, os, cs, [include("#<ref>")]);
+                else patterns += scopePattern(or, cr, os, cs, [include("#<ref>")], contentName=refScope);
             } else if(inclusion(ref) := prod) {
                 patterns += include("#<ref>");
             }
@@ -59,6 +59,6 @@ TextmateGrammar createTextmateGrammar(ScopeGrammar grammar, HighlightGrammarData
 Captures createCaptures(list[Scope] scopes) {
     Captures captures = ();
     for(i <- [0..size(scopes)]) 
-        captures["<i+1>"] = captureExp(stringify(scopes[i], "."));
+        captures["<i+1>"] = captureExp(scopes[i]);
     return captures;
 }

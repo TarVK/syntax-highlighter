@@ -5,20 +5,24 @@ import String;
 import IO;
 
 import regex::Regex;
-import regex::util::GetDisjointCharClasses;
+import regex::RegexCache;
+import regex::util::charClass;
 import mapping::common::addRegexBrackets;
+import regex::RegexStripping;
 
 @doc {
     Stringifies the given regular expression such that it's in Oniguruma format.
     Assumes that lookarounds have been split using `splitRegexLookarounds` such that lookarounds only have empty bodies, and subtractions have been removed
 }
 str stringifyOnigurumaRegex(Regex regex) {
-    bracketed = addRegexBrackets(regex);
+    bracketed = addRegexBrackets(removeRegexCache(regex));
     return stringifyOnigurumaRegexRec(bracketed);
 }
 str stringifyOnigurumaRegexRec(Regex regex) {
     str rec(Regex regex) = stringifyOnigurumaRegexRec(regex);
     switch(regex) {
+        case meta(r, _): return rec(r);
+
         // Lookarounds
         case lookahead(Regex::empty(), la): return "(?=<rec(la)>)";
         case group(lookahead(Regex::empty(), la)): return "(?=<rec(la)>)";

@@ -5,11 +5,13 @@ import util::Maybe;
 import IO;
 
 import conversion::conversionGrammar::ConversionGrammar;
+import conversion::util::meta::LabelTools;
 import conversion::regexConversion::liftScopes;
 import regex::Regex;
+import regex::RegexProperties;
 import regex::Tags;
 import regex::PSNFATools;
-import conversion::util::RegexCache;
+import regex::RegexCache;
 import Scope;
 
 @doc {
@@ -77,8 +79,8 @@ Maybe[set[ConvProd]] repeatRegexes(Symbol sym, set[ConvProd] productions) {
 }
 Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            s:convProd(_, [regexp(fRegex)], _), 
-            r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)
+            s:convProd(_, [regexp(fRegex)]), 
+            r:convProd(_, [ref(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -102,7 +104,7 @@ Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] production
                             ))
                         ));
 
-        return createNewProd(sym, newRegex, {s, r});
+        return createNewProd(sym, newRegex);
     }
     return nothing();
 }
@@ -121,8 +123,8 @@ Maybe[set[ConvProd]] repeatMultiLeftRegexes(Symbol sym, set[ConvProd] production
 }
 Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            s:convProd(_, [], _), 
-            r:convProd(_, [symb(lSym, []), regexp(rRegex)], _)
+            s:convProd(_, []), 
+            r:convProd(_, [ref(lSym, [], sources), regexp(rRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -131,9 +133,9 @@ Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
 
         return createNewProd(sym, withTags(alternation(
-                            \multi-iteration(repeatRegex),
-                            empty()
-                        )), {s, r});
+                    \multi-iteration(repeatRegex),
+                    empty()
+                )));
     }
     return nothing();
 }
@@ -156,8 +158,8 @@ Maybe[set[ConvProd]] repeatLeftRegexes(Symbol sym, set[ConvProd] productions) {
 }
 Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            s:convProd(_, [regexp(lRegex)], _), 
-            r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)
+            s:convProd(_, [regexp(lRegex)]), 
+            r:convProd(_, [regexp(rRegex), ref(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -180,7 +182,7 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
                             lRegex
                         ));
 
-        return createNewProd(sym, newRegex, {s, r});
+        return createNewProd(sym, newRegex);
     }
     return nothing();
 }
@@ -199,8 +201,8 @@ Maybe[set[ConvProd]] repeatMultiRightRegexes(Symbol sym, set[ConvProd] productio
 }
 Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            s:convProd(_, [], _), 
-            r:convProd(_, [regexp(rRegex), symb(lSym, [])], _)
+            s:convProd(_, []), 
+            r:convProd(_, [regexp(rRegex), ref(lSym, [], sources)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(lSym) == sym, 
         just(<repeatRegex, tags>) := getScopelessRegex(rRegex),
@@ -210,9 +212,9 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
         Regex withTags(Regex r) = size(tags)>0 ? mark(tags, r) : r;
 
         return createNewProd(sym, withTags(alternation(
-                            \multi-iteration(repeatRegex),
-                            empty()
-                        )), {s, r});
+                    \multi-iteration(repeatRegex),
+                    empty()
+                )));
     }
     return nothing();
 }
@@ -237,9 +239,9 @@ Maybe[set[ConvProd]] repeatRightRegexes(Symbol sym, set[ConvProd] productions) {
 }
 Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
-            m:convProd(_, [regexp(mRegex)], _), 
-            s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+            p:convProd(_, [regexp(pRegex), ref(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
+            m:convProd(_, [regexp(mRegex)]), 
+            s:convProd(_, [ref(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 
@@ -287,7 +289,7 @@ Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] production
             } else newRegex = getDefault();
         } else newRegex = getDefault();
         
-        return createNewProd(sym, newRegex, {m, p, s});
+        return createNewProd(sym, newRegex);
     }
     return nothing();
 }
@@ -307,9 +309,9 @@ Maybe[set[ConvProd]] repeatMultiBothRegexes(Symbol sym, set[ConvProd] production
 }
 Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
     if({
-            m:convProd(_, [], _), 
-            p:convProd(_, [regexp(pRegex), symb(pSym, [])], _),
-            s:convProd(_, [symb(sSym, []), regexp(sRegex)], _)
+            p:convProd(_, [regexp(pRegex), ref(pSym, [], pSources)]), // TODO: figure out whether sources should be forwarded in some way
+            m:convProd(_, []), 
+            s:convProd(_, [ref(sSym, [], sSources), regexp(sRegex)]) // TODO: figure out whether sources should be forwarded in some way
         } := productions,
         getWithoutLabel(pSym) == sym, 
         getWithoutLabel(sSym) == sym, 
@@ -331,30 +333,38 @@ Maybe[set[ConvProd]] repeatBothRegexes(Symbol sym, set[ConvProd] productions) {
             ))
         ));
 
-        return createNewProd(sym, newRegex, {m, p, s});
+        return createNewProd(sym, newRegex);
     }
     return nothing();
 }
 
 // Helpers
-Maybe[set[ConvProd]] createNewProd(Symbol sym, Regex regex, set[ConvProd] sources) {
+Maybe[set[ConvProd]] createNewProd(Symbol sym, Regex regex) {
     cachedExp = getCachedRegex(regex);
-    ConvProd prod = convProd(sym, [regexp(cachedExp)], {convProdSource(source) | source <- sources});
+    ConvProd prod = convProd(sym, [regexp(cachedExp)]);
     return just({prod});
 }
 
-Maybe[Regex, Tags] getScopelessRegex(Regex regex) {
+Maybe[tuple[Regex, Tags]] getScopelessRegex(Regex regex) {
     hasScopes = containsScopes(regex);
     if(!hasScopes) return just(<regex, {}>);
 
-    while(cached(inner, _, _) := regex) regex = inner;
-
-    if(mark(tags, r) := regex) {
-        hasScopes = containsScopes(r);
-        if(!hasScopes)  return just(<r, tags>);
+    Maybe[tuple[Regex, Tags]] getScopelessRegexRec(Regex regex) {
+        switch(regex){
+            case mark(tags, r): {        
+                hasScopes = containsScopes(r);
+                if(!hasScopes) return just(<r, tags>);
+                return nothing();
+            }
+            case meta(r, m): {
+                if(just(<newR, tags>) := getScopelessRegexRec(r)) 
+                    return just(<meta(newR, m), tags>);
+                return nothing();
+            }
+            default: return nothing();
+        }
     }
-
-    return nothing();
+    return getScopelessRegexRec(regex);
 }
 
 /*

@@ -5,13 +5,12 @@ import List;
 import IO;
 
 import Scope;
-import conversion::util::RegexCache;
 import regex::Tags;
 import regex::Regex;
+import regex::RegexCache;
 import regex::PSNFA;
 import regex::PSNFACombinators;
-
-// TODO: also merge nested mark constructors
+import regex::RegexStripping;
 
 @doc {
     Tries to apply scope lifting if possible:
@@ -29,13 +28,14 @@ import regex::PSNFACombinators;
 }
 Regex liftScopes(Regex regex) {
     <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
-    cachedRegex = removeInnerRegexCache(cachedRegex);
     
     liftableScopesSet = findLiftableScopes(cachedRegex);
     if(size(liftableScopesSet)>0) {
+        cachedRegex = removeInnerRegexCache(cachedRegex);
         Tags removeScopes(Tags tags) = tags - {t | t:scopeTag(scopes) <- tags, 
+            scopeList := toList(scopes),
             // Remove scopes tags that has a prefix of lifable scopes
-            any(liftableScopes <- liftableScopesSet, [*scopes, *_] := liftableScopes)}; 
+            any(liftableScopes <- liftableScopesSet, [*scopeList, *_] := liftableScopes)}; 
 
         regexWithoutScope = visit(cachedRegex) {
             case mark(tags, exp): {
@@ -44,14 +44,16 @@ Regex liftScopes(Regex regex) {
             }
         };
 
-        if(cached(nonCached, _, <_, nl>) := regexWithoutScope) 
-            return cached(
+        if(meta(nonCached, cacheMeta(_, <_, nl>)) := regexWithoutScope) 
+            return meta(
                 mark(
-                    {scopeTag(liftableScopes) | liftableScopes <- liftableScopesSet}, 
+                    {scopeTag(toScopes(liftableScopes)) | liftableScopes <- liftableScopesSet}, 
                     nonCached
-                ), 
-                psnfa,
-                <true, nl>
+                ),
+                cacheMeta(
+                    psnfa,
+                    <true, nl>
+                )
             );
     }
 
@@ -67,8 +69,9 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
         list[Scope] liftableScopes = [outerScope];
 
         // Check whether this is a first most/outermost scope
-        isAlwaysNext = all(scopesSet <- mainScopesSets, 
-            any(scopes <- scopesSet, startPrefix([outerScope], scopes)));
+        isAlwaysNext = size(mainScopesSets)==0  // Explicit check to deal with Rascal `all` bug on empty domains
+            || all(scopesSet <- mainScopesSets, 
+                any(scopes <- scopesSet, startPrefix([outerScope], scopes)));
         if(!isAlwaysNext) continue;
         
         // Try to augment it with sub-scopes
@@ -77,7 +80,8 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
             foundAllScopes = true;
             for(scope <- universalNonContextScopes) {
                 // Check whether this is a first most/outermost scope (apart from the already found liftableScopes)
-                isAlwaysNext = all(scopesSet <- mainScopesSets, 
+                isAlwaysNext = size(mainScopesSets)==0
+                    || all(scopesSet <- mainScopesSets, 
                     any(scopes <- scopesSet, startPrefix([*liftableScopes, scope], scopes)));
                 if(!isAlwaysNext) continue;
 
@@ -97,14 +101,14 @@ set[list[Scope]] findLiftableScopes(Regex regex) {
 @doc {
     Retrieves all the main scope sets, as well as a set of all scopes that only occur in all transitions of the main match of the regex and not the context match.
 }
-tuple[set[set[Scopes]], set[Scope]] findUniversalMainScopes(Regex regex) {
+tuple[set[set[ScopeList]], set[Scope]] findUniversalMainScopes(Regex regex) {
     <cachedRegex, psnfa, <hasScope, _>> = cachedRegexToPSNFAandFlags(regex);
     <prefixStates, mainStates, suffixStates> = getPSNFApartition(psnfa);
     contextStates = prefixStates + suffixStates;
 
     // Extract every combination of scopes
-    set[set[Scopes]] getScopeSets(set[State] inStates) = 
-        {{scopes | scopeTag(scopes) <- tags} 
+    set[set[ScopeList]] getScopeSets(set[State] inStates) = 
+        {{toList(scopes) | scopeTag(scopes) <- tags} 
             | <from, character(_, tagsClass), _> <- psnfa.transitions, 
             from in inStates, 
             tags <- tagsClass};

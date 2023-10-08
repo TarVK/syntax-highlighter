@@ -9,15 +9,12 @@ import IO;
 import util::Maybe;
 
 import regex::Regex;
-import regex::RegexToPSNFA;
+import regex::regexToPSNFA;
 import regex::PSNFA;
 import regex::PSNFACombinators;
 import regex::NFA;
 import regex::NFASimplification;
 import regex::Tags;
-
-// Would prefer to not import this here, see if we can get around this
-import conversion::util::RegexCache;
 
 @doc {
     Checks whether the two given NFAs define the same language.
@@ -29,7 +26,7 @@ bool equals(NFA[State] a, NFA[State] b, bool moduloTags) {
     if (a == b) return true;
 
     // This check is quicker than the subtraction check, hence doing this first might speed things up since majority of calls return false, this check can be left out if it ends up making things slower
-    if(isEmpty(productPSNFA(a, b))) return false;
+    if(isEmpty(productPSNFA(a, b, moduloTags))) return false;
     
     inANotB = moduloTags ? strongSubtractPSNFA(a, b) : subtractPSNFA(a, b);
     if(!isEmpty(inANotB)) return false;
@@ -48,7 +45,22 @@ bool equals(Regex a, Regex b)
     = equals(a, b, false);
 bool equals(Regex a, Regex b, bool moduloTags) {
     aNFA = regexToPSNFA(a);
-    bNFA = regexToPSNFA(b);     
+    bNFA = regexToPSNFA(b);
+    if(!moduloTags) return aNFA == bNFA; // regex nfas are minimized and normalized such that every language has a unique minimal+normal NFA
+
+    /*
+        Results after adding nfa normalization and using it for equality checking compared to before:
+        Normalized:
+        5:48, 5:04 with expandFollow
+        2:19, 2:14 without expandFollow
+
+        Regular:
+        4:20, 4:19, with expandFollow
+        3:01, 3:03, without expandFollow
+
+        So if we don't do many (non-cached) regex to psnfa conversions, it seems the extra initialization time is worth it for the faster equivalence checking
+    */
+
     return equals(aNFA, bNFA, moduloTags);
 }
 
@@ -69,50 +81,6 @@ bool isSubset(NFA[State] sub, NFA[State] super, bool moduloTags) {
     inSubNotSuper = moduloTags ? strongSubtractPSNFA(sub, super) : subtractPSNFA(sub, super);
     return isEmpty(inSubNotSuper);
 }
-
-@doc {
-    Checks whether the language of sub is a subset of the langauge of super.
-    if moduloTags is specified, the tag data is ignored.
-    Stores part of the computation in the cache, to speed up consecutive checks
-}
-tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, SubtractCache cache) 
-    = isSubset(sub, super, false, cache);
-tuple[SubtractCache, bool] isSubset(Regex sub, Regex super, bool moduloTags, SubtractCache cache) 
-    = isSubset(regexToPSNFA(sub), regexToPSNFA(super), moduloTags, cache);
-tuple[SubtractCache, bool] isSubset(NFA[State] sub, NFA[State] super, SubtractCache cache)
-    = isSubset(sub, super, false, cache);
-tuple[SubtractCache, bool] isSubset(
-    NFA[State] sub, 
-    NFA[State] super, 
-    bool moduloTags, 
-    SubtractCache cache
-) {
-
-    TagsClass universe = moduloTags 
-        ? {{}}
-        : {*tagsClass | character(char, tagsClass) <- sub.transitions<1>};
-    Maybe[TagsClass] cacheUniverse = moduloTags ? nothing() : just(universe);
-
-    NFA[State] inverted;
-    if(<super, cacheUniverse> in cache) {
-        inverted = cache[<super, cacheUniverse>];
-    } else {
-        if(moduloTags)
-            super = replaceTagsClasses(super, {{}});
-
-        inverted = invertPSNFA(super, universe);
-        // inverted = relabelSetPSNFA(minimizeDFA(inverted)); // TODO: check if it matters that inverted's transitions are not complete (but are disjoint, like a DFA)
-        cache[<super, cacheUniverse>] = inverted;
-    }
-    
-    product = productPSNFA(sub, inverted, moduloTags);
-    return <cache, isEmpty(product)>;
-
-    // return <cache, isSubset(sub, super, moduloTags)>;
-}
-alias SubtractCache = map[tuple[NFA[State], Maybe[TagsClass]], NFA[State]];
-
-
 
 @doc {
     Computes the difference between the two PSNFAs, which includes all words in one and not the other
@@ -145,15 +113,16 @@ bool alwaysAcceptsEmpty(NFA[State] n)
 NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());
 
 @doc {
-    Obtains PSNFAs o and e such that,
-    L(no) = {(p, w, s) | (p, w, s) ∈ L(n) ∧ (∃ wp, ws . w = wp ws ∧ (p, wp, ws s) ∈ L(m))}
-    L(me) = {(p, w, s) | ∃ (mp, mw, ms) ∈ L(m) . p = mp mw ∧ w s = ms ∧ (mp, mw w, s) ∈ L(n)}
-
-    I.e. no specifies all words in n, such that m contains a prefix of said word,
-    and me specifies all extension words t such that there exists a word h in m for which the concatenation ht is in n (a word in m can be extended using e to be part of n). 
-
-    If these languages are empty, nothing is returned instead
+    Checks whether two given NFAs overlap, I.e. if one can be extended by 0 or more characters to match a word in the other. This ignores presence of tags
 }
-Maybe[tuple[NFA[State] no, NFA[State] me]] getPrefixOverlap(NFA[State] n, NFA[State] m) {
-    // TODO: implement
+bool overlaps(NFA[State] a, NFA[State] b) {
+    extensionB = getExtensionNFA(b);
+    overlapB = productPSNFA(a, extensionB, true);
+    if(!isEmpty(overlapB)) return true;
+    
+    extensionA = getExtensionNFA(a);
+    overlapA = productPSNFA(b, extensionA, true);
+    if(!isEmpty(overlapA)) return true;
+
+    return false;
 }

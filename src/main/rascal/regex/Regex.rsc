@@ -13,11 +13,8 @@ import regex::RegexSyntax;
 import regex::Tags;
 import util::List;
 import regex::RegexTypes;
+import regex::RegexStripping;
 import Scope;
-
-// Would prefer to not import this here, see if we can get around this
-import conversion::util::RegexCache;
-
 
 //     Reduction
 // ---------------------
@@ -61,25 +58,39 @@ Regex expandMaxIteration(Regex r, int max) = (alternation(r, empty()) | alternat
 Regex reduceAlternation(Regex::alternation([])) = never();
 Regex reduceAlternation(Regex::alternation([option])) = option;
 Regex reduceAlternation(Regex::alternation([opt1, opt2, *rest])) 
-    = (alternation(opt1, opt2) | alternation(it, part) | part <- rest);
+    = (simplifiedAlternation(opt1, opt2) | simplifiedAlternation(it, part) | part <- rest);
 
 Regex reduceConcatenation(Regex::concatenation([])) = empty();
 Regex reduceConcatenation(Regex::concatenation([part])) = part;
 Regex reduceConcatenation(Regex::concatenation([first, second, *rest])) 
-    = (concatenation(first, second) | concatenation(it, part) | part <- rest);
+    = (simplifiedConcatenation(first, second) | simplifiedConcatenation(it, part) | part <- rest);
+
+Regex simplifiedAlternation(Regex n, Regex b) = b
+    when removeOuterMeta(n) == never();
+Regex simplifiedAlternation(Regex a, Regex n) = a
+    when removeOuterMeta(n) == never();
+// Regex simplifiedAlternation(Regex e, Regex b) = e // Only holds if there are no tagged lookaheads
+//     when removeOuterMeta(e) == empty();
+// Regex simplifiedAlternation(Regex a, Regex e) = e
+//     when removeOuterMeta(e) == empty();
+Regex simplifiedAlternation(Regex a, Regex b) = a
+    when removeOuterMeta(a) == removeOuterMeta(b);
+Regex simplifiedAlternation(Regex a, Regex b) = alternation(a, b);
+
+Regex simplifiedConcatenation(Regex a, Regex b) = never()
+    when removeOuterMeta(a) == never() || removeOuterMeta(b) == never();
+Regex simplifiedConcatenation(Regex e, Regex b) = b
+    when removeOuterMeta(e) == empty();
+Regex simplifiedConcatenation(Regex a, Regex e) = a
+    when removeOuterMeta(e) == empty();
+Regex simplifiedConcatenation(Regex a, Regex b) = concatenation(a, b);
 
 @doc {
     A regular expression representing the end of a line
 }
 Regex eolRegex() = alternation(
     \negative-lookahead(empty(), Regex::character(anyCharClass())), // EOF (no more characters)
-    lookahead(
-        empty(),
-        alternation(
-            Regex::character([range(10, 10)]),  // \n
-            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
-        )
-    )
+    lookahead(empty(), newLine())
 );
 
 @doc {
@@ -87,13 +98,12 @@ Regex eolRegex() = alternation(
 }
 Regex solRegex() = alternation(
     \negative-lookbehind(empty(), Regex::character(anyCharClass())), // SOF (no more characters)
-    lookbehind(
-        empty(),
-        alternation(
-            Regex::character([range(10, 10)]),  // \n
-            concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
-        )
-    )
+    lookbehind(empty(), newLine())
+);
+
+Regex newLine() = alternation(
+    \negative-lookbehind(Regex::character([range(10, 10)]), Regex::character([range(13, 13)])),  // \n (without \r in front)
+    concatenation(Regex::character([range(13, 13)]), Regex::character([range(10, 10)])) // \r\n
 );
 
 //       Parsing
@@ -102,7 +112,7 @@ Regex parseRegexReduced(str text) = reduce(parseRegex(text));
 Regex parseRegex(str text) = CSTtoRegex(parse(#RegexCST, text));
 
 Regex CSTtoRegex(RegexCST regex) = CSTtoRegex(regex, []);
-Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
+Regex CSTtoRegex(RegexCST regex, ScopeList scopes) {
     Regex r(RegexCST regex) = CSTtoRegex(regex, scopes);
     switch(regex) {
         case (RegexCST)`$0`: return never();
@@ -142,7 +152,7 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
         case (RegexCST)`(<RegexCST cst>)`: return r(cst);
         case (RegexCST)`(\<<ScopesCST scopesCST>\><RegexCST cst>)`: {
             newSCopes = scopes + CSTtoScopes(scopesCST);
-            return mark({scopeTag(newSCopes)}, CSTtoRegex(cst, newSCopes));
+            return mark({scopeTag(toScopes(newSCopes))}, CSTtoRegex(cst, newSCopes));
         }
     }
 
@@ -153,7 +163,8 @@ Regex CSTtoRegex(RegexCST regex, Scopes scopes) {
 list[CharRange] CSTtoChararacterClass(ChararacterClass chars) { 
     switch(chars) {
         case (ChararacterClass)`.`: return anyCharClass();
-        case (ChararacterClass)`[<RangeCST* ranges>]`: return [CSTtoCharRange(range) | range <- ranges];
+        case (ChararacterClass)`[<RangeCST* ranges>]`: 
+            return ([] | fUnion(it, [CSTtoCharRange(r)]) | r <- ranges);
         case (ChararacterClass)`!<ChararacterClass charClass>`: return fComplement(CSTtoChararacterClass(charClass));
         case (ChararacterClass)`<ChararacterClass lhs>-<ChararacterClass rhs>`: return fDifference(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
         case (ChararacterClass)`<ChararacterClass lhs>||<ChararacterClass rhs>`: return fUnion(CSTtoChararacterClass(lhs), CSTtoChararacterClass(rhs));
@@ -172,15 +183,15 @@ CharRange CSTtoCharRange(RangeCST range) {
 int CSTtoCharCode(Char char) = size("<char>")==1 ? charAt("<char>", 0) : charAt("<char>", 1);
 int CSTtoNumber(Num number) = toInt("<number>");
 
-Scope::Scopes CSTtoScopes(ScopesCST scopes) {
+Scope::ScopeList CSTtoScopes(ScopesCST scopes) {
     if((ScopesCST)`<{ScopeCST ","}+ scopesT>` := scopes) {
-        Scope::Scopes out = [];
+        Scope::ScopeList out = [];
         for((ScopeCST)`<{TokenCST "."}+ scopeT>` <- scopesT) {
-            Scope::Scope scope = [];
+            Scope::Scope scope = "";
             for((TokenCST)`<RawChar+ chars>` <- scopeT) {
-                scope += "<chars>";
+                scope += ".<chars>";
             }
-            out += [scope];
+            out += [scope[1..]];
         }
         return out;
     }

@@ -2,6 +2,7 @@ module regex::RegexTypes
 
 import ParseTree;
 
+import regex::PSNFATypes;
 import regex::Tags;
 import Scope;
 
@@ -18,6 +19,7 @@ data Regex = never()
            | \multi-iteration(Regex r) // 1 or more
            | subtract(Regex r, Regex removal)
            | mark(Tags tags, Regex r)
+           | meta(Regex r, value meta)
            // Additional extended syntax, translatable into the core
            | eol()
            | sol()
@@ -30,3 +32,10 @@ data Regex = never()
            | \max-iteration(Regex r, int max)
            | \min-max-iteration(Regex r, int min, int max);
 data ScopeTag = scopeTag(Scopes scopes);
+data CacheMeta = cacheMeta(
+    NFA[State] psnfa, 
+    tuple[
+        bool hasScope,
+        bool hasNewline
+    ] flags
+);

@@ -13,7 +13,7 @@ import regex::NFACombinators;
 import regex::PSNFATypes;
 import regex::PSNFACombinators;
 import regex::NFASimplification;
-import regex::util::GetDisjointCharClasses;
+import regex::util::charClass;
 import regex::util::expandEpsilon;
 
 @doc {
@@ -22,13 +22,13 @@ import regex::util::expandEpsilon;
     NOte that if in the implementation `just(_)` is returned, this corresponds to ambiguity having been detected. The value being returned is just extra information to help visualize the ambiguity to pinpoint the issue. 
 }
 bool isTagAmbiguous(NFA[State] n) = just(_) := getTagAmbiguity(n);
-Maybe[NFA[tuple[set[&T], set[&T]]]()] getTagAmbiguity(NFA[State] n) {
+Maybe[NFA[State]()] getTagAmbiguity(NFA[State] n) {
     // D only has deterministic routes, leading to accepting states
-    d = removeUnreachable(convertPSNFAtoDFA(n));
+    NFA[set[State]] d = removeUnreachable(convertPSNFAtoDFA(n));
 
     // Check if there's a transition `u-a->v` where `a` is paired with multiple choices of tags
     if(tr:<_, character(_, t), _> <- d.transitions, size(t)>1) 
-        return just(getPathPassingThroughProdGetter(d, {tr}));
+        return just(getPathPassingThroughGetter(d, {tr}));
     if(
         from <- d.transitions<0>,
         tr1:<on1:character(cc1, tags1), to> <- d.transitions[from], 
@@ -37,20 +37,21 @@ Maybe[NFA[tuple[set[&T], set[&T]]]()] getTagAmbiguity(NFA[State] n) {
         size(fIntersection(cc1, cc2))>0,
         size(union(tags1, tags2))>1
     ) 
-        return just(getPathPassingThroughProdGetter(d, {<from, on1, to>, <from, on2, to>}));
+        return just(getPathPassingThroughGetter(d, {<from, on1, to>, <from, on2, to>}));
     
     // Remove all tags, and check for ambiguity in the resulting NFA
-    taglessN = replaceTagsClasses(d, {{}});
+    NFA[set[State]] taglessN = replaceTagsClasses(d, {{}});
     return getAmbiguity(taglessN, true);
 }
+
+bool isAmbiguous(NFA[&T] n) = just(_) := getAmbiguity(n, false); 
 
 @doc {
     Checks whether the given NFA has some word for which there exist multiple paths to accepting states, assuming the NFA is epsilon free. 
 
     isTrim can be set to true if the NFA has no unreachable/dead states, or if we don't care about ambiguity in these states.
 }
-bool isAmbiguous(NFA[&T] n) = just(_) := getAmbiguity(n, false); 
-Maybe[NFA[tuple[&T, &T]]()] getAmbiguity(NFA[&T] n, bool isTrim) {
+Maybe[NFA[State]()] getAmbiguity(NFA[set[State]] n, bool isTrim) {
     /*
         Approach taken from (p75): https://www.cambridge.org/core/books/elements-of-automata-theory/B0E8167097AF9B70289FAE66A3147438
 
@@ -58,7 +59,7 @@ Maybe[NFA[tuple[&T, &T]]()] getAmbiguity(NFA[&T] n, bool isTrim) {
 
         Also if the automaton is not trim (has unreachable/dead states), we also have to check whether there's a path from any state to any other state (not necessarily on the path from start to final states) that pass through 2 distinct states. If this is the case, the automaton is ambiguous. Note that this second step does not cover the scenario of reaching 2 distinct final states, hence the first step described above is also necessary. 
     */
-    n2 = productNFA(n, n);
+    NFA[tuple[set[State], set[State]]] n2 = productNFA(n, n);
 
     n2Trimmed = removeUnreachable(n2); // Trim
     hasMultiplePaths = any(<q1, q2> <- getStates(n2Trimmed), q1 != q2);
@@ -67,7 +68,7 @@ Maybe[NFA[tuple[&T, &T]]()] getAmbiguity(NFA[&T] n, bool isTrim) {
     // IF we know the input is trim already, we can skip the second step
     if(isTrim) return nothing();
 
-    selfStates = {<q, q> | q <- getStates(n2)};
+    selfStates = {<q, q> | q <- getStates(n)};
     n2DiagonalTrimmed = removeUnreachable(n2, selfStates, selfStates); // Trim
     hasMultiplePaths = any(<q1, q2> <- getStates(n2DiagonalTrimmed), q1 != q2);
     if(hasMultiplePaths) return just(getAmbiguousPathGetter(n2DiagonalTrimmed));
@@ -96,16 +97,16 @@ NFA[tuple[&T, &T]] productNFA(NFA[&T] n1, NFA[&T] n2) {
 @doc {
     Removes everything except the ambiguous paths within an ambiguity NFA obtained from `getAmbiguity`
 }
-NFA[tuple[&T, &T]]() getAmbiguousPathGetter(NFA[tuple[&T, &T]] ambiguityNFA) 
-    = NFA[tuple[&T, &T]]() { return getAmbiguousPath(ambiguityNFA); };
-NFA[tuple[&T, &T]] getAmbiguousPath(NFA[tuple[&T, &T]] n) {
+NFA[State]() getAmbiguousPathGetter(NFA[tuple[set[State], set[State]]] ambiguityNFA) 
+    = NFA[State]() { return getAmbiguousPath(ambiguityNFA); };
+NFA[State] getAmbiguousPath(NFA[tuple[set[State], set[State]]] n) {
     ambiguityStates = {<q1, q2> | <q1, q2> <- getStates(n), q1 != q2};
 
-    rel[tuple[&T, &T], TransSymbol, tuple[&T, &T]] outTrans = {};
+    rel[tuple[set[State], set[State]], TransSymbol, tuple[set[State], set[State]]] outTrans = {};
 
      // Forward search
-    set[tuple[&T, &T]] queue = ambiguityStates;
-    set[tuple[&T, &T]] reachableForward = queue;
+    set[tuple[set[State], set[State]]] queue = ambiguityStates;
+    set[tuple[set[State], set[State]]] reachableForward = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
         trans = n.transitions[state];
@@ -132,32 +133,30 @@ NFA[tuple[&T, &T]] getAmbiguousPath(NFA[tuple[&T, &T]] n) {
         queue += newFromStates;
     }
 
-    return <
+    return mapStates(<
         n.initial,
         outTrans,
         n.accepting & reachableForward,
         ()
-    >;
+    >, State(tuple[set[State], set[State]] state) {
+        return statePair(
+            stateSet(state<0>),
+            stateSet(state<1>)
+        );
+    });
 }
 
 @doc {
     Removes everything except the paths passing through one of the given transitions
 }
-NFA[&T]() getPathPassingThroughGetter(NFA[&T] n, rel[&T, TransSymbol, &T] through)
-    = NFA[&T](){ return getPathPassingThrough(n, through); };
-NFA[tuple[&T, &T]]() getPathPassingThroughProdGetter(NFA[&T] n, rel[&T, TransSymbol, &T] through)
-    = NFA[&T](){ 
-        NFA[tuple[&T, &T]] n2 = mapStates(n, tuple[&K, &K](&K s) {
-            return <s, s>;
-        });
-        return getPathPassingThrough(n2, through); 
-      };
-NFA[&T] getPathPassingThrough(NFA[&T] n, rel[&T, TransSymbol, &T] through) {
-    rel[&T, TransSymbol, &T] outTrans = through;
+NFA[State]() getPathPassingThroughGetter(NFA[set[State]] n, rel[set[State], TransSymbol, set[State]] through)
+    = NFA[State](){ return getPathPassingThrough(n, through); };
+NFA[State] getPathPassingThrough(NFA[set[State]] n, rel[set[State], TransSymbol, set[State]] through) {
+    rel[set[State], TransSymbol, set[State]] outTrans = through;
 
      // Forward search
-    set[&T] queue = through<2>;
-    set[&T] reachableForward = queue;
+    set[set[State]] queue = through<2>;
+    set[set[State]] reachableForward = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
         trans = n.transitions[state];
@@ -172,7 +171,7 @@ NFA[&T] getPathPassingThrough(NFA[&T] n, rel[&T, TransSymbol, &T] through) {
     // Backward search
     revTransitions = n.transitions<2, 1, 0>;
     queue = through<0>;
-    set[&T] reachableBackward = queue;
+    set[set[State]] reachableBackward = queue;
     while(size(queue)>0) {
         <state, queue> = takeOneFrom(queue);
         trans = revTransitions[state];
@@ -184,12 +183,14 @@ NFA[&T] getPathPassingThrough(NFA[&T] n, rel[&T, TransSymbol, &T] through) {
         queue += newFromStates;
     }
 
-    return <
+    return mapStates(<
         n.initial,
         outTrans,
         n.accepting & reachableForward,
         ()
-    >;
+    >, State(set[State] state) {
+        return stateSet(state);
+    });
 }
 
 

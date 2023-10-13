@@ -18,6 +18,7 @@ data Regex = never()
            | alternation(Regex opt1, Regex opt2)
            | \multi-iteration(Regex r) // 1 or more
            | subtract(Regex r, Regex removal)
+           | intersection(Regex r1, Regex r2)
            | mark(Tags tags, Regex r)
            | meta(Regex r, value meta)
            // Additional extended syntax, translatable into the core

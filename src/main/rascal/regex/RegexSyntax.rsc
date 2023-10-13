@@ -1,8 +1,7 @@
 module regex::RegexSyntax
 
 syntax RegexCST 
-    = charCST: RawChar
-    | charClassCST: ChararacterClass
+    = charClassCST: ChararacterClass
     | neverCST: "$0"
     | emptyCST: "$e"
     | alwaysCST: "$1"
@@ -16,6 +15,7 @@ syntax RegexCST
     | exactIterationCST: RegexCST "{" Num amount "}"
     | optionalCST: RegexCST "?"
     > right concatenationCST: RegexCST head !>> [\\!\>\<] [\\!\>\<] !<< RegexCST tail
+    > left intersectCST: RegexCST r1 "&" RegexCST r2
     > left alternationCST: RegexCST opt1 "|" RegexCST opt2
     > right subtractCST: RegexCST "\\" RegexCST 
     > emptySubtractCST: "\\" RegexCST 
@@ -46,6 +46,7 @@ syntax RegexCST
 
 syntax ChararacterClass
 	= anyCharCST: "."
+    | rawCharCST: RawChar
     | simpleCharclassCST: "[" RangeCST* ranges "]" 
 	| complementCST: "!" ChararacterClass 
 	> left differenceCST: ChararacterClass lhs "-" ChararacterClass rhs 

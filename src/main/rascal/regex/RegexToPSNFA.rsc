@@ -33,6 +33,7 @@ NFA[State] regexToPSNFA(Regex regex, bool shouldSimplify) {
         case concatenation(h, t): n = concatPSNFA(rec(h), rec(t));
         case alternation(r1, r2): n = unionPSNFA(rec(r1), rec(r2));
         case subtract(r, s): n = strongSubtractPSNFA(rec(r), rec(s));
+        case intersection(r1, r2): n = productPSNFA(rec(r1), rec(r2), true);
         case mark(t, r): return tagsPSNFA(rec(r), t);
         case \multi-iteration(r): {
             rnfa = rec(r);

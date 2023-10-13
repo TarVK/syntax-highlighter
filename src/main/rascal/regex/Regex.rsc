@@ -181,6 +181,7 @@ Regex CSTtoRegex(RegexCST regex, ScopeList scopes) {
 
         case (RegexCST)`<RegexCST head><RegexCST tail>`: return concatenation(r(head), r(tail));
         case (RegexCST)`<RegexCST opt1>|<RegexCST opt2>`: return alternation(r(opt1), r(opt2));
+        case (RegexCST)`<RegexCST r1>&<RegexCST r2>`: return intersection(r(r1), r(r2));
         case (RegexCST)`(<RegexCST cst>)`: return r(cst);
         case (RegexCST)`(\<<ScopesCST scopesCST>\><RegexCST cst>)`: {
             newSCopes = scopes + CSTtoScopes(scopesCST);
@@ -249,10 +250,11 @@ str stringify(Regex regex) {
         case Regex::alternation(h, t): return "(<stringify(h)>)|(<stringify(t)>)";
         case Regex::\multi-iteration(r): return "(<stringify(r)>)+";
         case Regex::subtract(r, s): return "(<stringify(r)>)\\(<stringify(s)>)";
+        case Regex::intersection(r1, r2): return "(<stringify(r)>)&(<stringify(r)>)";
         case Regex::concatenation([]): return "$e";
         case Regex::concatenation([first]): return stringify(first);
         case Regex::concatenation([first, *parts]): return ("(<stringify(first)>)" | it + "(<stringify(p)>)" | p <- parts);
-        case Regex::alternation([]): return "$e";
+        case Regex::alternation([]): return "$0";
         case Regex::alternation([first]): return stringify(first);
         case Regex::alternation([first, *parts]): return ("(<stringify(first)>)" | it + "|(<stringify(p)>)" | p <- parts);
         case Regex::iteration(r): return "(<stringify(r)>)*";

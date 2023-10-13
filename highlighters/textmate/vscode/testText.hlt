@@ -2,6 +2,11 @@
 if(testokay)
     for(smth;stuff;oops==true) {
         smth = (("st\nr)))${stuff ("inner")}ing"));
+        stuff = ((orange) => 3*4);
+        stuff = ((orange) => { if (true) return x; });
+        stuff = (orange, potatoe, stuff) => { if (true) return x; };
+        sutff = something * 4;
+        return 4;
     }
 else okay = 4;
 for(smth in %comment% collection)

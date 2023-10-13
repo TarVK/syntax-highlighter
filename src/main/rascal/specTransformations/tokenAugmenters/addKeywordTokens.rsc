@@ -11,4 +11,4 @@ import Logging;
     Adds tokens for keyword expressions
 }
 GrammarTransformer addKeywordTokens(ProductionRetriever productions) 
-    = addTokens(productions, parseRegexReduced("[a-zA-Z]+"), "keyword", "keyword");
+    = addTokens(productions, parseRegexReduced("[a-zA-Z]{2,}"), "keyword", "keyword");

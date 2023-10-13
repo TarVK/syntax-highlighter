@@ -18,31 +18,32 @@ import conversion::util::transforms::replaceNfaByRegex;
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
 
-import testing::grammars::SimpleScoped1;
+// import testing::grammars::SimpleScoped1;
 
-// syntax Program = Stmt*;
-// syntax Stmt = exp: Exp
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
-//             | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
-//             // | iff: "if" >> ("("|[\n\ ]) Stmt
-//             // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
-//             // | @token="KW" "in" !>> [a-z0-9]
-//             // | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
-//             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
-//             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
-//             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
-//             // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
-//             // | forIn: "(" Exp ")" Stmt
-//             ;
-// syntax Exp = id: Id
-//            | brackets: "(" Exp ")"
-//            | Exp "in" Exp 
-//            ;
+syntax Program = Stmt*;
+syntax Stmt = exp: Exp
+            | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+            // | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
+            // | iff: "if" >> ("("|[\n\ ]) Stmt
+            // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
+            // | @token="KW" "in" !>> [a-z0-9]
+            // | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
+            // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+            // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
+            // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
+            // | forIn: "(" "in" !>> [a-z0-9] Exp ")" Stmt
+            // | forIn: "(" Exp ")" Stmt
+            ;
+syntax Exp = id: Id
+           | brackets: "(" Exp ")"
+           | Exp "in" Exp 
+           | lambda: ("(" {Id ","}* ")") "=\>" ("{" Stmt* "}")
+           ;
 
-// lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-// keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
+lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 
-// layout Layout = [\n\ ]* !>> [\n\ ];
+layout Layout = [\n\ ]* !>> [\n\ ];
 
 
 

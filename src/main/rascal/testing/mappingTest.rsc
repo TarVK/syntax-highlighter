@@ -59,7 +59,7 @@ import testing::grammars::SimpleScoped1;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
-    bool recalc = true;
+    bool recalc = false;
 
     log = standardLogger();
     list[Warning] cWarnings = [], 

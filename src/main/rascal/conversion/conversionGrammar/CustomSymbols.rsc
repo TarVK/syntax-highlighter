@@ -1,5 +1,7 @@
 module conversion::conversionGrammar::CustomSymbols
 
+import IO;
+
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::Alias;
 import conversion::util::equality::ProdEquivalence;
@@ -21,8 +23,10 @@ data Symbol
 }
 Symbol simplify(Symbol sym, ConversionGrammar grammar) {
     // Union
-    if(unionRec({a, *rest}) := sym, isAlias(a, grammar))
+    if(unionRec({a, *rest}) := sym, isAlias(a, grammar)){
+        println(a);
         return simplify(unionRec({followAlias(a, grammar)} + rest), grammar);
+    }
     if(unionRec({unionRec(options), *rest}) := sym)
         return simplify(unionRec(options + rest), grammar);
 

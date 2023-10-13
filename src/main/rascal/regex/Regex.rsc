@@ -85,6 +85,38 @@ Regex simplifiedConcatenation(Regex a, Regex e) = a
     when removeOuterMeta(e) == empty();
 Regex simplifiedConcatenation(Regex a, Regex b) = concatenation(a, b);
 
+Regex simplifiedLookahead(Regex r, Regex la) = never()
+    when removeOuterMeta(r) == never();
+Regex simplifiedLookahead(Regex r, Regex la) = r
+    when removeOuterMeta(la) == empty();
+Regex simplifiedLookahead(Regex r, Regex la) = never()
+    when removeOuterMeta(la) == never();
+Regex simplifiedLookahead(Regex r, Regex la) = lookahead(r, la);
+    
+Regex simplifiedNegativeLookahead(Regex r, Regex la) = never()
+    when removeOuterMeta(r) == never();
+Regex simplifiedNegativeLookahead(Regex r, Regex la) = r
+    when removeOuterMeta(la) == never();
+Regex simplifiedNegativeLookahead(Regex r, Regex la) = never()
+    when removeOuterMeta(la) == empty();
+Regex simplifiedNegativeLookahead(Regex r, Regex la) = \negative-lookahead(r, la);
+
+Regex simplifiedLookbehind(Regex r, Regex la) = never()
+    when removeOuterMeta(r) == never();
+Regex simplifiedLookbehind(Regex r, Regex la) = r
+    when removeOuterMeta(la) == empty();
+Regex simplifiedLookbehind(Regex r, Regex la) = never()
+    when removeOuterMeta(la) == never();
+Regex simplifiedLookbehind(Regex r, Regex la) = lookbehind(r, la);
+    
+Regex simplifiedNegativeLookbehind(Regex r, Regex la) = never()
+    when removeOuterMeta(r) == never();
+Regex simplifiedNegativeLookbehind(Regex r, Regex la) = r
+    when removeOuterMeta(la) == never();
+Regex simplifiedNegativeLookbehind(Regex r, Regex la) = never()
+    when removeOuterMeta(la) == empty();
+Regex simplifiedNegativeLookbehind(Regex r, Regex la) = \negative-lookbehind(r, la);
+
 @doc {
     A regular expression representing the end of a line
 }

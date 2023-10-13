@@ -7,7 +7,14 @@ import conversion::conversionGrammar::toConversionGrammar;
 import conversion::conversionGrammar::fromConversionGrammar;
 import conversion::regexConversion::convertToRegularExpressions;
 
+import specTransformations::tokenAugmenters::addKeywordTokens;
+import specTransformations::tokenAugmenters::addOperatorTokens;
+import specTransformations::transformerUnion;
+import specTransformations::productionRetrievers::allProductions;
+import specTransformations::productionRetrievers::exceptKeywordsProductions;
+
 // import testing::grammars::SimpleScoped1;
+// import testing::grammars::SimpleLanguage;
 
 syntax Program = "a" B "c"
                | "b" B "c"
@@ -26,6 +33,13 @@ syntax D = "}";
 void main() {
     log = standardLogger();
     <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
+
+    // addGrammarTokens = transformerUnion([
+    //     addKeywordTokens(exceptKeywordsProductions(allProductions)),
+    //     addOperatorTokens(exceptKeywordsProductions(allProductions))
+    // ]);
+    // conversionGrammar = addGrammarTokens(conversionGrammar, log);
+
     inputGrammar = fromConversionGrammar(conversionGrammar);
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
     stdGrammar = fromConversionGrammar(conversionGrammar);

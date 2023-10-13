@@ -76,7 +76,7 @@ tuple[
             lb = rLB;
             output = r;
             la = rLA;
-            sub = alternationSimplified(rSub, newSub);
+            sub = simplifiedAlternation(rSub, newSub);
         }
 
         case never(): ;
@@ -89,17 +89,17 @@ tuple[
 
             lb = rLB;
             output = lookahead(r, newLA);
-            la = concatenationSimplified(rLA, lookahead(empty(), newLA));
-            sub = lookaheadSimplified(rSub, newLA);
+            la = simplifiedConcatenation(rLA, lookahead(empty(), newLA));
+            sub = simplifiedLookahead(rSub, newLA);
         }
         case lookbehind(r, newLB): {
             <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
             newLB = resolveRec(removeRegexSubtractionRec(newLB));
 
-            lb = concatenationSimplified(lookbehind(empty(), newLB), rLB);
+            lb = simplifiedConcatenation(lookbehind(empty(), newLB), rLB);
             output = lookbehind(r, newLB);
             la = rLA;
-            sub = lookbehindSimplified(rSub, newLB);
+            sub = simplifiedLookbehind(rSub, newLB);
         }
         case \negative-lookahead(r, newLA): {
             <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
@@ -107,26 +107,26 @@ tuple[
 
             lb = rLB;
             output = \negative-lookahead(r, newLA);
-            la = concatenationSimplified(rLA, \negative-lookahead(empty(), newLA));
-            sub = negativeLookaheadSimplified(rSub, newLA);
+            la = simplifiedConcatenation(rLA, \negative-lookahead(empty(), newLA));
+            sub = simplifiedNegativeLookahead(rSub, newLA);
         }
         case \negative-lookbehind(r, newLB): {
             <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
             newLB = resolveRec(removeRegexSubtractionRec(newLB));
 
-            lb = concatenationSimplified(\negative-lookbehind(empty(), newLB), rLB);
+            lb = simplifiedConcatenation(\negative-lookbehind(empty(), newLB), rLB);
             output = \negative-lookbehind(r, newLB);
             la = rLA;
-            sub = negativeLookbehindSimplified(rSub, newLB);
+            sub = simplifiedNegativeLookbehind(rSub, newLB);
         }
         case concatenation(h, t): {
             <hLB, h, hLA, hSub, hEq> = removeRegexSubtractionRec(h);
             <tLB, t, tLA, tSub, tEq> = removeRegexSubtractionRec(t);
 
-            lb = isEmpty(h) ? concatenationSimplified(hLB, tLB) : hLB;
+            lb = isEmpty(h) ? simplifiedConcatenation(hLB, tLB) : hLB;
             output = concatenation(h, t);
-            la = isEmpty(t) ? concatenationSimplified(hLA, tLA) : tLA;
-            sub = alternationSimplified(concatenationSimplified(hSub, t), concatenationSimplified(h, tSub));
+            la = isEmpty(t) ? simplifiedConcatenation(hLA, tLA) : tLA;
+            sub = simplifiedAlternation(simplifiedConcatenation(hSub, t), simplifiedConcatenation(h, tSub));
         }
         case alternation(o1, o2): {
             // TODO: try to make use of equivalence: (X \ Y) + Z = (X + Z) \ Y   (if L(Z) ∩ L(Y) = {})
@@ -161,6 +161,7 @@ bool isEmpty(lookahead(r, la)) = isEmpty(r);
 bool isEmpty(\negative-lookahead(r, la)) = isEmpty(r);
 bool isEmpty(lookbehind(r, lb)) = isEmpty(r);
 bool isEmpty(\negative-lookbehind(r, lb)) = isEmpty(r);
+bool isEmpty(meta(r, _)) = isEmpty(r);
 bool isEmpty(empty()) = true;
 default bool isEmpty(Regex r) = false;
 
@@ -203,10 +204,11 @@ tuple[Regex out, bool equivalent] tryLookaround(
     if(sub==never()) return <regex, true>;
 
     regex = getCachedRegex(regex, false);
-    sub = concatenationSimplified(lb, concatenationSimplified(sub, la));
-
+    
     spec = subtract(regex, sub);
     specNFA = regexToPSNFA(spec, false);
+
+    sub = simplifiedConcatenation(lb, simplifiedConcatenation(sub, la));
 
     laApproach = concatenation(\negative-lookahead(empty(), sub), regex);
     laApproachNFA = regexToPSNFA(laApproach, false);
@@ -220,34 +222,3 @@ tuple[Regex out, bool equivalent] tryLookaround(
 
     return <laApproach, false>;
 }
-
-// Constructors with some equivalences applied
-Regex concatenationSimplified(never(), Regex tail) = never();
-Regex concatenationSimplified(Regex head, never()) = never();
-Regex concatenationSimplified(empty(), Regex tail) = tail;
-Regex concatenationSimplified(Regex head, empty()) = head;
-default Regex concatenationSimplified(Regex head, Regex tail) = concatenation(head, tail);
-
-Regex alternationSimplified(never(), Regex option) = option;
-Regex alternationSimplified(Regex option, never()) = option;
-default Regex alternationSimplified(Regex option1, Regex option2) = alternation(option1, option2);
-
-Regex lookaheadSimplified(never(), Regex la) = never();
-Regex lookaheadSimplified(Regex regex, empty()) = regex;
-Regex lookaheadSimplified(Regex regex, never()) = never();
-default Regex lookaheadSimplified(Regex regex, Regex la) = lookahead(regex, la);
-
-Regex negativeLookaheadSimplified(never(), Regex la) = never();
-Regex negativeLookaheadSimplified(Regex regex, never()) = regex;
-Regex negativeLookaheadSimplified(Regex regex, empty()) = never();
-default Regex negativeLookaheadSimplified(Regex regex, Regex la) = \negative-lookahead(regex, la);
-
-Regex lookbehindSimplified(never(), Regex lb) = never();
-Regex lookbehindSimplified(Regex regex, empty()) = regex;
-Regex lookbehindSimplified(Regex regex, never()) = never();
-default Regex lookbehindSimplified(Regex regex, Regex lb) = lookbehind(regex, lb);
-
-Regex negativeLookbehindSimplified(never(), Regex lb) = never();
-Regex negativeLookbehindSimplified(Regex regex, never()) = regex;
-Regex negativeLookbehindSimplified(Regex regex, empty()) = never();
-default Regex negativeLookbehindSimplified(Regex regex, Regex lb) = \negative-lookbehind(regex, lb);

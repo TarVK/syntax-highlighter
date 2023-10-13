@@ -1,4 +1,4 @@
-module synta
+module \syntax
 
 // This code doesn't compile, and is only intended as a reference for the accompanying hihglight grammar
 

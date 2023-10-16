@@ -34,7 +34,7 @@ Regex liftScopes(Regex regex) {
         cachedRegex = removeInnerRegexCache(cachedRegex);
         Tags removeScopes(Tags tags) = tags - {t | t:scopeTag(scopes) <- tags, 
             scopeList := toList(scopes),
-            // Remove scopes tags that has a prefix of lifable scopes
+            // Remove scopes tags that is a prefix of lifable scopes, e.g. `liftableScope = [a, b]`, `scopes = [a]`
             any(liftableScopes <- liftableScopesSet, [*scopeList, *_] := liftableScopes)}; 
 
         regexWithoutScope = visit(cachedRegex) {

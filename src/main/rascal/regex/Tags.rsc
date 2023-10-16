@@ -89,7 +89,7 @@ set[TagsClassRegion] getDisjointTagsClasses(set[TagsClass] inClasses) {
     return outClasses;
 }
 
-str stringify(TagsClass tc) = stringify(["{<stringify(["<t>" | t <- tags], ";")>}" | tags <- tc], ",");
+str stringify(TagsClass tc) = stringify(["{<stringify(["<t>" | t <- tags], "; ")>}" | tags <- tc], ",");
 
 // A quick test
 void main(){

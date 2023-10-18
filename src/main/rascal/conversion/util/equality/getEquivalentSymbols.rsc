@@ -189,35 +189,3 @@ bool defaultSymEquals(Symbol a, Symbol b, ClassMap classes) {
     set[Symbol] bClass = b in classes ? classes[b] : {b};
     return aClass == bClass;
 }
-
-
-
-// Random functions that might be useful sometime, if it stays commented out, it wasn't useful and can be deleted
-
-
-// @doc {
-//     Converts a class set, into a class map, mapping each symbol to the equivalence class it belongs to
-// }
-// map[Symbol, set[Symbol]] getClassMap(set[set[Symbol]] classes) {
-//     ClassMap classMap = ();
-//     for(class <- classes) 
-//         for(sym <- class) 
-//             classMap[sym] = class;
-//     return classMap;
-// }
-
-// @doc {
-//     Checks whether the two given productions are equivalent, considering the given class map of equivalent symbols
-
-//     If rightRecursive is set to true, it's assumed that all symbols are fully right-recursive
-// }
-// bool prodsEqual(convProd(_, aParts), convProd(_, bParts), ClassMap classMap, bool rightRecursive) {
-//     aParts = getEquivalenceSymbols(aParts);
-//     bParts = getEquivalenceSymbols(bParts);
-//     if(rightRecursive) {
-//         allSymbols = {s | ref(s, _, _) <- aParts+bParts};
-//         aParts = mergeEqual(aParts, classMap, allSymbols);
-//         bParts = mergeEqual(bParts, classMap, allSymbols);
-//     }
-//     return prodsEqual(aParts, bParts, classMap, rightRecursive);
-// }

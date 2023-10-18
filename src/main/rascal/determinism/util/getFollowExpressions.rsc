@@ -151,6 +151,7 @@ IndexedRegexes getFirstExpressions(
         // If the follow prefix is never, it means nothing can follow it
         if(emptyFollowPrefix==never()) return newFirstRegexes;
 
+        // TODO: remove these no-newline checks. The regular expressions are used only as lookaheads, extra filters. So if non of the original regular expressions check for characters after a newline, neither does the concatenation (since the prefix of the concatenation does not consume any characters).
         // Otherwise we look at the remaining symbols and add it to the new first expressions
         originalEmptyFollowPrefix = emptyFollowPrefix;
         if(

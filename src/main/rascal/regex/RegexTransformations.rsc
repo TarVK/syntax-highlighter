@@ -19,7 +19,7 @@ import regex::Regex;
         - L(regex) = L(nonEmpty + empty + emptyWithRestrictions)
         - nonEmpty and emptyWithRestrictions are in reduced form
         - empty == never() || cached(empty(), _, _) := empty
-        - !acceptsEmpty(regex)
+        - !acceptsEmpty(nonEmpty)
         - ∀ p,w,s ∈ E* . ((p, w, s) ∈ L(emptyWithRestrictions)) => w == e  (I.e. emptyWithRestrictions only matches empty strings)
 }
 tuple[
@@ -110,7 +110,10 @@ tuple[
         }
         case lookahead(e1, e2): {
             <main1, empty1, emptyRestr1> = factorOutEmpty(e1);
+            // TODO: do not call facotrization on the restriction regex, instead use the original. This implifies both the algorithm, as well as the output in most cases. 
             <main2, empty2, emptyRestr2> = factorOutEmpty(e2);
+
+            // We also apply some simplification here `X > $e` = `X`, since have info on whether `e2` accepts the empty string
 
             Maybe[Regex] laM = nothing();
             if(empty2 != never())             laM = nothing(); 

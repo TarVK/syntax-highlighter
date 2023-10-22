@@ -15,7 +15,6 @@ import Scope;
     Creates a textmate grammar from the given scope grammar, and additional highlighting grammar data
 }
 TextmateGrammar createTextmateGrammar(ScopeGrammar grammar, HighlightGrammarData hlData) {
-    list[Warning] warnings = [];
 
     map[str, TextmatePattern] repository = ();
     for(sym <- grammar.productions) {

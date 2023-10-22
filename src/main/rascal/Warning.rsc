@@ -5,6 +5,7 @@ import regex::RegexTypes;
 import regex::PSNFATypes;
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::prefixConversion::findNonProductiveRecursion;
+import mapping::intermediate::scopeGrammar::ScopeGrammar;
 import Scope;
 
 @Doc {
@@ -38,7 +39,11 @@ data Warning
     | ambiguity(Regex regex, set[ConvProd] productions, NFA[State] path)
     /* =========== Scope grammar conversion =========== */
     /* We were not able to safely replace the subtraction by lookaheads or behinds */
-    | unresolvableSubtraction(Regex regex, NFA[State] delta, ConvProd production);
+    | unresolvableSubtraction(Regex regex, NFA[State] delta, ConvProd production)
+    /* =========== PDA grammar conversion =========== */
+    /* We arae not able to deal with scopes in scope productions, only tokens */
+    | unapplicableScope(ScopeProd scopeProduction)
+    ;
 
 alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];
 

@@ -89,7 +89,6 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
     overlap = getPositiveOverlappingExpressions(productionMap);
 
     rel[Symbol, ConvProd] outProds = {};
-    int j = 0;
     for(sym <- prods) {
         log(Progress(), "adding lookaheads for <sym>");
         firstExpressions[followExpressionsSym(sym)] = followExpressions[sym];
@@ -103,13 +102,6 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
                 if(regexp(r) := part) {
                     overlappingRegexes = overlap[r];
                     if(!containsNewline(r) && overlappingRegexes != {}) {
-                        j += 1;
-                        if(j>=4) {
-                            println("dumping");
-                            heapDump(|file://I:/projects/Github/syntax-highlighter/outputs/heapDump2.hprof|);
-                            throw "shit";
-                        }
-
                         log(ProgressDetailed(), "calculating next expressions for regex of <sym> and checking overlap");
                         nextExpressions = getFirstExpressions(lookaheadParts[i+1..], firstExpressions, true);
 

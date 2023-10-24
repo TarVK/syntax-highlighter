@@ -33,7 +33,7 @@ tuple[
 
     switch(r) {
         case never(): return <never(), never(), never()>;
-        case empty(): return <never(), empty(), never()>;
+        case Regex::empty(): return <never(), empty(), never()>;
         case always(): return <\multi-iteration(character(anyCharClass())), empty(), never()>;
         case character(ranges): return <character(ranges), never(), never()>;
         case meta(e, value v): { // force cast value to prevent type checking errors
@@ -238,6 +238,9 @@ tuple[
             if(emptyE != never())      isEmpty = true;
             if(emptyRestrE != never()) emptyRestrOptions += emptyRestrE;
         }
+        default: {
+            println("Missed a case in implementation of factorOutEmpty: <r>");
+        }
     }
 
     // If the input doesn't accept empty strings at all, use the original expression as the non-empty result, as this expressions is most likely less complex than the constructed one
@@ -245,7 +248,7 @@ tuple[
         size(nonEmptyOptions)>0 
         && !isEmpty 
         && size(emptyRestrOptions)==0
-    ) 
+    )
         return <r, never(), never()>;
 
     return <

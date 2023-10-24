@@ -41,8 +41,8 @@ data Warning
     /* We were not able to safely replace the subtraction by lookaheads or behinds */
     | unresolvableSubtraction(Regex regex, NFA[State] delta, ConvProd production)
     /* =========== PDA grammar conversion =========== */
-    /* We arae not able to deal with scopes in scope productions, only tokens */
-    | unapplicableScope(ScopeProd scopeProduction)
+    /* We arae not able to deal with nested scopes when targetting PDAGrammars, found nesting */
+    | disallowedNestedScopes(ScopeList nestedScopes, ScopeProd scopeProd)
     ;
 
 alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];

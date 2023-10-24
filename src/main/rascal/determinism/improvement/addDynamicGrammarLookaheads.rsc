@@ -91,7 +91,7 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
     rel[Symbol, ConvProd] outProds = {};
     for(sym <- prods) {
         log(Progress(), "adding lookaheads for <sym>");
-        firstExpressions[followExpressionsSym(sym)] = followExpressions[sym];
+        firstExpressions[followExpressionsSym(sym)] = sym in followExpressions ? followExpressions[sym] : ();
 
         for(<p:convProd(lDef, parts), convProd(_, LAparts)> <- prods[sym]) {
             list[ConvSymbol] outParts = [];

@@ -27,7 +27,9 @@ import determinism::check::checkDeterminism;
 import regex::Regex;
 import mapping::intermediate::scopeGrammar::ScopeGrammar;
 import mapping::intermediate::scopeGrammar::toScopeGrammar;
+import mapping::intermediate::PDAGrammar::mergeScopes;
 import mapping::intermediate::PDAGrammar::toPDAGrammar;
+import mapping::intermediate::PDAGrammar::ScopeMerging;
 import mapping::common::HighlightGrammarData;
 import mapping::monarch::createMonarchGrammar;
 
@@ -36,48 +38,60 @@ import Warning;
 // import testing::grammars::SimpleLanguage;
 
 
-syntax Program = Stmt*;
-syntax Stmt = iff: If "(" Exp ")" Stmt
-            | assign: Def "=" Exp ";";
+// syntax Program = Stmt*;
+// syntax Stmt = iff: If "(" Exp ")" Stmt
+//             | assign: Def "=" Exp ";";
 
-syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
-           | @token="keyword.operator" add: Exp "+" Exp
-           | @token="keyword.operator" mult: Exp "*" Exp
-           | @token="keyword.operator" subt: Exp "-" Exp
-           | @token="keyword.operator" divide: Exp "/" Exp
-           | @token="keyword.operator" equals: Exp "==" Exp
-           | @token="keyword.operator" inn: Exp "in" Exp
-           | var: Variable
-           | string: Str
-           | booll: Bool !>> [0-9a-z]
-           | nat: Natural;
+// syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
+//            | @token="keyword.operator" add: Exp "+" Exp
+//            | @token="keyword.operator" mult: Exp "*" Exp
+//            | @token="keyword.operator" subt: Exp "-" Exp
+//            | @token="keyword.operator" divide: Exp "/" Exp
+//            | @token="keyword.operator" equals: Exp "==" Exp
+//            | @token="keyword.operator" inn: Exp "in" Exp
+//            | var: Variable
+//            | string: Str
+//            | booll: Bool !>> [0-9a-z]
+//            | nat: Natural;
 
-lexical If = @token="keyword" "if";
-lexical Sep = @token="entity.name.function" ";";
-lexical Def = @scope="variable.parameter" Id;
-lexical Variable = @scope="variable" Id;
+// lexical If = @token="keyword" "if";
+// lexical Sep = @token="entity.name.function" ";";
+// lexical Def = @scope="variable.parameter" Id;
+// lexical Variable = @scope="variable" Id;
 
-keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
-lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
-lexical Bool = @scope="constant.other" ("true"|"false");
-lexical Str = @scope="string.template" string: "\"" Char* "\"";
-lexical Char = char: ![\\\"$]
-             | dollarChar: "$" !>> "{"
-             | @token="constant.character.escape" escape: "\\"![]
-             | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
+// keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
+// lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
+// lexical Bool = @scope="constant.other" ("true"|"false");
+// lexical Str = @scope="string.template" string: "\"" Char* "\"";
+// lexical Char = char: ![\\\"$]
+//              | dollarChar: "$" !>> "{"
+//              | @token="constant.character.escape" escape: "\\"![]
+//              | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
 
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+//    | @scope="comment.line" "%%" ![\n]* $
+//    ;
+
+syntax Program = Id*;
+lexical Id = @scope="keyword" ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]);
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
-   = [\ \t\n\r]
-   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
-   | @scope="comment.line" "%%" ![\n]* $
-   ;
+   = @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.line" "%%" ![\n]* $;
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+//    | @scope="comment.line" "%%" ![\n]* $
+//    ;
 
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/scopeGrammar.bin|;
-    bool recalc = false;
+    bool recalc = true;
 
     log = standardLogger();
     list[Warning] cWarnings = [], 
@@ -87,7 +101,7 @@ void main() {
                   mWarnings = [],
                   dWarnings = [],
                   aWarnings = [];
-    ConversionGrammar inputGrammar, conversionGrammar;
+    ConversionGrammar inputGrammar, conversionGrammar, interGrammar;
     ScopeGrammar scopeGrammar;
 
     <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);    
@@ -108,8 +122,7 @@ void main() {
         writeBinaryValueFile(pos, conversionGrammar);
 
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-        writeBinaryValueFile(pos, conversionGrammar);
-
+        interGrammar = conversionGrammar;
         <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
 
         conversionGrammar = removeUnreachable(conversionGrammar);
@@ -124,7 +137,9 @@ void main() {
         scopeGrammar = readBinaryValueFile(#ScopeGrammar,  pos);
     }
 
-    <aWarnings, PDAGrammar> = toPDAGrammar(scopeGrammar, log);
+    <_, scopeGrammarMerged> = mergeScopes(scopeGrammar, useLastScope("text"));
+
+    <aWarnings, PDAGrammar> = toPDAGrammar(scopeGrammar, useLastScope("text"), log);
     monarchGrammar = createMonarchGrammar(PDAGrammar);
 
     log(Section(), "finished");
@@ -136,8 +151,10 @@ void main() {
 
     warnings = cWarnings + rWarnings + pWarnings + sWarnings + mWarnings + dWarnings + aWarnings;
     visualizeGrammars(<
+        // scopeGrammar,
+        // scopeGrammarMerged,
         fromConversionGrammar(inputGrammar),
-        fromConversionGrammar(conversionGrammar),
+        fromConversionGrammar(interGrammar),
         warnings,
         conversionGrammar.\start
     >);

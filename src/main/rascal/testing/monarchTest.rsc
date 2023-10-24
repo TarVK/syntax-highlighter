@@ -38,60 +38,56 @@ import Warning;
 // import testing::grammars::SimpleLanguage;
 
 
-// syntax Program = Stmt*;
-// syntax Stmt = iff: If "(" Exp ")" Stmt
-//             | assign: Def "=" Exp ";";
+syntax Program = Stmt*;
+syntax Stmt = iff: If "(" Exp ")" Stmt
+            | assign: Def "=" Exp ";";
 
-// syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
-//            | @token="keyword.operator" add: Exp "+" Exp
-//            | @token="keyword.operator" mult: Exp "*" Exp
-//            | @token="keyword.operator" subt: Exp "-" Exp
-//            | @token="keyword.operator" divide: Exp "/" Exp
-//            | @token="keyword.operator" equals: Exp "==" Exp
-//            | @token="keyword.operator" inn: Exp "in" Exp
-//            | var: Variable
-//            | string: Str
-//            | booll: Bool !>> [0-9a-z]
-//            | nat: Natural;
+syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
+           | @token="keyword.operator" add: Exp "+" Exp
+           | @token="keyword.operator" mult: Exp "*" Exp
+           | @token="keyword.operator" subt: Exp "-" Exp
+           | @token="keyword.operator" divide: Exp "/" Exp
+           | @token="keyword.operator" equals: Exp "==" Exp
+           | @token="keyword.operator" inn: Exp "in" Exp
+           | var: Variable
+           | string: Str
+           | booll: Bool !>> [0-9a-z]
+           | nat: Natural;
 
-// lexical If = @token="keyword" "if";
-// lexical Sep = @token="entity.name.function" ";";
-// lexical Def = @scope="variable.parameter" Id;
-// lexical Variable = @scope="variable" Id;
+lexical If = @token="keyword" "if";
+lexical Sep = @token="entity.name.function" ";";
+lexical Def = @scope="variable.parameter" Id;
+lexical Variable = @scope="variable" Id;
 
-// keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
-// lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-// lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
-// lexical Bool = @scope="constant.other" ("true"|"false");
-// lexical Str = @scope="string.template" string: "\"" Char* "\"";
-// lexical Char = char: ![\\\"$]
-//              | dollarChar: "$" !>> "{"
-//              | @token="constant.character.escape" escape: "\\"![]
-//              | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
+keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
+lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
+lexical Bool = @scope="constant.other" ("true"|"false");
+lexical Str = @scope="string.template" string: "\"" Char* "\"";
+lexical Char = char: ![\\\"$]
+             | dollarChar: "$" !>> "{"
+             | @token="constant.character.escape" escape: "\\"![]
+             | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
 
+layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+lexical WhitespaceAndComment 
+   = [\ \t\n\r]
+   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.line" "%%" ![\n]* $
+   ;
+
+// syntax Program = Id*;
+// lexical Id = @scope="keyword" ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]);
 // layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 // lexical WhitespaceAndComment 
 //    = [\ \t\n\r]
 //    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
-//    | @scope="comment.line" "%%" ![\n]* $
-//    ;
-
-syntax Program = Id*;
-lexical Id = @scope="keyword" ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]);
-layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
-lexical WhitespaceAndComment 
-   = @scope="comment.block" "%" !>> "%" ![%]+ "%"
-   | @scope="comment.line" "%%" ![\n]* $;
-// lexical WhitespaceAndComment 
-//    = [\ \t\n\r]
-//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
-//    | @scope="comment.line" "%%" ![\n]* $
-//    ;
+//    | @scope="comment.line" "%%" ![\n]* $;
 
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/scopeGrammar.bin|;
-    bool recalc = true;
+    bool recalc = false;
 
     log = standardLogger();
     list[Warning] cWarnings = [], 
@@ -105,7 +101,7 @@ void main() {
     ScopeGrammar scopeGrammar;
 
     <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);    
-    inputGrammar = conversionGrammar;
+    inputGrammar = interGrammar = conversionGrammar;
 
     if(recalc) {
         // addGrammarTokens = transformerUnion([

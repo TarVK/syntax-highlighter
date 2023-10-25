@@ -72,16 +72,17 @@ lexical Char = char: ![\\\"$]
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.block" "%" ![%]+ "%"
    | @scope="comment.line" "%%" ![\n]* $
    ;
 
 // syntax Program = Id*;
-// lexical Id = @scope="keyword" ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]);
+// lexical Id = @scope="keyword" ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+// keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 // layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 // lexical WhitespaceAndComment 
 //    = [\ \t\n\r]
-//    | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+//    | @scope="comment.block" "%" ![%]+ "%"
 //    | @scope="comment.line" "%%" ![\n]* $;
 
 

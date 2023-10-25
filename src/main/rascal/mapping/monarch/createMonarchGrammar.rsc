@@ -37,29 +37,25 @@ MonarchGrammar createMonarchGrammar(PDAGrammar grammar) {
                         [token(scope) | scope <- scopes]
                     );
             else if(pushProd(uRegex, push) := prod)
-                for(<regex, scopes> <- splitOptionalCaptureGroups(uRegex))
+                for(<regex, [*scopes, lastScope]> <- splitOptionalCaptureGroups(uRegex))
                     outProds += tokenRule(
                         stringifyOnigurumaRegex(regex),
-                        [
-                            stateChange(scope, "@<replaceReserved(push, replacements)>") 
-                            | scope <- scopes
-                        ]                    
+                        [token(scope) | scope <- scopes]
+                        + stateChange(lastScope, "@<replaceReserved(push, replacements)>")
                     );
             else if(popProd(uRegex) := prod)
-                for(<regex, scopes> <- splitOptionalCaptureGroups(uRegex))
+                for(<regex, [*scopes, lastScope]> <- splitOptionalCaptureGroups(uRegex))
                     outProds += tokenRule(
                         stringifyOnigurumaRegex(regex),
-                        [
-                            stateChange(scope, "@pop") 
-                            | scope <- scopes
-                        ]                    
+                        [token(scope) | scope <- scopes]                    
+                        + stateChange(lastScope, "@pop") 
                     );
         }
 
         tokenizer[sym] = outProds;
     }
 
-    return monarchGrammar(grammar.\start, tokenizer);
+    return monarchGrammar(grammar.\start, tokenizer, includeLF=true);
 }
 
 list[str] reservedSymbols = ["pop", "push", "popall"];

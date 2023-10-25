@@ -184,12 +184,12 @@ tuple[
         context.warnings += [unresolvableSubtraction(regex, minimizedDelta, prod)];
     }
 
-    emptyLookarounds = splitRegexLookarounds(removeMeta(subtractionlessRegex));
-    improvedRegex = cleanupRegex(emptyLookarounds);
-    result = extractRegexScopes(improvedRegex);
+    improvedRegex = cleanupRegex(removeMeta(subtractionlessRegex));
+    emptyLookarounds = splitRegexLookarounds(improvedRegex);
+    result = extractRegexScopes(emptyLookarounds);
     
     if(subtractionlessRegex != regex) {
-        rt = stringifyOnigurumaRegex(improvedRegex);
+        rt = stringifyOnigurumaRegex(emptyLookarounds);
         if(isEqual) context.log(ProgressDetailed(), "safely removed subtraction from regex: <rt>");
         else        context.log(ProgressDetailed(), "removed subtraction from regex with errors: <rt>");
     }

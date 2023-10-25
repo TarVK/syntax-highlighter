@@ -38,9 +38,9 @@ WithWarnings[PDAGrammar] toPDAGrammar(ScopeGrammar grammar, ScopeMerger merge, L
                 if(key in closedNames) closingName = closedNames[key];
                 else {
                     // Find a unique name
-                    int id = 0;
-                    while("<newState>_<id>" in takenNames) id += 1;
-                    closingName = "<newState>_<id>";
+                    int id = 1;
+                    while("<newState>(<id>)" in takenNames) id += 1;
+                    closingName = "<newState>(<id>)";
                     takenNames += closingName;
 
                     // Define the symbol+closing pair

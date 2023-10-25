@@ -3,8 +3,9 @@ module mapping::ace::createAceGrammar
 import Map;
 
 import mapping::intermediate::PDAGrammar::PDAGrammar;
-import mapping::ace::AceGrammar;
 import mapping::common::stringifyOnigurumaRegex;
+import mapping::ace::AceGrammar;
+import mapping::ace::addRegexEndMatch;
 
 @doc {
     Creates an ace grammar from the given PDA grammar
@@ -26,16 +27,19 @@ AceGrammar createAceGrammar(PDAGrammar grammar) {
             if(inclusion(s) := prod)
                 outProds += includeRule(replaceReserved(s, replacements));
             else if(tokenProd(<regex, scopes>) := prod)
-                outProds += tokenRule(stringifyOnigurumaRegex(regex), scopes);
+                outProds += tokenRule(
+                    stringifyOnigurumaRegex(addRegexEndMatch(regex)), 
+                    scopes
+                );
             else if(pushProd(<regex, scopes>, push) := prod)
                 outProds += pushRule(
-                    stringifyOnigurumaRegex(regex),
+                    stringifyOnigurumaRegex(addRegexEndMatch(regex)),
                     scopes,
                     replaceReserved(push, replacements)
                 );
             else if(popProd(<regex, scopes>) := prod)
                 outProds += nextRule(
-                    stringifyOnigurumaRegex(regex),
+                    stringifyOnigurumaRegex(addRegexEndMatch(regex)),
                     scopes,
                     "pop"
                 );
@@ -70,3 +74,4 @@ tuple[PDAGrammar, map[str, str]] replaceReservedSymbols(PDAGrammar grammar) {
 }
 str replaceReserved(str symbol, map[str, str] replacements) 
     = symbol in replacements ? replacements[symbol] : symbol;
+

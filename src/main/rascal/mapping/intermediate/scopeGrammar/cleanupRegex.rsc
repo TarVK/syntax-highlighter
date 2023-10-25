@@ -15,7 +15,7 @@ import Scope;
 Regex cleanupRegex(Regex regex) {
     eolR = eolRegex();
     solR = solRegex();
-    return visit(regex) {
+    return top-down visit(regex) {
         // EOL and SOL
         case eolR => eol()
         case solR => sol()

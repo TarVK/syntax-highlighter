@@ -101,6 +101,8 @@ tuple[Regex regex, int precedence] addRegexBracketsRec(Regex regex) {
         case empty(): ;
         case always(): ;
         case character(_): ;
+        case eol(): ;
+        case sol(): ;
         case mark(tags, r): {
             <regex, precedence> = addRegexBracketsRec(r);
             regex = mark(tags, regex);

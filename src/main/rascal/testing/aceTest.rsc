@@ -28,6 +28,7 @@ import regex::Regex;
 import mapping::intermediate::scopeGrammar::ScopeGrammar;
 import mapping::intermediate::scopeGrammar::toScopeGrammar;
 import mapping::intermediate::PDAGrammar::toPDAGrammar;
+import mapping::intermediate::PDAGrammar::ScopeMerging;
 import mapping::common::HighlightGrammarData;
 import mapping::ace::createAceGrammar;
 
@@ -70,14 +71,14 @@ lexical Char = char: ![\\\"$]
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "%" !>> "%" ![%]+ "%"
+   | @scope="comment.block" "%" ![%]+ "%"
    | @scope="comment.line" "%%" ![\n]* $
    ;
 
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/scopeGrammar.bin|;
-    bool recalc = false;
+    bool recalc = true;
 
     log = standardLogger();
     list[Warning] cWarnings = [], 
@@ -124,7 +125,7 @@ void main() {
         scopeGrammar = readBinaryValueFile(#ScopeGrammar,  pos);
     }
 
-    <aWarnings, PDAGrammar> = toPDAGrammar(scopeGrammar, log);
+    <aWarnings, PDAGrammar> = toPDAGrammar(scopeGrammar, useLastScope("text"), log);
     aceGrammar = createAceGrammar(PDAGrammar);
 
     log(Section(), "finished");

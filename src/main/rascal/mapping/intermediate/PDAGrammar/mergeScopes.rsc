@@ -24,7 +24,7 @@ WithWarnings[ScopeGrammar] mergeScopes(ScopeGrammar grammar, ScopeMerger merge) 
     str getScopedNameAndQueue(str sym, Scope scope) {
         if(<sym, scope> in scopedSymbolnames) return scopedSymbolnames[<sym, scope>];
 
-        id = 0;
+        id = 1;
         name = "<sym>-<scope>";
         if(name in takenNames) {
             while("<name>$<id>" in takenNames) id++;

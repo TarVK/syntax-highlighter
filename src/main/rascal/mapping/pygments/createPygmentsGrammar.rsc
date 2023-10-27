@@ -1,23 +1,22 @@
-module mapping::ace::createAceGrammar
+module mapping::pygments::createPygmentsGrammar
 
 import Map;
 
 import mapping::intermediate::PDAGrammar::PDAGrammar;
 import mapping::common::stringifyOnigurumaRegex;
-import mapping::ace::AceGrammar;
-import mapping::ace::addRegexEndMatch;
+import mapping::pygments::PygmentsGrammar;
 
 @doc {
-    Creates an ace grammar from the given PDA grammar
+    Creates a pygments grammar from the given PDA grammar
 
 }
-AceGrammar createAceGrammar(PDAGrammar grammar) {
-    map[str, AceStateDefinition] states = ();
+PygmentsGrammar createPygmentsGrammar(PDAGrammar grammar) {
+    map[str, PygmentsStateDefinition] states = ();
     
     <grammar, replacements> = replaceReservedSymbols(grammar);
 
     for(sym <- grammar.productions) {
-        list[AceRule] outProds = [];
+        list[PygmentsRule] outProds = [];
 
         symProds = grammar.productions[sym];
         for(prod <- symProds) {
@@ -25,32 +24,32 @@ AceGrammar createAceGrammar(PDAGrammar grammar) {
                 outProds += includeRule(replaceReserved(s, replacements));
             else if(tokenProd(<regex, scopes>) := prod)
                 outProds += tokenRule(
-                    stringifyOnigurumaRegex(addRegexEndMatch(regex)), 
+                    stringifyOnigurumaRegex(regex), 
                     scopes
                 );
             else if(pushProd(<regex, scopes>, push) := prod)
                 outProds += pushRule(
-                    stringifyOnigurumaRegex(addRegexEndMatch(regex)),
+                    stringifyOnigurumaRegex(regex),
                     scopes,
                     replaceReserved(push, replacements)
                 );
             else if(popProd(<regex, scopes>) := prod)
-                outProds += nextRule(
-                    stringifyOnigurumaRegex(addRegexEndMatch(regex)),
+                outProds += pushRule(
+                    stringifyOnigurumaRegex(regex),
                     scopes,
-                    "pop"
+                    "#pop"
                 );
         }
 
         states[sym] = outProds;
     }
 
-    states["start"] = [includeRule(grammar.\start)];
+    states["root"] = [includeRule(grammar.\start)];
 
     return states;
 }
 
-list[str] reservedSymbols = ["start"];
+list[str] reservedSymbols = ["root"];
 tuple[PDAGrammar, map[str, str]] replaceReservedSymbols(PDAGrammar grammar) {
     map[str, str] replacements = ();
 

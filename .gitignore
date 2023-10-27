@@ -13,6 +13,7 @@ rascal-DEPENDENCIES.txt
 
 # Outputs
 outputs/
+export/
 
 
 # TS stuff

@@ -1,0 +1,534 @@
+{
+    "root": [
+        {
+            "include": "C1-text"
+        }
+    ],
+    "brac-meta.embedded.line": [
+        {
+            "regex": "(\\()",
+            "token": [
+                "variable.parameter"
+            ],
+            "push": "C0-meta.embedded.line(1)"
+        }
+    ],
+    "C0-text(1)": [
+        {
+            "regex": "((?=\\)))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C0-text"
+        }
+    ],
+    "embedded-string.template": [
+        {
+            "regex": "(\\$\\{)",
+            "token": [
+                "punctuation.definition.template-expression"
+            ],
+            "push": "C0-meta.embedded.line(2)"
+        }
+    ],
+    "C4-text(1)": [
+        {
+            "regex": "((?:x(?<!x)))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C4-text"
+        }
+    ],
+    "C8-text(1)": [
+        {
+            "regex": "((?:x(?<!x)))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C8-text"
+        }
+    ],
+    "single,multiple-comment.block": [
+        {
+            "regex": "([^\\%])",
+            "token": [
+                "comment.block"
+            ]
+        }
+    ],
+    "C8-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "empty-text"
+        },
+        {
+            "include": "booll,var,inn,mult,subt,divide,equals,add,nat-text"
+        },
+        {
+            "include": "iff2-text"
+        },
+        {
+            "include": "S-text"
+        },
+        {
+            "include": "brac-text"
+        },
+        {
+            "include": "string-text"
+        }
+    ],
+    "C3-string.template(1)": [
+        {
+            "regex": "(\\\")",
+            "token": [
+                "string.template"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C3-string.template"
+        }
+    ],
+    "C7-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "empty-text"
+        },
+        {
+            "include": "S-text"
+        },
+        {
+            "include": "iff3-text"
+        }
+    ],
+    "T-text": [
+        {
+            "regex": "(\\%\\%[^\\n]*$)|([\\t-\\n\\r ])",
+            "token": [
+                "comment.line",
+                "text"
+            ]
+        }
+    ],
+    "C9-comment.block": [
+        {
+            "include": "single,multiple1-comment.block"
+        }
+    ],
+    "C6-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "assign1-text"
+        },
+        {
+            "include": "S-text"
+        }
+    ],
+    "S-text": [
+        {
+            "regex": "(\\%)(?:((?=[^\\%])))",
+            "token": [
+                "comment.block",
+                "text"
+            ],
+            "push": "C9-comment.block(1)"
+        }
+    ],
+    "brac-text": [
+        {
+            "regex": "(\\()",
+            "token": [
+                "variable.parameter"
+            ],
+            "push": "C0-text(3)"
+        }
+    ],
+    "C5-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "S-text"
+        },
+        {
+            "include": "iff1-text"
+        }
+    ],
+    "T-meta.embedded.line": [
+        {
+            "regex": "(\\%\\%[^\\n]*$)|([\\t-\\n\\r ])",
+            "token": [
+                "comment.line",
+                "meta.embedded.line"
+            ]
+        }
+    ],
+    "S-meta.embedded.line": [
+        {
+            "regex": "(\\%)(?:((?=[^\\%])))",
+            "token": [
+                "comment.block",
+                "meta.embedded.line"
+            ],
+            "push": "C9-comment.block(2)"
+        }
+    ],
+    "C4-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "empty-text"
+        },
+        {
+            "include": "iff-text"
+        },
+        {
+            "include": "assign-text"
+        },
+        {
+            "include": "S-text"
+        }
+    ],
+    "string-text": [
+        {
+            "regex": "(\\\")",
+            "token": [
+                "string.template"
+            ],
+            "push": "C3-string.template(1)"
+        }
+    ],
+    "assign-text": [
+        {
+            "regex": "(?:((?!(?<![a-z])(?:else|for|false|true|in|if)(?=(?![0-9A-Za-z]))(?![0-9a-z])(?=(?![0-9A-Za-z])))))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))(?:((?=(?![0-9A-Za-z]))))",
+            "token": [
+                "text",
+                "variable.parameter",
+                "text"
+            ],
+            "push": "C6-text(1)"
+        }
+    ],
+    "string-meta.embedded.line": [
+        {
+            "regex": "(\\\")",
+            "token": [
+                "string.template"
+            ],
+            "push": "C3-string.template(1)"
+        }
+    ],
+    "C1-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "empty-text"
+        },
+        {
+            "include": "S-text"
+        },
+        {
+            "include": "iff4-text"
+        },
+        {
+            "include": "assign-text"
+        }
+    ],
+    "booll,var,inn,mult,subt,divide,equals,add,nat-text": [
+        {
+            "regex": "(?:(\\/|\\*|\\-|\\=\\=|\\+|in))(?:((?=(?![0-9A-Za-z])|(?:false|true)(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])|[0-9]+(?![0-9a-z]))))|(?:((?:false|true)(?![0-9a-z]))|([0-9]+(?![0-9a-z]))|(?:((?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])))(?:((?=(?![0-9A-Za-z]))))",
+            "token": [
+                "keyword.operator",
+                "text",
+                "constant.other",
+                "constant.numeric",
+                "text",
+                "variable",
+                "text"
+            ]
+        }
+    ],
+    "empty-text": [
+        {
+            "regex": "((?:x(?<!x)))",
+            "token": [
+                "text"
+            ]
+        }
+    ],
+    "C0-text": [
+        {
+            "include": "T-text"
+        },
+        {
+            "include": "booll,var,inn,mult,subt,divide,equals,add,nat-text"
+        },
+        {
+            "include": "string-text"
+        },
+        {
+            "include": "S-text"
+        },
+        {
+            "include": "brac-text"
+        }
+    ],
+    "booll,var,inn,mult,subt,divide,equals,add,nat-meta.embedded.line": [
+        {
+            "regex": "(?:(\\/|\\*|\\-|\\=\\=|\\+|in))(?:((?=(?![0-9A-Za-z])|(?:false|true)(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])|[0-9]+(?![0-9a-z]))))|(?:((?:false|true)(?![0-9a-z]))|([0-9]+(?![0-9a-z]))|(?:((?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))))((?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])))(?:((?=(?![0-9A-Za-z]))))",
+            "token": [
+                "keyword.operator",
+                "meta.embedded.line",
+                "constant.other",
+                "constant.numeric",
+                "meta.embedded.line",
+                "variable",
+                "meta.embedded.line"
+            ]
+        }
+    ],
+    "U2-comment.block": [
+        {
+            "include": "single,multiple-comment.block"
+        }
+    ],
+    "single,multiple1-comment.block": [
+        {
+            "regex": "([^\\%])",
+            "token": [
+                "comment.block"
+            ],
+            "push": "U2-comment.block(1)"
+        }
+    ],
+    "C0-meta.embedded.line": [
+        {
+            "include": "T-meta.embedded.line"
+        },
+        {
+            "include": "booll,var,inn,mult,subt,divide,equals,add,nat-meta.embedded.line"
+        },
+        {
+            "include": "string-meta.embedded.line"
+        },
+        {
+            "include": "S-meta.embedded.line"
+        },
+        {
+            "include": "brac-meta.embedded.line"
+        }
+    ],
+    "escape,dollarChar,char-string.template": [
+        {
+            "regex": "(\\\\.)|(\\$(?!\\{)|[^\\\"\\$\\\\])",
+            "token": [
+                "constant.character.escape",
+                "string.template"
+            ]
+        }
+    ],
+    "iff4-text": [
+        {
+            "regex": "(if)(?:((?=(?![0-9A-Za-z]))))",
+            "token": [
+                "keyword",
+                "text"
+            ],
+            "push": "C7-text(1)"
+        }
+    ],
+    "iff3-text": [
+        {
+            "regex": "(\\()",
+            "token": [
+                "text"
+            ],
+            "push": "C8-text(1)"
+        }
+    ],
+    "C0-meta.embedded.line(2)": [
+        {
+            "regex": "(\\})",
+            "token": [
+                "punctuation.definition.template-expression"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C0-meta.embedded.line"
+        }
+    ],
+    "iff-text": [
+        {
+            "regex": "(if)(?:((?=(?![0-9A-Za-z]))))",
+            "token": [
+                "keyword",
+                "text"
+            ],
+            "push": "C5-text(1)"
+        }
+    ],
+    "iff2-text": [
+        {
+            "regex": "(\\))",
+            "token": [
+                "text"
+            ],
+            "push": "C4-text(1)"
+        }
+    ],
+    "C0-text(3)": [
+        {
+            "regex": "(\\))",
+            "token": [
+                "variable.parameter"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C0-text"
+        }
+    ],
+    "C0-meta.embedded.line(1)": [
+        {
+            "regex": "(\\))",
+            "token": [
+                "variable.parameter"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C0-meta.embedded.line"
+        }
+    ],
+    "U2-comment.block(1)": [
+        {
+            "regex": "((?=\\%(?=\\/|\\*|\\-|\\=\\=|\\+|in|\\\"|\\}|\\;|if|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])|\\=|\\%|\\)|\\(|\\%\\%[^\\n]*$|[\\t-\\n\\r ]|(?:false|true)(?![0-9a-z])|[0-9]+(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))))",
+            "token": [
+                "comment.block"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "U2-comment.block"
+        }
+    ],
+    "iff1-text": [
+        {
+            "regex": "(\\()",
+            "token": [
+                "text"
+            ],
+            "push": "C0-text(1)"
+        }
+    ],
+    "C0-text(2)": [
+        {
+            "regex": "((?=\\;))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C0-text"
+        }
+    ],
+    "C5-text(1)": [
+        {
+            "regex": "(\\))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C5-text"
+        }
+    ],
+    "assign1-text": [
+        {
+            "regex": "(\\=(?=\\%|\\\"|\\(|\\%\\%[^\\n]*$|[\\t-\\n\\r ]|(?:false|true)(?![0-9a-z])|[0-9]+(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])))",
+            "token": [
+                "text"
+            ],
+            "push": "C0-text(2)"
+        }
+    ],
+    "C9-comment.block(2)": [
+        {
+            "regex": "(\\%)(?:((?=\\/|\\*|\\-|\\=\\=|\\+|in|\\\"|\\}|\\;|if|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])|\\=|\\%|\\)|\\(|\\%\\%[^\\n]*$|[\\t-\\n\\r ]|(?:false|true)(?![0-9a-z])|[0-9]+(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))))",
+            "token": [
+                "comment.block",
+                "meta.embedded.line"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C9-comment.block"
+        }
+    ],
+    "C6-text(1)": [
+        {
+            "regex": "(\\;)",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C6-text"
+        }
+    ],
+    "C9-comment.block(1)": [
+        {
+            "regex": "(\\%)(?:((?=\\/|\\*|\\-|\\=\\=|\\+|in|\\\"|\\}|\\;|if|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z])|\\=|\\%|\\)|\\(|\\%\\%[^\\n]*$|[\\t-\\n\\r ]|(?:false|true)(?![0-9a-z])|[0-9]+(?![0-9a-z])|(?!(?<![a-z])(?:else|for|false|true|in|if)(?![0-9a-z]))(?<![a-z])[a-z][0-9a-z]*(?![0-9a-z]))))",
+            "token": [
+                "comment.block",
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C9-comment.block"
+        }
+    ],
+    "C3-string.template": [
+        {
+            "include": "escape,dollarChar,char-string.template"
+        },
+        {
+            "include": "embedded-string.template"
+        }
+    ],
+    "C7-text(1)": [
+        {
+            "regex": "((?:x(?<!x)))",
+            "token": [
+                "text"
+            ],
+            "push": "#pop"
+        },
+        {
+            "include": "C7-text"
+        }
+    ]
+}

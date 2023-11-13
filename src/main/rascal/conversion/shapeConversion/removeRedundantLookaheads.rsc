@@ -7,6 +7,7 @@ import conversion::conversionGrammar::CustomSymbols;
 import conversion::util::equality::ProdEquivalence;
 import conversion::util::meta::LabelTools;
 import conversion::util::meta::extractSources;
+import Logging;
 
 @doc {
     Removes redudant lookahead suffixes, e.g.:
@@ -27,7 +28,8 @@ import conversion::util::meta::extractSources;
     A -> x />X/ closed(B, convSeq([/>X/]))
     ```
 }
-set[ConvProd] removeRedundantLookaheads(set[ConvProd] prods, bool ensureCommonSuffix) {
+set[ConvProd] removeRedundantLookaheads(set[ConvProd] prods, bool ensureCommonSuffix, Logger log) {
+    log(ProgressDetailed(), "removing redudant lookaheads");
     set[ConvProd] out = {};
     for(p:convProd(lDef, parts) <- prods) {
         if(

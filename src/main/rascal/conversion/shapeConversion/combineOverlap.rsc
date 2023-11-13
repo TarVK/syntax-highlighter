@@ -25,6 +25,7 @@ import regex::PSNFASimplification;
 import Warning;
 import Scope;
 import Visualize;
+import Logging;
 
 @doc {
     Combines productions that start with the same prefix, e.g.:
@@ -41,7 +42,8 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] combineOverlap(set[ConvProd] prods, ConversionGrammar grammar) {
+] combineOverlap(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
+    log(ProgressDetailed(), "finding productions to combine");
     map[NFA[State], set[ConvProd]] indexed = ();
     set[ConvProd] out = {};
 
@@ -59,12 +61,13 @@ tuple[
         if({p} := group) {
             out += p;
         } else {
+            log(ProgressDetailed(), "combining <size(group)> productions");
             <nWarnings, newProd, grammar> = combineProductions(group, grammar);
+            log(ProgressDetailed(), "productions combined");
             warnings += nWarnings;
             out += newProd;
         }
     }
-
     return <warnings, out, grammar>;
 }
 

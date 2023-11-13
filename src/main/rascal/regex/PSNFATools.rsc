@@ -8,6 +8,7 @@ module regex::PSNFATools
 import IO;
 import util::Maybe;
 
+import regex::util::charClass;
 import regex::Regex;
 import regex::regexToPSNFA;
 import regex::PSNFA;
@@ -110,17 +111,36 @@ bool alwaysAcceptsEmpty(NFA[State] n)
 @doc {
     Creates a NFA that accepts all the original words, as well as any extensions of those words
 }
-NFA[State] getExtensionNFA(NFA[State] n) = concatPSNFA(n, alwaysPSNFA());
+NFA[State] getExtensionNFA(NFA[State] n)
+    = getExtensionNFA(n, false);
+NFA[State] getExtensionNFA(NFA[State] n, bool strict) 
+    = concatPSNFA(
+        n, 
+        strict 
+            ? concatPSNFA(
+                charPSNFA(anyCharClass()), 
+                alwaysPSNFA()
+            ) 
+            : alwaysPSNFA()
+    );
 
 @doc {
     Checks whether two given NFAs overlap, I.e. if one can be extended by 0 or more characters to match a word in the other. This ignores presence of tags
+
+    If extension is set to true, the test ignores words that are matched by both nfas, and only considers words that can be extended to a word in another nfa
+
+    If direcitonal is set to true, the test checks if b can be extended with characters to overlap a. Otherwise it's checked both ways
 }
-bool overlaps(NFA[State] a, NFA[State] b) {
-    extensionB = getExtensionNFA(b);
+bool overlaps(NFA[State] a, NFA[State] b)
+    = overlaps(a, b, false, false);
+bool overlaps(NFA[State] a, NFA[State] b, bool directional, bool extension) {
+    extensionB = getExtensionNFA(b, extension);
     overlapB = productPSNFA(a, extensionB, true);
     if(!isEmpty(overlapB)) return true;
     
-    extensionA = getExtensionNFA(a);
+    if(directional) return false;
+
+    extensionA = getExtensionNFA(a, extension);
     overlapA = productPSNFA(b, extensionA, true);
     if(!isEmpty(overlapA)) return true;
 

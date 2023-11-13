@@ -37,7 +37,7 @@ import testing::grammars::StructuredLanguage;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
-    bool recalc = false;
+    bool recalc = true;
 
     log = standardLogger();
     list[Warning] cWarnings = [], 
@@ -59,38 +59,39 @@ void main() {
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
         // conversionGrammar              = addGrammarLookaheads(conversionGrammar, 1, log);
         // conversionGrammar              = addNegativeCharacterGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
-        writeBinaryValueFile(pos, conversionGrammar);
+        conversionGrammar              = addDynamicGrammarLookaheads(conversionGrammar, {
+                parseRegexReduced("[a-zA-Z0-9]"),
+                parseRegexReduced("[=]")
+            }, log);
+        // <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+
+        // writeBinaryValueFile(pos, conversionGrammar);
     } else {
         conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
         inputGrammar = conversionGrammar;
     }
 
-    conversionGrammar              = addDynamicGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
-    writeBinaryValueFile(pos, conversionGrammar);
-
-    <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-    writeBinaryValueFile(pos, conversionGrammar);
-
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    // <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    // writeBinaryValueFile(pos, conversionGrammar);
 
     conversionGrammar = removeUnreachable(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
     <conversionGrammar, symMap> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
-    dWarnings = checkDeterminism(conversionGrammar, log);
+    // dWarnings = checkDeterminism(conversionGrammar, log);
 
-    <mWarnings, scopeGrammar> = toScopeGrammar(conversionGrammar, log);
-    tmGrammar = createTextmateGrammar(scopeGrammar, highlightGrammarData(
-        "highlight",
-        [<parseRegexReduced("[(]"), parseRegexReduced("[)]")>],
-        scopeName="source.highlight"
-    ));
+    // <mWarnings, scopeGrammar> = toScopeGrammar(conversionGrammar, log);
+    // tmGrammar = createTextmateGrammar(scopeGrammar, highlightGrammarData(
+    //     "highlight",
+    //     [<parseRegexReduced("[(]"), parseRegexReduced("[)]")>],
+    //     scopeName="source.highlight"
+    // ));
 
-    log(Section(), "finished");
+    // log(Section(), "finished");
     
-    loc output = |project://syntax-highlighter/outputs/tmGrammar.json|;
-    writeJSON(output, tmGrammar, indent=4);
+    // loc output = |project://syntax-highlighter/outputs/tmGrammar.json|;
+    // writeJSON(output, tmGrammar, indent=4);
 
-    log(Section(), "saved");
+    // log(Section(), "saved");
 
     warnings = cWarnings + rWarnings + pWarnings + sWarnings + mWarnings + dWarnings;
     visualizeGrammars(<

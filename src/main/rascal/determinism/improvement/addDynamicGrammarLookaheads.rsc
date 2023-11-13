@@ -80,6 +80,9 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
     productionMap = {<prod, removeProductionTags(prod)> | <_, prod> <- grammar.productions};
     prods = index({<getWithoutLabel(lDef), <p, pLA>> | <p:convProd(lDef, _), pLA> <- productionMap});
 
+    // log(Progress(), "calculating overlapping expressions");
+    // overlaps = calculateOverlappingExpressions(grammar);
+
     log(Progress(), "calculating follow expressions");
     scopelessGrammar = getGrammar(grammar.\start, productionMap);
     firstExpressions = getFirstExpressions(scopelessGrammar, true);
@@ -101,17 +104,26 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
                 part = parts[i];
                 if(regexp(r) := part) {
                     overlappingRegexes = overlap[r];
+                    Regex originalRegex = r;
                     if(!containsNewline(r) && overlappingRegexes != {}) {
                         log(ProgressDetailed(), "calculating next expressions for regex of <sym> and checking overlap");
-                        nextExpressions = getFirstExpressions(lookaheadParts[i+1..], firstExpressions, true);
+                        nextExpressionMaps = getFirstExpressions(lookaheadParts[i+1..], firstExpressions, true);
+                        
+                        nextExpressions = {
+                            <rNext, withNextNFA>
+                            | nfa <- nextExpressionMaps,
+                            rNext <- splitRegexUnions(nextExpressionMaps[nfa]),
+                            withNextNFA := regexToPSNFA(lookahead(r, rNext)),
+                            !isEmpty(withNextNFA)
+                        };
 
                         bool applied = false;
                         if(just(<suffix, skipIfRestrictive>) := getSuffix(r)) {
+                            withSuffixNFA = regexToPSNFA(concatenation(r, suffix));
                             nonCoveredRegexes = {
                                 rNext
-                                | nfa <- nextExpressions,
-                                rNext <- splitRegexUnions(nextExpressions[nfa]),
-                                !isSubset(lookahead(r, rNext), concatenation(r, suffix))
+                                | <rNext, withNextNFA> <- nextExpressions,
+                                !isSubset(withNextNFA, withSuffixNFA)
                             };
 
                             if(!skipIfRestrictive || nonCoveredRegexes == {}) {
@@ -119,17 +131,21 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
                                 nextExpression = getCachedRegex(
                                     reduceAlternation(alternation(suffix + [*nonCoveredRegexes]))
                                 );
-                                r = getCachedRegex(lookahead(r, meta(nextExpression, generated())));
+                                r = getCachedRegex(lookahead(r, meta(meta(nextExpression, generated()), overlappingRegexes)));
                                 applied = true;
                             }
                         }
                         if(!applied) {
                             log(ProgressDetailed(), "calculating positive nextRegex for regex of <sym>");
                             nextExpression = getCachedRegex(
-                                reduceAlternation(alternation([*nextExpressions<1>]))
+                                reduceAlternation(alternation([*nextExpressions<0>]))
                             );
-                            r = getCachedRegex(lookahead(r, meta(nextExpression, generated())));
+                            r = getCachedRegex(lookahead(r, meta(meta(nextExpression, generated()), overlappingRegexes)));
                         }
+
+                        // Check if the lookahead has any effect, and otherwise simply use the original expression
+                        set[Regex] fixedOverlap = {exp | exp <- overlappingRegexes, !overlaps(regexToPSNFA(exp), regexToPSNFA(r), true, true)};
+                        if(fixedOverlap == {}) r = originalRegex;
                     }
 
                     outParts += regexp(r);
@@ -184,7 +200,7 @@ map[Regex, set[Regex]] getPositiveOverlappingExpressions(rel[ConvProd, ConvProd]
         for(
             nfa2 <- expressions, 
             nfa != nfa2,
-            overlaps(nfa, nfa2)
+            overlaps(nfa2, nfa, true, true)
         ) {
             overlapExp += expressions[nfa2];
         }

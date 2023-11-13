@@ -10,6 +10,7 @@ import regex::regexToPSNFA;
 import regex::PSNFATools;
 import regex::PSNFACombinators;
 import regex::RegexTransformations;
+import Logging;
 
 @doc {
     Removes left self-recursion, e.g.:
@@ -22,7 +23,8 @@ import regex::RegexTransformations;
     A -> Y A x
     ```
 }
-set[ConvProd] removeLeftSelfRecursion(set[ConvProd] prods) {
+set[ConvProd] removeLeftSelfRecursion(set[ConvProd] prods, Logger log) {
+    log(ProgressDetailed(), "removing left self-recursion");
     set[ConvProd] out = {};
 
     for(p:convProd(lDef, parts) <- prods) {

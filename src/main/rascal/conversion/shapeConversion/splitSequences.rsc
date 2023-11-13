@@ -9,6 +9,7 @@ import conversion::shapeConversion::defineSequence;
 import conversion::util::meta::LabelTools;
 import conversion::util::makeLookahead;
 import Warning;
+import Logging;
 
 @doc {
     Converts a given sequence of 3 symbols, or more than 4 symbols, into a sequence of 4 symbols:
@@ -32,7 +33,8 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] splitSequences(set[ConvProd] prods, ConversionGrammar grammar) {
+] splitSequences(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
+    log(ProgressDetailed(), "splitting sequences");
     list[Warning] warnings = [];
     set[ConvProd] out = {};
 

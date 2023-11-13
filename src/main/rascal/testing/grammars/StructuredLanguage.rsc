@@ -48,7 +48,7 @@ syntax Type
     = baseType: TypeVariable
     | arrayType: Type "[]"
     | genericType: Type "\<" Type "\>"
-    | primitiveType: PrimitiveType
+    | primitiveType: [a-zA-Z0-9] !<< PrimitiveType !>> [a-zA-Z0-9]
     ;
 syntax PrimitiveType
     = @scope="storage.type" string: "string"

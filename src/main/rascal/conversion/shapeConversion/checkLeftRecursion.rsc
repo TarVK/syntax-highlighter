@@ -11,6 +11,7 @@ import regex::PSNFACombinators;
 import regex::RegexCache;
 import regex::RegexTransformations;
 import Warning;
+import Logging;
 
 @doc {
     Detects left recursion and removes it:
@@ -24,7 +25,8 @@ import Warning;
     B -> /(>X)/ A y
     ```
 }
-WithWarnings[set[ConvProd]] checkLeftRecursion(set[ConvProd] prods, ConversionGrammar grammar) {
+WithWarnings[set[ConvProd]] checkLeftRecursion(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
+    log(ProgressDetailed(), "checking left recursion");
     list[Warning] warnings = [];
     set[ConvProd] out = {};
 

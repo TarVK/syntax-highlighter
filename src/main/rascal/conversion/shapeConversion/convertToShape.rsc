@@ -76,8 +76,10 @@ WithWarnings[ConversionGrammar] convertToShape(
         while(toBeDefinedUnions != {}) {
             for(union <- toBeDefinedUnions) {
                 set[ConvProd] newProds         = defineUnion(union, grammar);
-                <mWarnings, newProds, grammar> = combineConsecutiveSymbols(newProds, grammar);
+                log(ProgressDetailed(), "defining <size(newProds)> union productions");
+                <mWarnings, newProds, grammar> = combineConsecutiveSymbols(newProds, grammar, log);
                 newProds                       = deduplicateProds(newProds);
+                log(ProgressDetailed(), "finished defining union productions");
 
                 warnings += mWarnings;
                 grammar.productions += {<union, production> | production <- newProds};
@@ -108,15 +110,17 @@ WithWarnings[ConversionGrammar] convertToShape(
         log(Progress(), "defining <size(toBeDefinedClosings)> closings");
         for(closing <- toBeDefinedClosings) {
             <newProds, isAlias>            = defineClosing(closing, grammar);
+            log(ProgressDetailed(), "defining <size(newProds)> closing productions");
             if(!isAlias) {
-                <mWarnings, newProds, grammar> = combineConsecutiveSymbols(newProds, grammar);
-                newProds                       = removeLeftSelfRecursion(newProds);
-                newProds                       = removeRedundantLookaheads(newProds, true);
-                <oWarnings, newProds, grammar> = combineOverlap(newProds, grammar);
-                newProds                       = removeRedundantLookaheads(newProds, false);
-                <sWarnings, newProds, grammar> = splitSequences(newProds, grammar);
-                <cWarnings, newProds, grammar> = carryClosingRegexes(newProds, grammar);
-                <nWarnings, newProds>          = checkLeftRecursion(newProds, grammar);
+                <mWarnings, newProds, grammar> = combineConsecutiveSymbols(newProds, grammar, log);
+                newProds                       = removeLeftSelfRecursion(newProds, log);
+                newProds                       = removeRedundantLookaheads(newProds, true, log);
+                <oWarnings, newProds, grammar> = combineOverlap(newProds, grammar, log);
+                newProds                       = removeRedundantLookaheads(newProds, false, log);
+                <sWarnings, newProds, grammar> = splitSequences(newProds, grammar, log);
+                <cWarnings, newProds, grammar> = carryClosingRegexes(newProds, grammar, log);
+                <nWarnings, newProds>          = checkLeftRecursion(newProds, grammar, log);
+                log(ProgressDetailed(), "finished defining closing productions");
 
                 warnings += mWarnings + oWarnings + sWarnings + cWarnings + nWarnings;
             }
@@ -127,10 +131,10 @@ WithWarnings[ConversionGrammar] convertToShape(
 
         i += 1;
         // For debugging:
-        // if(i>=10) {
-        //     println("Force quite");
-        //     break;
-        // }
+        if(i>=4) {
+            println("Force quite");
+            break;
+        }
     }
 
     return <warnings, grammar>;

@@ -7,6 +7,7 @@ import conversion::conversionGrammar::CustomSymbols;
 import conversion::shapeConversion::defineSequence;
 import conversion::util::makeLookahead;
 import Warning;
+import Logging;
 
 @doc {
     For any production of the shape:
@@ -24,7 +25,8 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] carryClosingRegexes(set[ConvProd] prods, ConversionGrammar grammar) {
+] carryClosingRegexes(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
+    log(ProgressDetailed(), "carrying closing expressions");
     set[ConvProd] out = {};
 
     list[Warning] warnings = [];

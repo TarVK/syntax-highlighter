@@ -13,6 +13,7 @@ import regex::PSNFATools;
 import regex::RegexTransformations;
 import Warning;
 import Scope;
+import Logging;
 
 @doc {
     Combines consecutive non-terminals in all the given productions:
@@ -38,7 +39,8 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] combineConsecutiveSymbols(set[ConvProd] prods, ConversionGrammar grammar) {
+] combineConsecutiveSymbols(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
+    log(ProgressDetailed(), "combining consecutive symbols");
     set[ConvProd] out = {};
     list[Warning] warnings = [];
     for(p:convProd(lDef, parts) <- prods) {

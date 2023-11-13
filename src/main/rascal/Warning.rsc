@@ -41,7 +41,7 @@ data Warning
     /* We were not able to safely replace the subtraction by lookaheads or behinds */
     | unresolvableSubtraction(Regex regex, NFA[State] delta, ConvProd production)
     /* =========== PDA grammar conversion =========== */
-    /* We arae not able to deal with nested scopes when targetting PDAGrammars, found nesting */
+    /* We are not able to deal with nested scopes when targetting PDAGrammars, found nesting */
     | disallowedNestedScopes(ScopeList nestedScopes, ScopeProd scopeProd)
     ;
 
@@ -51,6 +51,6 @@ alias WithWarnings[&T] = tuple[list[Warning] warnings, &T result];
     Checks whether the given warning is purely a warning (pointing at something that might have caused an error), or an error that indicates that the output is not guaranteed to adhere to spec.
 }
 bool isError(Warning warning) {
-    // TODO:
+    if(unresolvedModifier(_, _) := warning) return false;
     return true;
 }

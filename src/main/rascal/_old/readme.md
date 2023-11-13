@@ -1,1 +1,0 @@
-Things in this folder won't compile, since it's the old contents of another folder without making an attempt to keep this code working. It's only kept temporarily for reference.

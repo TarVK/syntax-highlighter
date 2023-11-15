@@ -1,0 +1,28 @@
+{
+    "name": "textmate-grammar-tester",
+    "version": "0.0.0",
+    "private": true,
+    "description": "A script to execute the textmate tokenizer and retrieve a token stream",
+    "main": "build/index.js",
+    "types": "build/index.d.ts",
+    "files": [
+        "build/**/*.{js,d.ts}"
+    ],
+    "scripts": {
+        "start": "node ./build/index.js \"I:/projects/Github/syntax-highlighter/outputs/tmGrammar.json\" \"I:/projects/Github/syntax-highlighter/outputs/phrases/test.txt\"",
+        "dbg": "node --inspect-brk ./build/index.js",
+        "dev": "tsc -w ",
+        "build": "tsc"
+    },
+    "author": "Tar van Krieken",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^14.14.10",
+        "typescript": "^4.4.2"
+    },
+    "dependencies": {
+        "commander": "^11.1.0",
+        "vscode-oniguruma": "^2.0.1",
+        "vscode-textmate": "^9.0.0"
+    }
+}

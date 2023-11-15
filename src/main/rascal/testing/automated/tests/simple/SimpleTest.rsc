@@ -1,12 +1,7 @@
-module Main
+module testing::automated::tests::simple::SimpleTest
 
-import IO;
+import testing::automated::setup::runTest;
 
-import convertGrammar;
-import conversion::conversionGrammar::ConversionGrammar;
-import Logging;
-import determinism::improvement::addDynamicGrammarLookaheads;
-import regex::Regex;
 
 syntax Program = Stmt*;
 syntax Stmt = forIn: For "(" Variable In Exp ")" Stmt
@@ -22,6 +17,13 @@ syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
            | @token="keyword.operator" subt: Exp "-" Exp
            | @token="keyword.operator" divide: Exp "/" Exp
            | @token="keyword.operator" equals: Exp "==" Exp
+           | @token="keyword.operator" smaller: Exp "\<" Exp
+           | @token="keyword.operator" greater: Exp "\>" Exp
+           | @token="keyword.operator" smallerEq: Exp "\<=" Exp
+           | @token="keyword.operator" greaterEq: Exp "\>=" Exp
+           | @token="keyword.operator" not: "!" Exp
+           | @token="keyword.operator" or: Exp "||" Exp
+           | @token="keyword.operator" and: Exp "&&" Exp
            | @token="keyword.operator" inn: Exp "in" Exp
            | var: Variable
            | string: Str
@@ -52,20 +54,7 @@ lexical WhitespaceAndComment
    | @scope="comment.block" "%" ![%]+ "%"
    | @scope="comment.line" "%%" ![\n]* $
    ;
-
-int main() {
-    warnings = convertGrammar(config(
-        #Program,
-        |project://syntax-highlighter/outputs|,
-        {textmateGrammarOutput()},
-        addLookaheads = ConversionGrammar(ConversionGrammar conversionGrammar, Logger log) {
-            return addDynamicGrammarLookaheads(conversionGrammar, {
-                parseRegexReduced("[a-zA-Z0-9]"),
-                parseRegexReduced("[=]")
-            }, log);
-        }
-    ));
-    println(warnings);
-
-    return 0;
+   
+void main() {
+    runTest(#Program, |project://syntax-highlighter/src/main/rascal/testing/automated/tests/simple|);
 }

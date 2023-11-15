@@ -130,11 +130,11 @@ WithWarnings[ConversionGrammar] convertToShape(
         previouslyDefinedClosings = toBeDefinedClosings;
 
         i += 1;
-        // For debugging:
-        if(i>=4) {
-            println("Force quite");
-            break;
-        }
+        // // For debugging:
+        // if(i>=4) {
+        //     println("Force quite");
+        //     break;
+        // }
     }
 
     return <warnings, grammar>;

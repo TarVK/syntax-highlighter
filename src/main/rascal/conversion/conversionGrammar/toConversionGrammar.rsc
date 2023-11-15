@@ -87,7 +87,12 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, ScopeList te
     }
 
     ConvSymbol getRegex(Regex exp) {
-        if(termScopes != []) exp = mark({scopeTag(toScopes(termScopes))}, exp);
+        // if(termScopes != []) exp = mark({scopeTag(toScopes(termScopes))}, exp);
+        if(termScopes != []) 
+            exp = mark({
+                scopeTag(toScopes(termScopes[0..length]))
+                | length <- [1..size(termScopes)+1]
+            }, exp);
         exp =  meta(exp, {rascalProd(prod)});
         cachedExp = getCachedRegex(exp);
         return regexp(cachedExp);
@@ -115,7 +120,7 @@ WithWarnings[ConvSymbol] getConvSymbol(Symbol sym, Production prod, ScopeList te
 
             for(c <- conditions) {
                 switch(c) {
-                    // Modifiers should not recieve any scopes
+                    // Constraints should not recieve any scopes
                     case \delete(s2): res = delete(res, rec(s2, [], []));
                     case \follow(s2): res = follow(res, rec(s2, [], []));
                     case \precede(s2): res = precede(res, rec(s2, [], []));

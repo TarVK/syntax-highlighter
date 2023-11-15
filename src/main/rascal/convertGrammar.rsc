@@ -46,7 +46,7 @@ data ConversionConfig(
     ),
     ScopeMerger merge = useLastScope("text"),
     bool outputOnlyErrors = true
-) = config(type[Tree] grammar, str location, set[OutputType] target);
+) = config(type[Tree] grammar, loc location, set[OutputType] target);
 
 @doc {
     Performs the complete conversion algorithm 
@@ -77,7 +77,7 @@ list[Warning] convertGrammar(ConversionConfig config) {
     if(textmateGrammarOutput() <- config.target) {
         log(Section(), "creating TextMate grammar");
         tmGrammar = createTextmateGrammar(scopeGrammar, config.highlightData);
-        writeJSON(toLocation(location+"/tmGrammar.json"), tmGrammar, indent=4);
+        writeJSON(location+"tmGrammar.json", tmGrammar, indent=4);
     }
     if(
         monarchGrammarOutput() <- config.target,
@@ -90,21 +90,21 @@ list[Warning] convertGrammar(ConversionConfig config) {
         if(monarchGrammarOutput() <- config.target) {
             log(Section(), "creating Monarch grammar");
             monarchGrammar = createMonarchGrammar(PDAGrammar);
-            writeJSON(toLocation(location+"/monarchGrammar.json"), monarchGrammar, indent=4);
+            writeJSON(location+"monarchGrammar.json", monarchGrammar, indent=4);
         }
         if(aceGrammarOutput() <- config.target) {
             log(Section(), "creating Ace grammar");
             aceGrammar = createAceGrammar(PDAGrammar);
-            writeJSON(toLocation(location+"/aceGrammar.json"), aceGrammar, indent=4);
+            writeJSON(location+"aceGrammar.json", aceGrammar, indent=4);
         }
         if(pygmentsGrammarOutput() <- config.target) {
             log(Section(), "creating Pygments grammar");
             pygmentsGrammar = createPygmentsGrammar(PDAGrammar);
-            writeJSON(toLocation(location+"/pygmentsGrammar.json"), pygmentsGrammar, indent=4);
+            writeJSON(location+"pygmentsGrammar.json", pygmentsGrammar, indent=4);
         }
     }
     if(conversionGrammarOutput() <- config.target)
-        writeBinaryValueFile(toLocation(location+"/conversionGrammar.bin"), scopeGrammar);
+        writeBinaryValueFile(location+"conversionGrammar.bin", scopeGrammar);
     
     // Filter warnings for errors
     if(config.outputOnlyErrors)

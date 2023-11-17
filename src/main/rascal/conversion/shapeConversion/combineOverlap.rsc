@@ -26,7 +26,6 @@ import Warning;
 import Scope;
 import Visualize;
 import Logging;
-
 @doc {
     Combines productions that start with the same prefix, e.g.:
     ```
@@ -128,7 +127,8 @@ tuple[
     ConversionGrammar grammar  
 ] combineSequences(set[SourcedSequence] sequences, ConversionGrammar grammar) {
     list[Warning] warnings = [];
-    if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) {        
+    if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) {      
+        visualize(1);  
         // Make sure the first regex is always included in the prefix, even if the regexes only overlap but aren't equivalent
         list[ConvSymbol] prefix = [];
         prefix += regexp(combineExpressions(r + {r2 | <[regexp(r2), *_], _> <- restSequences}));
@@ -141,7 +141,7 @@ tuple[
                 return nothing();
             }, 
             sequences,
-            false
+            true // Helps prevent blowups, but might decrease accuracy
         );
         suffix = reverse(reversedSuffix);
         // if([*f , l1, l2] := suffix) suffix = [l1, l2];
@@ -155,7 +155,7 @@ tuple[
                 return nothing();
             },
             sequences,
-            true
+            true // Would be merged at a later stage anyhow, thus won't result in less accuracy
         );
         prefix += prefixAugmentation;
         warnings += prefixWarnings;
@@ -184,13 +184,20 @@ tuple[
 
             outSequences += seqSym;
         }
+        visualize(2);
 
-        // Extract the non-regex prefix of the suffix (if any) into the recursion
+        // Extract the non-regex suffix of the prefix (if any) into the recursion (and prefix of suffix)
+        while([*firstParts, s:ref(refSym, scopes, _)] := prefix){
+            outSequences += refSym;
+            if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
+            prefix = firstParts;
+        }
         while([s:ref(refSym, scopes, _), *lastParts] := suffix){
             outSequences += refSym;
             if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
             suffix = lastParts;
         }
+        visualize(3);
 
         // Define the final production
         combinedParts = prefix + [ref(simplify(unionRec(outSequences), grammar), [], sequenceSources)] + suffix;       

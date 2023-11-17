@@ -21,9 +21,14 @@ ConversionGrammar deduplicateClosings(ConversionGrammar grammar, set[Symbol] new
                 if(B > A) return b;
             }
 
-            // Prioritize unionRecs in general
-            if(unionRec(_) := a) return a;
-            if(unionRec(_) := b) return b;
+            // // Prioritize unionRecs in general
+            // if(unionRec(_) := a) return a;
+            // if(unionRec(_) := b) return b;
+
+            // Deprioritize unionRecs in general, 
+            // prevents unionRec({a, b, c}) simplification contradictions when `a -> unionRec({a, b})`
+            if(unionRec(_) := a) return b;
+            if(unionRec(_) := b) return a;
 
             // Deprioritize newly defined symbols
             if(a in newlyDefined, b notin newlyDefined) return b;

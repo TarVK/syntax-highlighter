@@ -1,0 +1,2 @@
+something = 
+    "hello${true==false}" * 5;

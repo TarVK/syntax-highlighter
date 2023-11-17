@@ -1,0 +1,3 @@
+something = [true, "false", 12*4];
+somethingElse = something[okay()];
+thirdItem = something[1..5];

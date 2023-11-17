@@ -1,14 +1,48 @@
-%smth% stuff = ( %stuff% something);
-if(testokay)
-    for(smth;stuff;oops==true) {
-        smth = (("st\nr)))${stuff ("inner")}ing"));
-        stuff = ((orange) => 3*4);
-        stuff = ((orange) => { if (true) return x; });
-        stuff = (orange, potatoe, stuff) => { if (true) return x; };
-        sutff = something * 4;
-        return 4;
-    }
-else okay = 4;
-for(smth in %comment% collection)
-    %% one line comment
-    test = 3;
+
+catch {orange}
+
+try stuff catch (stuff) 
+try catch (orange)
+
+if (stuff) {
+
+}
+
+else 
+
+myFunction = function(val1, val2, val3) {
+    return val1;
+};
+
+something = myFunction(45, myOtherFunction(false && true), "a \n string ${and(functio)}");
+
+something = [true, "false", 12*4];
+somethingElse = something[okay()];
+thirdItem = something[1..5];
+
+
+if(something)
+    okay = true;
+else
+    stuff = (45 + 5) * true;
+
+for(i=0; i<10; i+=2)
+    %% Some comment
+    for(smth in somethingelse)
+        stuff = % inline comment % "${smth} with ${i}";
+
+
+try {
+
+} catch (ded) {
+
+} finally {}
+
+try {
+    oranges;
+} catch (smth) {
+    throw 34 * okay;
+    finally 
+} finally {
+
+}

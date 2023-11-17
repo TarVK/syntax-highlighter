@@ -1,0 +1,4 @@
+if(something==true)
+    something = 45*3;
+else
+    stuff = (45 + 5) * true;

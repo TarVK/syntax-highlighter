@@ -30,10 +30,33 @@ import mapping::textmate::createTextmateGrammar;
 import mapping::common::HighlightGrammarData;
 import Warning;
 
-import testing::grammars::StructuredLanguage;
-// import testing::grammars::SimpleLanguage;
+// import testing::grammars::StructuredLanguage;
+// import testing::grammars::SimpleLanguage2;
 // import testing::grammars::LambdaLanguage;
 
+// syntax Program = Stmt*;
+// syntax Stmt =
+//             exp: Exp ";"
+//             | tryCatch: Try Stmt Catch "(" Variable ")" Stmt
+//             | tryFinally: Try Stmt Finally Stmt
+//             | tryCatchFinally: Try Stmt Catch "(" Variable ")" Stmt Finally Stmt;
+
+// syntax Exp = var: Variable;
+
+// lexical Variable = @scope="variable" Id;
+// lexical Try = @token="keyword" [a-zA-Z0-9] !<< "try" !>> [a-zA-Z0-9];
+// lexical Catch = @token="keyword" [a-zA-Z0-9] !<< "catch" !>> [a-zA-Z0-9];
+// lexical Finally = @token="keyword" [a-zA-Z0-9] !<< "finally" !>> [a-zA-Z0-9];
+
+// keyword KW = "for"|"in"|"if"|"true"|"false"|"else"|"return"|"function"|"throw"|"catch"|"finally"|"try";
+// lexical Id = ([a-zA-Z0-9] !<< [a-zA-Z][a-zA-Z0-9]* !>> [a-zA-Z0-9]) \ KW;
+
+// layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
+// lexical WhitespaceAndComment 
+//    = [\ \t\n\r]
+//    | @scope="comment.block" "%" ![%]+ "%"
+//    | @scope="comment.line" "%%" ![\n]* $
+//    ;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
@@ -63,7 +86,7 @@ void main() {
                 parseRegexReduced("[a-zA-Z0-9]"),
                 parseRegexReduced("[=]")
             }, log);
-        // <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
 
         // writeBinaryValueFile(pos, conversionGrammar);
     } else {
@@ -71,7 +94,7 @@ void main() {
         inputGrammar = conversionGrammar;
     }
 
-    // <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
     // writeBinaryValueFile(pos, conversionGrammar);
 
     conversionGrammar = removeUnreachable(conversionGrammar);

@@ -1,4 +1,4 @@
-for(i==0; i==10; true)
+for(i=0; i<10; i+=2)
     %% Some comment
     for(smth in somethingelse)
         stuff = % inline comment % "${smth} with ${i}";

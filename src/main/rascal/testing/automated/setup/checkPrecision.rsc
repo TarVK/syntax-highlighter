@@ -3,23 +3,45 @@ module testing::automated::setup::checkPrecision
 import ParseTree;
 import List;
 import IO;
+import Set;
+import Grammar;
 
 import Scope;
 
 public alias Tokenization = list[list[Scope]];
-int checkPrecision(Tokenization spec, Tokenization tokenization) {
+@doc {
+    Checks the precision of the given tokenizations,
+    outputing the number of correct characters, and a list of mistakes
+}
+tuple[int, list[tuple[str, tuple[int, int], ScopeList, ScopeList]]] checkPrecision(str input, Tokenization spec, Tokenization tokenization) {
+
+    list[tuple[str, tuple[int, int], ScopeList, ScopeList]] errors = [];
     int correct = 0;
+    int line = 1;
+    int column = 1;
+
     for(i <- [0..size(tokenization)]) {
+        character = input[i];
         specScope = spec[i];
         tokenizationScope = tokenization[i];
         if(specScope==tokenizationScope) correct += 1;
+        else errors += [<character, <line,column>, specScope, tokenizationScope>];
+
+        column += 1;
+        if(character=="\n") {
+            column = 1;
+            line += 1;
+        }
     }
 
-    return correct;
+    return <correct, errors>;
 }
 
-Tokenization getTokenization(type[Tree] grammar, str input) {
-    tree = parse(grammar, input, allowAmbiguity=true);
+Tokenization getTokenization(type[Tree] g, str input)
+    = getTokenization(grammar(g), input);
+Tokenization getTokenization(Grammar grammar, str input) {
+    value treeType = type(getOneFrom(grammar.starts), grammar.rules); 
+    tree = parse(treeType, input, allowAmbiguity=true);
     return getTokenization([], [], tree);
 }
 Tokenization getTokenization(list[Scope] scope, list[Scope] tokens, appl(prod, subtrees)) {

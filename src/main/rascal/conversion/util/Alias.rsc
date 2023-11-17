@@ -1,5 +1,7 @@
 module conversion::util::Alias
 
+import IO;
+
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::meta::LabelTools;
 
@@ -8,7 +10,12 @@ import conversion::util::meta::LabelTools;
 }
 Symbol followAlias(Symbol aliasSym, ConversionGrammar grammar) {
     aliasSym = getWithoutLabel(aliasSym);
-    while({convProd(_, [ref(refSym, _, _)])} := grammar.productions[aliasSym]) aliasSym = getWithoutLabel(refSym);
+    set[Symbol] found = {aliasSym};
+    while({convProd(_, [ref(refSym, _, _)])} := grammar.productions[aliasSym]) {
+        aliasSym = getWithoutLabel(refSym);
+        if(aliasSym in found) throw aliasSym;
+        found += aliasSym;
+    }
     return aliasSym;
 }
 

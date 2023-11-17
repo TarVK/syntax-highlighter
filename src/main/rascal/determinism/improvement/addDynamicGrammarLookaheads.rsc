@@ -38,6 +38,7 @@ ConversionGrammar addDynamicGrammarLookaheads(ConversionGrammar grammar, set[Reg
     };
 
     Maybe[tuple[Regex, bool]] getSuffix(Regex r) {
+        list[Regex] out = [];
         for(<characters, wordNFA, nla> <- characterSetsWithNFAs) {
             rNFA = regexToPSNFA(r);
 
@@ -49,8 +50,9 @@ ConversionGrammar addDynamicGrammarLookaheads(ConversionGrammar grammar, set[Reg
             nlaNFA = regexToPSNFA(\negative-lookahead(r, characters));
             if(nlaNFA == rNFA) continue;
 
-            return just(<nla, false>);
+            out += nla;
         }
+        if(out==[r]) return just(<r, false>);
         return nothing();
     }
 
@@ -199,7 +201,6 @@ map[Regex, set[Regex]] getPositiveOverlappingExpressions(rel[ConvProd, ConvProd]
         set[Regex] overlapExp = {};
         for(
             nfa2 <- expressions, 
-            nfa != nfa2,
             overlaps(nfa2, nfa, true, true)
         ) {
             overlapExp += expressions[nfa2];

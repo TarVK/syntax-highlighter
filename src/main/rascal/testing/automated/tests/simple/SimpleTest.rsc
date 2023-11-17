@@ -32,7 +32,7 @@ syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
 
 lexical If = @token="keyword" "if";
 lexical For = @token="keyword" "for";
-lexical In = @token="keyword.operator" "in";
+lexical In = "in";
 lexical Else = @token="keyword" "else";
 lexical Sep = @token="entity.name.function" ";";
 lexical Def = @scope="variable.parameter" Id;

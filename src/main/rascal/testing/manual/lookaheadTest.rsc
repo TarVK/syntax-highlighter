@@ -1,6 +1,7 @@
 module testing::manual::lookaheadTest
 
 import ValueIO;
+import Grammar;
 
 import Logging;
 import testing::util::visualizeGrammars;
@@ -18,8 +19,9 @@ import regex::regexToPSNFA;
 import regex::PSNFACombinators;
 import regex::PSNFATools;
 import Warning;
+import specTransformations::addWordBorders;
 
-import testing::grammars::SimpleScoped2;
+import testing::grammars::SimpleLanguage2;
 
 // syntax Program = Stmt*;
 // syntax Stmt = Id "=" Exp;
@@ -35,14 +37,20 @@ import testing::grammars::SimpleScoped2;
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
-    bool recalc = false;
+    bool recalc = true;
 
     log = standardLogger();
     
     ConversionGrammar inputGrammar, conversionGrammar;
     list[Warning] cWarnings, rWarnings;
     if(recalc) {
-        <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
+        sourceGrammar = grammar(#Program);
+        sourceGrammar = addWordBorders(
+            sourceGrammar, 
+            [range(48, 57), range(65, 90), range(97, 122)] // 0-9A-Za-z
+        );
+
+        <cWarnings, conversionGrammar> = toConversionGrammar(sourceGrammar, log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
         inputGrammar = conversionGrammar;
         writeBinaryValueFile(pos, conversionGrammar);
@@ -55,7 +63,10 @@ void main() {
     // rla = getCachedRegex(parseRegexReduced("!\>[a-zA-Z0-9]"));
     // conversionGrammar = addCustomGrammarLookaheads(conversionGrammar, bool(Regex r){return <rla, false>;}, log);
     // conversionGrammar = addNegativeCharacterGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
-    conversionGrammar = addDynamicGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
+    conversionGrammar = addDynamicGrammarLookaheads(conversionGrammar, {
+        parseRegexReduced("[a-zA-Z0-9]"),
+        parseRegexReduced("[=+\\-\<\>]")
+    }, log);
 
     warnings = cWarnings + rWarnings;
     visualizeGrammars(<

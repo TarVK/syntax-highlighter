@@ -48,11 +48,13 @@ WithWarnings[ConversionGrammar] convertToShape(ConversionGrammar grammar, Logger
     = convertToShape(
         grammar, 
         getCachedRegex(makeLookahead(never())),
+        -1,
         log
     );
 WithWarnings[ConversionGrammar] convertToShape(
     ConversionGrammar grammar, 
     Regex eof, 
+    int maxITerations,
     Logger log
 ) {
     log(Section(), "to shape");
@@ -95,7 +97,7 @@ WithWarnings[ConversionGrammar] convertToShape(
         // Deduplicate the grammar to get rid of closings that don't need to be defined since we know they are equiavelent to another
         log(Progress(), "deduplicating grammar");
         grammar = deduplicateClosings(grammar, previouslyDefinedClosings + definedUnions);
-
+        
 
         // Check if there are any new closings left to be defined
         definedSymbols = grammar.productions<0>;
@@ -104,7 +106,6 @@ WithWarnings[ConversionGrammar] convertToShape(
             log(Progress(), "no new symbols to define");
             break;
         }
-
 
         // Define all undefined but referenced closings
         log(Progress(), "defining <size(toBeDefinedClosings)> closings");
@@ -125,16 +126,17 @@ WithWarnings[ConversionGrammar] convertToShape(
                 warnings += mWarnings + oWarnings + sWarnings + cWarnings + nWarnings;
             }
             grammar.productions += {<closing, production> | production <- newProds};
+
         }
         log(Progress(), "defined <size(toBeDefinedClosings)> closings");
         previouslyDefinedClosings = toBeDefinedClosings;
 
         i += 1;
-        // // For debugging:
-        // if(i>=4) {
-        //     println("Force quite");
-        //     break;
-        // }
+        // For debugging:
+        if(i==maxITerations) {
+            println("Force quite");
+            break;
+        }
     }
 
     return <warnings, grammar>;

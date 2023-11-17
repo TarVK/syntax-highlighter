@@ -46,7 +46,8 @@ data ConversionConfig(
     ),
     ScopeMerger merge = useLastScope("text"),
     bool outputOnlyErrors = true
-) = config(type[Tree] grammar, loc location, set[OutputType] target);
+) = config(type[Tree] grammarTree, loc location, set[OutputType] target)
+  | configGrammar(Grammar grammar, loc location, set[OutputType] target);
 
 @doc {
     Performs the complete conversion algorithm 
@@ -55,7 +56,10 @@ list[Warning] convertGrammar(ConversionConfig config) {
     log = config.log;
 
     // Create the conversion grammar
-    <cWarnings, conversionGrammar> = toConversionGrammar(config.grammar, log);
+    <cWarnings, conversionGrammar> = toConversionGrammar(
+            configGrammar(grammar, _, _) := config? grammar: config.grammarTree, 
+            log
+        );
     conversionGrammar = config.addCategories(conversionGrammar, log);
 
     // Primary language conversion

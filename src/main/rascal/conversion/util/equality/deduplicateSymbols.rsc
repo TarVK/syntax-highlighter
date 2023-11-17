@@ -38,8 +38,12 @@ ConversionGrammar deduplicateSymbols(
                 productions = replaceSymbol(productions, replaceSym, sym);
 
             referenceSyms = {rSym | rSym <- eqSyms, dedupeBehavior(rSym)==reference()};
-            for(referenceSym <- referenceSyms)
+            for(referenceSym <- referenceSyms) {
+                if(getWithoutLabel(referenceSym) == getWithoutLabel(sym))
+                    throw referenceSym;
                 productions = referenceSymbol(productions, referenceSym, sym);
+            }
+            
         }
     }
     return convGrammar(grammar.\start, productions);
@@ -48,6 +52,7 @@ ConversionGrammar deduplicateSymbols(
 rel[Symbol, ConvProd] referenceSymbol(rel[Symbol, ConvProd] prods, Symbol replaceSym, Symbol replaceBySym) {
     filteredProds = {p | p:<def, _> <- prods, def != replaceSym};
     newProd = <replaceSym, convProd(replaceSym, [ref(replaceBySym, [], {})])>;
+
 
     return filteredProds + newProd;
 }

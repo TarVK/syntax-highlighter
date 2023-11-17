@@ -57,6 +57,8 @@ Grammar addWordBorders(Grammar grammar, CharClass detectionCharacters, CharClass
             }
             // Don't recurse into conditionals (note top-down-*break*)
             case s:\conditional(_, _) => s
+            // Don't recurse into keyword productions
+            case s: prod(sym, _, _) => s when /keywords(_) := sym
         }
         | sym <- grammar.rules
     );

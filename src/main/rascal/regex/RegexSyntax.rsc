@@ -19,16 +19,6 @@ syntax RegexCST
     > left alternationCST: RegexCST opt1 "|" RegexCST opt2
     > right subtractCST: RegexCST "\\" RegexCST 
     > emptySubtractCST: "\\" RegexCST 
-    // > left (
-    //     left lookaheadCST: RegexCST exp "\>" RegexCST lookahead
-    //     | left emptyLookaheadCST: "\>" RegexCST lookahead
-    //     | left negativeLookaheadCST: RegexCST exp "!\>" RegexCST negativeLookahead
-    //     | left emptyNegativeLookaheadCST: "!\>" RegexCST negativeLookahead
-    //     | right lookbehindCST: RegexCST lookbehind "\<" RegexCST exp
-    //     | right emptyLookbehindCST: RegexCST lookbehind "\<"
-    //     | right negativeLookbehindCST: RegexCST negativeLookbehind "!\<" RegexCST exp
-    //     | right emptyNegativeLookbehindCST: RegexCST negativeLookbehind "!\<"
-    // )
     > right (
         lookaheadCST: RegexCST exp "\>" RegexCST lookahead
         | emptyLookaheadCST: "\>" RegexCST lookahead

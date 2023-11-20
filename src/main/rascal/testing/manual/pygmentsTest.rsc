@@ -33,6 +33,7 @@ import mapping::common::HighlightGrammarData;
 import mapping::pygments::createPygmentsGrammar;
 
 import Warning;
+import TestConfig;
 
 // import testing::grammars::SimpleLanguage;
 
@@ -111,7 +112,7 @@ void main() {
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
         writeBinaryValueFile(pos, conversionGrammar);
 
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
 
         conversionGrammar = removeUnreachable(conversionGrammar);
         conversionGrammar = removeAliases(conversionGrammar);

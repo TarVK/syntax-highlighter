@@ -14,6 +14,7 @@ import regex::RegexTransformations;
 import Warning;
 import Scope;
 import Logging;
+import TestConfig;
 
 @doc {
     Combines consecutive non-terminals in all the given productions:
@@ -39,12 +40,12 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] combineConsecutiveSymbols(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
-    log(ProgressDetailed(), "combining consecutive symbols");
+] combineConsecutiveSymbols(set[ConvProd] prods, ConversionGrammar grammar, TestConfig testConfig) {
+    testConfig.log(ProgressDetailed(), "combining consecutive symbols");
     set[ConvProd] out = {};
     list[Warning] warnings = [];
     for(p:convProd(lDef, parts) <- prods) {
-        <nWarnings, newParts, grammar> = getCombinedConsecutiveSymbols(p, grammar);
+        <nWarnings, newParts, grammar> = getCombinedConsecutiveSymbols(p, grammar, testConfig);
         warnings += nWarnings;
         out += convProd(lDef, newParts);
     }
@@ -62,7 +63,8 @@ tuple[
     ConversionGrammar grammar
 ] getCombinedConsecutiveSymbols(
     prod:convProd(_, parts), 
-    ConversionGrammar grammar
+    ConversionGrammar grammar,
+    TestConfig testConfig
 ) {
     list[Warning] warnings = [];
 
@@ -95,7 +97,8 @@ tuple[
                     spacerRegex, 
                     getWithoutLabel(refSym), 
                     grammar,
-                    prod
+                    prod,
+                    testConfig
                 );
                 warnings += sWarnings;
 
@@ -136,7 +139,8 @@ tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
     Maybe[Regex] regex,
     Symbol endSym,
     ConversionGrammar grammar,
-    ConvProd prod
+    ConvProd prod,
+    TestConfig testConfig
 ) {
     list[Warning] warnings = [];
 
@@ -144,7 +148,7 @@ tuple[list[Warning], Symbol, ConversionGrammar] createSequence(
     if(just(r) := regex) {
         <rMain, rEmpty, rEmptyRestr> = factorOutEmpty(r);
         if(rMain != never()) {
-            <dWarnings, seqSymbol, grammar> = defineSequence([regexp(rMain)], prod, grammar);
+            <dWarnings, seqSymbol, grammar> = defineSequence([regexp(rMain)], prod, grammar, testConfig);
             warnings += dWarnings;
             recOptions += seqSymbol;
         }

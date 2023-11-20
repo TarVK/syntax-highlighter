@@ -26,6 +26,8 @@ import Warning;
 import Scope;
 import Visualize;
 import Logging;
+import TestConfig;
+
 @doc {
     Combines productions that start with the same prefix, e.g.:
     ```
@@ -41,8 +43,8 @@ tuple[
     list[Warning] warnings,
     set[ConvProd] prods,
     ConversionGrammar grammar
-] combineOverlap(set[ConvProd] prods, ConversionGrammar grammar, Logger log) {
-    log(ProgressDetailed(), "finding productions to combine");
+] combineOverlap(set[ConvProd] prods, ConversionGrammar grammar, TestConfig testConfig) {
+    testConfig.log(ProgressDetailed(), "finding productions to combine");
     map[NFA[State], set[ConvProd]] indexed = ();
     set[ConvProd] out = {};
 
@@ -60,9 +62,9 @@ tuple[
         if({p} := group) {
             out += p;
         } else {
-            log(ProgressDetailed(), "combining <size(group)> productions");
-            <nWarnings, newProd, grammar> = combineProductions(group, grammar);
-            log(ProgressDetailed(), "productions combined");
+            testConfig.log(ProgressDetailed(), "combining <size(group)> productions");
+            <nWarnings, newProd, grammar> = combineProductions(group, grammar, testConfig);
+            testConfig.log(ProgressDetailed(), "productions combined");
             warnings += nWarnings;
             out += newProd;
         }
@@ -111,8 +113,8 @@ tuple[
     list[Warning] warnings,
     ConvProd prod,
     ConversionGrammar grammar  
-] combineProductions(set[ConvProd] prods, ConversionGrammar grammar) {
-    <warnings, combinedParts, grammar> = combineSequences({<parts, p> | p:convProd(_, parts) <- prods}, grammar);
+] combineProductions(set[ConvProd] prods, ConversionGrammar grammar, TestConfig testConfig) {
+    <warnings, combinedParts, grammar> = combineSequences({<parts, p> | p:convProd(_, parts) <- prods}, grammar, testConfig);
 
     lDef = getOneFrom(prods).def;
     combinedLabelDef = combineLabels(lDef, {lDef2 | convProd(lDef2, _) <- prods});
@@ -125,10 +127,9 @@ tuple[
     list[Warning] warnings,
     list[ConvSymbol] sequence,
     ConversionGrammar grammar  
-] combineSequences(set[SourcedSequence] sequences, ConversionGrammar grammar) {
+] combineSequences(set[SourcedSequence] sequences, ConversionGrammar grammar, TestConfig testConfig) {
     list[Warning] warnings = [];
-    if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) {      
-        visualize(1);  
+    if({<baseParts:[regexp(r), *_], baseProd>, *restSequences} := sequences) { 
         // Make sure the first regex is always included in the prefix, even if the regexes only overlap but aren't equivalent
         list[ConvSymbol] prefix = [];
         prefix += regexp(combineExpressions(r + {r2 | <[regexp(r2), *_], _> <- restSequences}));
@@ -141,10 +142,10 @@ tuple[
                 return nothing();
             }, 
             sequences,
-            true // Helps prevent blowups, but might decrease accuracy
+            true, // Helps prevent blowups, but might decrease accuracy
+            testConfig.overlapFinishRegex
         );
         suffix = reverse(reversedSuffix);
-        // if([*f , l1, l2] := suffix) suffix = [l1, l2];
         warnings += suffixWarnings;
 
         // Find a further common prefix
@@ -155,7 +156,8 @@ tuple[
                 return nothing();
             },
             sequences,
-            true // Would be merged at a later stage anyhow, thus won't result in less accuracy
+            true, // Would be merged at a later stage anyhow, thus won't result in less accuracy
+            testConfig.overlapFinishRegex
         );
         prefix += prefixAugmentation;
         warnings += prefixWarnings;
@@ -179,12 +181,11 @@ tuple[
                 remainder += regexp(la);
             }
 
-            <dWarnings, seqSym, grammar> = defineSequence(remainder, p, grammar);
+            <dWarnings, seqSym, grammar> = defineSequence(remainder, p, grammar, testConfig);
             warnings += dWarnings;
 
             outSequences += seqSym;
         }
-        visualize(2);
 
         // Extract the non-regex suffix of the prefix (if any) into the recursion (and prefix of suffix)
         while([*firstParts, s:ref(refSym, scopes, _)] := prefix){
@@ -197,7 +198,6 @@ tuple[
             if(size(scopes) > 0) warnings += inapplicableScope(s, baseProd);
             suffix = lastParts;
         }
-        visualize(3);
 
         // Define the final production
         combinedParts = prefix + [ref(simplify(unionRec(outSequences), grammar), [], sequenceSources)] + suffix;       
@@ -229,7 +229,8 @@ Regex combineExpressions(set[Regex] rs) {
 WithWarnings[list[ConvSymbol]] findCommon(
     Maybe[ConvSymbol](list[ConvSymbol] parts, int index) getPart,
     set[SourcedSequence] sequences,
-    bool combineSequenceOverlap // Whether to make overlapping regular expressions part of the prefix if not equal
+    bool combineSequenceOverlap, // Whether to make overlapping regular expressions part of the prefix if not equal
+    bool finishRegex // Whether the overlapping sequence should end in a regular expression
 ) {
     if({<baseParts, baseProd>, *restSequences} := sequences) {
         list[tuple[ConvSymbol, Maybe[Warning]]] out = [];
@@ -310,9 +311,10 @@ WithWarnings[list[ConvSymbol]] findCommon(
             i += 1;
         }
 
-        // // Make sure we end on a regular expression
-        // while([*firstParts, lastPart] := out, <regexp(_), _> !:= lastPart)
-        //     out = firstParts;
+        if(finishRegex)
+            // Make sure we end on a regular expression
+            while([*firstParts, lastPart] := out, <regexp(_), _> !:= lastPart)
+                out = firstParts;
 
         // Extract the generated warnings and prefix
         return <[warning | <_, just(warning)> <- out], [part | <part, _> <- out]>;

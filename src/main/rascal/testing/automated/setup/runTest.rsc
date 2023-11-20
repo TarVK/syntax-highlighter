@@ -14,6 +14,7 @@ import Grammar;
 
 import Visualize;
 import Warning;
+import TestConfig;
 import convertGrammar;
 import conversion::conversionGrammar::ConversionGrammar;
 import Logging;
@@ -26,33 +27,34 @@ import regex::PSNFA;
 import regex::Regex;
 import determinism::improvement::addDynamicGrammarLookaheads;
 
-data GrammarProcessors(
+data AutomatedTestConfig(
     // Add categories is not supported, since it operates on a conversion grammar, rather than the spec
     // GrammarTransformer addCategories = transformerIdentity,
-    GrammarTransformer addLookaheads = transformerIdentity,
-    Grammar(Grammar) transformSpec = Grammar (Grammar grammar) { return grammar; }
-) = grammarProcessors();
+    GrammarTransformer addLookaheads = defaultAddLookaheads,
+    Grammar(Grammar) transformSpec = Grammar (Grammar grammar) { return grammar; },
+    TestConfig testConfig = testConfig()
+) = autoTestConfig();
+
+public GrammarTransformer defaultAddLookaheads = ConversionGrammar (ConversionGrammar conversionGrammar, Logger log) {
+    return addDynamicGrammarLookaheads(conversionGrammar, {
+        parseRegexReduced("[a-zA-Z0-9]"),
+        parseRegexReduced("[=+\\-\<\>]")
+    }, log);
+};
 
 @doc {
     Tests the accuracy of this grammar on the inputs provided in the folder and logs the results
 }
-void runTest(type[Tree] grammar, loc inputFolder) 
-    = runTest(grammar, inputFolder, grammarProcessors(
-        addLookaheads = ConversionGrammar (ConversionGrammar conversionGrammar, Logger log) {
-            return addDynamicGrammarLookaheads(conversionGrammar, {
-                parseRegexReduced("[a-zA-Z0-9]"),
-                parseRegexReduced("[=+\\-\<\>]")
-            }, log);
-        }
-    ));
+list[Warning] runTest(type[Tree] grammar, loc inputFolder) 
+    = runTest(grammar, inputFolder, autoTestConfig());
 
-void runTest(type[Tree] grammarTree, loc inputFolder, GrammarProcessors processors) {
+list[Warning] runTest(type[Tree] grammarTree, loc inputFolder, AutomatedTestConfig autoTestConfig) {
     relativePath = relativize(|project://syntax-highlighter/src/main/rascal/testing/automated/|, inputFolder);
     generatePath = |project://syntax-highlighter/outputs|+relativePath.path;
 
     
     grammar = grammar(grammarTree);
-    grammar = processors.transformSpec(grammar);
+    grammar = autoTestConfig.transformSpec(grammar);
 
     map[str, tuple[str, Tokenization]] spec = ();
     entries = listEntries(inputFolder);
@@ -69,10 +71,10 @@ void runTest(type[Tree] grammarTree, loc inputFolder, GrammarProcessors processo
         spec[input] = <inputText, inputSpec>;
     }
 
+    list[Warning] warnings = [];
     if(grammarPath <- entries, (inputFolder + grammarPath).extension=="rsc") {
         modifiedDate = lastModified(inputFolder + grammarPath);
         outGrammarPath = generatePath +"tmGrammar.json";
-        value warnings = ();
         if(!exists(outGrammarPath) || lastModified(outGrammarPath) < modifiedDate) {
             startTime = now();
             warnings = insertPSNFADiagrams(stripSources(removeInnerRegexCache(
@@ -80,15 +82,18 @@ void runTest(type[Tree] grammarTree, loc inputFolder, GrammarProcessors processo
                     grammar,
                     generatePath, // tmGrammar.json is the hardcoded name of generated TM grammars (indeed, hardcoding should be fixed)
                     {textmateGrammarOutput()},
-                    // addCategories = processors.addCategories,
-                    addLookaheads = processors.addLookaheads
+                    // addCategories = autoTestConfig.addCategories,
+                    addLookaheads = autoTestConfig.addLookaheads,
+                    testConfig = autoTestConfig.testConfig
                 ))
             )));
             generationTime = now() - startTime;
-            writeTextValueFile(
-                generatePath+"grammarData.txt", 
-                grammarData(formatDuration(generationTime), warnings)
-            );
+            gd = grammarData(formatDuration(generationTime), warnings);
+            writeTextValueFile(generatePath+"grammarData.txt", gd);
+            writeBinaryValueFile(generatePath+"grammarData.bin", gd);
+        } else {
+            gd = readBinaryValueFile(#GrammarData, generatePath+"grammarData.bin");
+            warnings = gd.warnings;
         }
 
         args = [getAbsolutePath(outGrammarPath)];
@@ -113,8 +118,11 @@ void runTest(type[Tree] grammarTree, loc inputFolder, GrammarProcessors processo
             println(text);
         }
         writeFile(generatePath+"results.txt", results);
+        writeTextValueFile(generatePath+"differences.txt", allErrors);
         visualize(<allErrors, warnings>);
     }
+
+    return warnings;
 }
 
 data GrammarData = grammarData(str generationTime, list[Warning] warnings);

@@ -17,6 +17,7 @@ import conversion::util::transforms::replaceNfaByRegex;
 
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
+import TestConfig;
 
 // import testing::grammars::SimpleScoped1;
 
@@ -65,7 +66,7 @@ void main() {
         cWarnings = rWarnings = pWarnings = [];
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
 
     // Simplify for readability
     conversionGrammar = replaceNfaByRegex(conversionGrammar);

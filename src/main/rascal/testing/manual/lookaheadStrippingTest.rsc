@@ -24,6 +24,7 @@ import regex::Regex;
 
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
+import TestConfig;
 
 import testing::grammars::SimpleScoped2;
 
@@ -82,7 +83,7 @@ void main() {
         inputGrammar = conversionGrammar;
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
 
     conversionGrammar = removeUnreachable(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);

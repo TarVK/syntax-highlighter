@@ -7,6 +7,7 @@ import ValueIO;
 
 import Warning;
 import Logging;
+import TestConfig;
 
 import regex::Regex;
 import conversion::conversionGrammar::ConversionGrammar;
@@ -36,7 +37,6 @@ data OutputType = conversionGrammarOutput()
                 | pygmentsGrammarOutput();
 
 data ConversionConfig(
-    Logger log = standardLogger(),
     GrammarTransformer addCategories = transformerIdentity,
     GrammarTransformer addLookaheads = transformerIdentity,
     HighlightGrammarData highlightData = highlightGrammarData(
@@ -44,6 +44,7 @@ data ConversionConfig(
         [<parseRegexReduced("[(]"), parseRegexReduced("[)]")>],
         scopeName="source.test"
     ),
+    TestConfig testConfig = testConfig(),
     ScopeMerger merge = useLastScope("text"),
     bool outputOnlyErrors = true
 ) = config(type[Tree] grammarTree, loc location, set[OutputType] target)
@@ -53,7 +54,13 @@ data ConversionConfig(
     Performs the complete conversion algorithm 
 }
 list[Warning] convertGrammar(ConversionConfig config) {
-    log = config.log;
+    TestConfig testConfig = config.testConfig;
+    log = testConfig.log;
+    list[Warning] warnings = [];
+    void outputConv() {
+        writeBinaryValueFile(location+"conversionGrammar.bin", conversionGrammar);
+        writeTextValueFile(location+"warnings.txt", warnings);
+    }
 
     // Create the conversion grammar
     <cWarnings, conversionGrammar> = toConversionGrammar(
@@ -64,29 +71,37 @@ list[Warning] convertGrammar(ConversionConfig config) {
 
     // Primary language conversion
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
+    if(regexConversion() := testConfig.lastPhase) return outputConv();
     conversionGrammar = config.addLookaheads(conversionGrammar, log);
+    if(lookaheadAdding() := testConfig.lastPhase) return outputConv();
     <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    if(prefixConversion() := testConfig.lastPhase) return outputConv();
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig);
+    if(shapeConversion() := testConfig.lastPhase) return outputConv();
 
     // Post processing and safety checking
     conversionGrammar = removeUnreachable(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);
     <conversionGrammar, _> = relabelGeneratedSymbolsWithMapping(conversionGrammar);
     dWarnings = checkDeterminism(conversionGrammar, log);
+    if(cleanup() := testConfig.lastPhase) return outputConv();
 
     // Grammar mapping
     location = config.location;
     <mWarnings, scopeGrammar> = toScopeGrammar(conversionGrammar, log);
-    list[Warning] warnings = cWarnings + rWarnings + pWarnings + sWarnings + dWarnings + mWarnings;
+    warnings = cWarnings + rWarnings + pWarnings + sWarnings + dWarnings + mWarnings;
     if(textmateGrammarOutput() <- config.target) {
         log(Section(), "creating TextMate grammar");
         tmGrammar = createTextmateGrammar(scopeGrammar, config.highlightData);
         writeJSON(location+"tmGrammar.json", tmGrammar, indent=4);
     }
     if(
-        monarchGrammarOutput() <- config.target,
-        aceGrammarOutput() <- config.target,
-        pygmentsGrammarOutput() <- config.target
+        scopeGrammarCreation() !:= testConfig.lastPhase
+        && (
+            monarchGrammarOutput() <- config.target 
+        || aceGrammarOutput() <- config.target 
+        || pygmentsGrammarOutput() <- config.target
+        )
     ){
         <aWarnings, PDAGrammar> = toPDAGrammar(scopeGrammar, config.merge, log);
 
@@ -108,7 +123,7 @@ list[Warning] convertGrammar(ConversionConfig config) {
         }
     }
     if(conversionGrammarOutput() <- config.target)
-        writeBinaryValueFile(location+"conversionGrammar.bin", scopeGrammar);
+        outputConv();
     
     // Filter warnings for errors
     if(config.outputOnlyErrors)

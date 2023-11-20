@@ -29,6 +29,7 @@ import mapping::intermediate::scopeGrammar::toScopeGrammar;
 import mapping::textmate::createTextmateGrammar;
 import mapping::common::HighlightGrammarData;
 import Warning;
+import TestConfig;
 
 // import testing::grammars::StructuredLanguage;
 // import testing::grammars::SimpleLanguage2;
@@ -94,7 +95,7 @@ void main() {
         inputGrammar = conversionGrammar;
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
     // writeBinaryValueFile(pos, conversionGrammar);
 
     conversionGrammar = removeUnreachable(conversionGrammar);

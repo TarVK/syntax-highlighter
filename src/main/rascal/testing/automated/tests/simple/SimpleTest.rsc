@@ -32,7 +32,7 @@ syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
 
 lexical If = @token="keyword" "if";
 lexical For = @token="keyword" "for";
-lexical In = "in";
+lexical In = @token="keyword.operator" "in";
 lexical Else = @token="keyword" "else";
 lexical Sep = @token="entity.name.function" ";";
 lexical Def = @scope="variable.parameter" Id;
@@ -54,6 +54,7 @@ lexical WhitespaceAndComment
    | @scope="comment.block" "%" ![%]+ "%"
    | @scope="comment.line" "%%" ![\n]* $
    ;
+
    
 void main() {
     runTest(#Program, |project://syntax-highlighter/src/main/rascal/testing/automated/tests/simple|);

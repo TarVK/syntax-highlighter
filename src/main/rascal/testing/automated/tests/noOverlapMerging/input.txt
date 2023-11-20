@@ -1,0 +1,4 @@
+for(x;x;x) x;
+for(x in y) x;
+for(x;x;x) x;
+for(x in y) x;

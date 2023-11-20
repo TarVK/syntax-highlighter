@@ -20,6 +20,7 @@ import determinism::check::checkDeterminism;
 
 import conversion::util::equality::getEquivalentSymbols;
 import Warning;
+import TestConfig;
 
 // import testing::grammars::SimpleScoped1;
 
@@ -70,7 +71,7 @@ void main() {
         inputGrammar = conversionGrammar;
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
         <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, log);
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);

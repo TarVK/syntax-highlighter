@@ -1,3 +1,13 @@
+if(okay) smth; 
+else smth;
+else okay;
+
+if(something);
+if(okay)
+else stuff;
+else orange;
+else nothing;
+
 
 catch {orange}
 

@@ -11,6 +11,7 @@ import conversion::util::equality::ProdEquivalence;
 import conversion::conversionGrammar::CustomSymbols;
 import conversion::util::equality::ProdEquivalence;
 import Warning;
+import TestConfig;
 
 @doc {
     Adds a definition for the given sequence to the grammar, and adds the specified labels
@@ -22,8 +23,9 @@ tuple[
 ] defineSequence(
     list[ConvSymbol] parts,  
     ConvProd source,
-    ConversionGrammar grammar
-) = defineSequence(parts, (just(l) := getLabel(source)) ? {l} : {}, grammar, source);
+    ConversionGrammar grammar,
+    TestConfig testConfig
+) = defineSequence(parts, (just(l) := getLabel(source)) ? {l} : {}, grammar, source, testConfig);
 tuple[
     list[Warning] warnings,
     Symbol symbol,
@@ -32,7 +34,8 @@ tuple[
     list[ConvSymbol] parts, 
     set[str] labels, 
     ConversionGrammar grammar,
-    ConvProd source
+    ConvProd source,
+    TestConfig testConfig
 ) {
     list[Warning] warnings = [];
     set[Symbol] prefixes = {};
@@ -48,8 +51,16 @@ tuple[
         return <warnings, outSym, grammar>;
     }
 
-    <sWarnings, sequences, recursions> = splitRecursion(parts, source);
-    warnings += sWarnings;
+    set[list[ConvSymbol]] sequences;
+    set[Symbol] recursions;
+    if(testConfig.detectRecursion) {
+        <sWarnings, sequences, recursions> = splitRecursion(parts, source);
+        warnings += sWarnings;
+    } else {
+        sequences = {parts};
+        recursions = {};
+    }
+    
     set[Symbol] sequenceSyms = {};
     for(sequence <- sequences) {
         indexParts = getEquivalenceSymbols(sequence);

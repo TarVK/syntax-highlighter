@@ -62,7 +62,6 @@ syntax Exp = var: Variable
                 | @token="keyword.operator" assignSubt: Exp "-=" Exp
            );
 
-
 lexical RangeSep = @token="keyword.operator" "..";
 lexical If = @token="keyword" "if";
 lexical For = @token="keyword" "for";
@@ -102,7 +101,7 @@ void main() {
     runTest(
         #Program, 
         |project://syntax-highlighter/src/main/rascal/testing/automated/tests/simpleRealistic|, 
-        grammarProcessors(
+        autoTestConfig(
             transformSpec = Grammar(Grammar g) {
                 return addWordBorders(
                     g, 

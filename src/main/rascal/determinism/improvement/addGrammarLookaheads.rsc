@@ -20,6 +20,8 @@ import Logging;
 @doc {
     Adds the given number of layers of lookaheads to all regular expressions in the grammar, ensuring that the described language remains equivalent
 }
+ConversionGrammar addGrammarLookaheads(ConversionGrammar grammar, Logger log)
+    = addGrammarLookaheads(grammar, 1, log);
 ConversionGrammar addGrammarLookaheads(ConversionGrammar grammar, int layers, Logger log) {
     log(Section(), "add lookahead expressions");
     rel[ConvProd, ConvProd] productionMap = {<p, p> | <_, p> <- grammar.productions};

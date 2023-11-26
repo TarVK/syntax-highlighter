@@ -1,0 +1,3 @@
+((arg)=>{okay;});
+"some ${okay} text";
+"some ${(arg)=>{okay;}} text";

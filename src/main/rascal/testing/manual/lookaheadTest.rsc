@@ -21,7 +21,7 @@ import regex::PSNFATools;
 import Warning;
 import specTransformations::addWordBorders;
 
-import testing::grammars::SimpleLanguage2;
+// import testing::grammars::SimpleLanguage2;
 
 // syntax Program = Stmt*;
 // syntax Stmt = Id "=" Exp;
@@ -34,6 +34,28 @@ import testing::grammars::SimpleLanguage2;
 // keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 // layout Layout = WhitespaceAndComment* !>> [\ \n];
 // lexical WhitespaceAndComment = [\ \n];
+
+
+syntax Program = Stmt*;
+syntax Stmt = Type Variable "=" Exp ";";
+
+syntax Exp = bracketss: "(" Exp ")"
+           | var: Variable;
+
+syntax Type = \type: TypeVariable
+            | ar: Type "[]"
+            | apply: Type "\<" {Type ","}+ "\>"
+            | @token="primitive" number: "number"
+            | @token="primitive" string: "string"
+            | @token="primitive" boolean: "bool";
+
+lexical Variable = @scope="variable" Id;
+lexical TypeVariable = @scope="type" Id;
+
+keyword KW = "bool"|"number"|"string";
+lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
+
+layout Layout = [\ \t\n\r]* !>> [\ \t\n\r%];
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;

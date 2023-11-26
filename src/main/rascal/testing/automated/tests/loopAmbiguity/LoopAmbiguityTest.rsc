@@ -30,6 +30,5 @@ void main() {
     runTest(
         #Program, 
         |project://syntax-highlighter/src/main/rascal/testing/automated/tests/loopAmbiguity|
-        // , autoTestConfig(testConfig=testConfig(combineOverlap=false))
     );
 }

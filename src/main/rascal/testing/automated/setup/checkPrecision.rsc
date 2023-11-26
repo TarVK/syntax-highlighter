@@ -3,6 +3,7 @@ module testing::automated::setup::checkPrecision
 import ParseTree;
 import List;
 import IO;
+import String;
 import Set;
 import Grammar;
 
@@ -11,30 +12,45 @@ import Scope;
 public alias Tokenization = list[list[Scope]];
 @doc {
     Checks the precision of the given tokenizations,
-    outputing the number of correct characters, and a list of mistakes
+    outputing the number of correct groups and the total number of groups, and a list of mistakes
 }
-tuple[int, list[tuple[str, tuple[int, int], ScopeList, ScopeList]]] checkPrecision(str input, Tokenization spec, Tokenization tokenization) {
+tuple[int, int, list[TokenizationGroup]] checkPrecision(str input, Tokenization spec, Tokenization tokenization) {
 
-    list[tuple[str, tuple[int, int], ScopeList, ScopeList]] errors = [];
-    int correct = 0;
-    int line = 1;
-    int column = 1;
+    groups = getTokenizationGroups(input, spec, tokenization);
+    list[TokenizationGroup] errors = [group | group <- groups, group.spec != group.result];
 
-    for(i <- [0..size(tokenization)]) {
-        character = input[i];
-        specScope = spec[i];
-        tokenizationScope = tokenization[i];
-        if(specScope==tokenizationScope) correct += 1;
-        else errors += [<character, <line,column>, specScope, tokenizationScope>];
+    count = size(groups);
+    return <count - size(errors), count, errors>;
+}
 
-        column += 1;
-        if(character=="\n") {
-            column = 1;
-            line += 1;
+data TokenizationGroup = tokenizationGroup(str text, tuple[tuple[int, int], tuple[int, int]] range, list[Scope] spec, list[Scope] result);
+list[TokenizationGroup] getTokenizationGroups(str input, Tokenization spec, Tokenization result) {
+    tuple[int, int] pos = <1, 1>;
+    if([specFirst, *_] := spec, [resultFirst, *_] := result) {
+        list[TokenizationGroup] out = [];
+
+        TokenizationGroup group = tokenizationGroup("", <pos, pos>, specFirst, resultFirst);
+        for(i <- [0..size(input)], i < size(spec),  i < size(result)) {
+            character = input[i];
+            if(group.spec != spec[i] || group.result != result[i]) {
+                out += group;
+                group = tokenizationGroup("", <pos, pos>, spec[i], result[i]);
+            } 
+
+            pos[1] += 1;
+            if(character=="\n") {
+                pos[1] = 1;
+                pos[0] += 1;
+            }
+
+
+            group.text += character;
+            group.range[1] = pos;
         }
-    }
 
-    return <correct, errors>;
+        return out + group;
+    }
+    return [];
 }
 
 Tokenization getTokenization(type[Tree] g, str input)

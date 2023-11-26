@@ -110,10 +110,10 @@ list[Warning] runTest(type[Tree] grammarTree, loc inputFolder, AutomatedTestConf
             tokenization = readJSON(#Tokenization, tokenizationPath);
 
             <inputText, specTokens> = spec[input];
-            <correct, errors> = checkPrecision(inputText, specTokens, tokenization);
+            <correct, total, errors> = checkPrecision(inputText, specTokens, tokenization);
             allErrors[input] = errors;
 
-            text = "<input>: <correct>/<size(tokenization)>, <precision(toReal(correct)/toReal(size(tokenization))*100, 4)>%";
+            text = "<input>: <correct>/<total>, <precision(toReal(correct)/toReal(total)*100, 4)>%";
             results += text + "\n";
             println(text);
         }

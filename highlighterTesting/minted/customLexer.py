@@ -12,10 +12,14 @@
 import re
 
 from pygments.lexer import RegexLexer, include, bygroups, default, using, this, words, combined
-from pygments.token import Text, Comment, Operator, Keyword, Name, String, Number, Punctuation, Other, string_to_tokentype
+from pygments.token import Text, Comment, Operator, Keyword, Name, String, Number, Punctuation, Other, Whitespace, Generic, Error, string_to_tokentype
+from pygments.styles import STYLE_MAP
+from pygments.style import Style
+import os
 import json
 
-grammarPath = "./pygmentsGrammar.json";
+
+grammarPath = "./data/pygmentsGrammar.json";
 grammarInput = json.loads(open(grammarPath).read());
 
 __all__ = ['CustomLexer'];

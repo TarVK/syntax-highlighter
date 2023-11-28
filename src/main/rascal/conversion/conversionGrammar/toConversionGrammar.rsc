@@ -36,11 +36,11 @@ WithWarnings[ConversionGrammar] toConversionGrammar(Grammar grammar, Logger log)
 
         // Note that def and lDef are not neccessarily the same, due to possible labels
         for(/p:prod(lDef, parts, attributes) <- defProds) {
-            nonTermScopesSet = {parseScopes(scopes) | \tag("scope"(scopes)) <- attributes};
+            nonTermScopesSet = {parseScopes(scopes) | \tag("category"(scopes)) <- attributes};
             if(size(nonTermScopesSet)>1) warnings += multipleScopes(nonTermScopesSet, p);
             ScopeList nonTermScopes = [*scopes | scopes <- nonTermScopesSet];
 
-            pureTermScopesSet = {parseScopes(scopes) | \tag("token"(scopes)) <- attributes};
+            pureTermScopesSet = {parseScopes(scopes) | \tag("categoryTerm"(scopes)) <- attributes};
             if(size(pureTermScopesSet)>1) warnings += multipleTokens(pureTermScopesSet, p);
             ScopeList pureTermScopes = [*scopes | scopes <- pureTermScopesSet];
             termScopes = nonTermScopes + pureTermScopes;

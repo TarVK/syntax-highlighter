@@ -23,10 +23,10 @@ syntax Program = "a" B "c"
                | C;
 syntax B = "(" B ")"
          |;
-syntax C = @token="o" "(" C
-         | @token="o" "[" C
-         | @token="c" C ")"
-         | @token="c" C "]" >> ")"
+syntax C = @categoryTerm="o" "(" C
+         | @categoryTerm="o" "[" C
+         | @categoryTerm="c" C ")"
+         | @categoryTerm="c" C "]" >> ")"
          | "{" D;
 syntax D = "}";
 

@@ -51,33 +51,33 @@ syntax Type
     | primitiveType: [a-zA-Z0-9] !<< PrimitiveType !>> [a-zA-Z0-9]
     ;
 syntax PrimitiveType
-    = @scope="storage.type" string: "string"
-    | @scope="storage.type" float: "float"
-    | @scope="storage.type" boolean: "boolean"
-    | @scope="storage.type" intt: "int"
-    | @scope="storage.type" voidd: "void"
+    = @category="storage.type" string: "string"
+    | @category="storage.type" float: "float"
+    | @category="storage.type" boolean: "boolean"
+    | @category="storage.type" intt: "int"
+    | @category="storage.type" voidd: "void"
     ;
 
-lexical Parameter = @scope="variable.parameter" Id;
-lexical Variable = @scope="variable" Id;
-lexical TypeVariable = @scope="storage.type" Id;
+lexical Parameter = @category="variable.parameter" Id;
+lexical Variable = @category="variable" Id;
+lexical TypeVariable = @category="storage.type" Id;
 
 keyword KW = "for"|"in"|"if"|"true"|"false"|"else"|"return"|"int"|"boolean"|"float"|"string"|"void"|"public"|"private"|"protected"|"static"|"extends"|"implements"|"interface"|"class";
 
 lexical Id = ([a-zA-Z0-9] !<< [a-z][a-zA-Z0-9]* !>> [a-zA-Z0-9]) \ KW;
-lexical Natural = @scope="constant.numeric" [a-zA-Z0-9] !<< [0-9]+ !>> [a-zA-Z0-9];
+lexical Natural = @category="constant.numeric" [a-zA-Z0-9] !<< [0-9]+ !>> [a-zA-Z0-9];
 lexical Bool = [a-zA-Z0-9] !<< (True|False) !>> [a-zA-Z0-9];
-lexical True = @scope="constant.language" "true";
-lexical False = @scope="constant.language" "false";
-lexical Str =  @scope="string.template" "\"" Char* "\"";
+lexical True = @category="constant.language" "true";
+lexical False = @category="constant.language" "false";
+lexical Str =  @category="string.template" "\"" Char* "\"";
 lexical Char = char: ![\\\"$]
              | dollarChar: "$" !>> "{"
-             | @token="constant.character.escape" escape: "\\"![]
-             | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
+             | @categoryTerm="constant.character.escape" escape: "\\"![]
+             | @category="meta.embedded.line" @categoryTerm="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
 
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "/*" ![%]+ "*/"
-   | @scope="comment.line" "//" ![\n]* $
+   | @category="comment.block" "/*" ![%]+ "*/"
+   | @category="comment.line" "//" ![\n]* $
    ;

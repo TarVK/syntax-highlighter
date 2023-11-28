@@ -87,7 +87,7 @@ map[NFA[State], set[&T]] addToIndex(map[NFA[State], set[&T]] indexed, Regex r, &
             combinedSatelliteData = {satelliteData};
             for(nfa2 <- overlapNfas) {
                 combinedSatelliteData += indexed[nfa2];
-                nfa = unionPSNFA(nfa, nfa2);
+                nfa = minimizeUnique(unionPSNFA(nfa, nfa2));
                 indexed = delete(indexed, nfa2);
             }
             indexed[nfa] = combinedSatelliteData;

@@ -14,13 +14,14 @@ public alias Tokenization = list[list[Scope]];
     Checks the precision of the given tokenizations,
     outputing the number of correct groups and the total number of groups, and a list of mistakes
 }
-tuple[int, int, list[TokenizationGroup]] checkPrecision(str input, Tokenization spec, Tokenization tokenization) {
+data PrecisionData = precisionData(int correct, int total, list[TokenizationGroup] errors);
+PrecisionData checkPrecision(str input, Tokenization spec, Tokenization tokenization) {
 
     groups = getTokenizationGroups(input, spec, tokenization);
     list[TokenizationGroup] errors = [group | group <- groups, group.spec != group.result];
 
     count = size(groups);
-    return <count - size(errors), count, errors>;
+    return precisionData(count - size(errors), count, errors);
 }
 
 data TokenizationGroup = tokenizationGroup(str text, tuple[tuple[int, int], tuple[int, int]] range, list[Scope] spec, list[Scope] result);
@@ -69,11 +70,11 @@ Tokenization getTokenization(list[Scope] scope, list[Scope] tokens, amb({tree, *
 Tokenization getTokenization(list[Scope] scope, list[Scope] tokens, char(character)) = [scope + tokens];
 
 
-list[Scope] getScopeCategories(prod(_, _, attributes)) = ["<token>" | \tag("scope"(token)) <- attributes];
+list[Scope] getScopeCategories(prod(_, _, attributes)) = ["<token>" | \tag("category"(token)) <- attributes];
 list[Scope] getScopeCategories(_) = [];
 
 list[Scope] getTokenCategories(prod(s, _, attributes), tokens) 
-    = ["<token>" | \tag("token"(token)) <- attributes]
+    = ["<token>" | \tag("categoryTerm"(token)) <- attributes]
     when isTokenBorder(s);
 list[Scope] getTokenCategories(regular(_), tokens) = [];
 list[Scope] getTokenCategories(_, list[Scope] tokens) = tokens;

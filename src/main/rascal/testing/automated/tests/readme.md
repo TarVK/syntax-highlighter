@@ -1,0 +1,2 @@
+
+The grammars of these tests are cached. Because of this, only one grammar can be used per directory, with only a single configuration. If multiple grammars or configurations are used, this will lead to unexpected results. Similarly, if dependencies update (besides the test file itself) the cached grammar won't update to reflect this. In this situation, the `outputs` directory can be removed to force regenerate the grammar

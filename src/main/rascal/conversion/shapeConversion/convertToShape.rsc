@@ -54,6 +54,12 @@ WithWarnings[ConversionGrammar] convertToShape(
     ConversionGrammar grammar, 
     Regex eof, 
     TestConfig testConfig
+) 
+    = convertToShapeWithIterations(grammar, eof, testConfig)<0, 1>;
+tuple[list[Warning], ConversionGrammar, int] convertToShapeWithIterations(
+    ConversionGrammar grammar, 
+    Regex eof, 
+    TestConfig testConfig
 ) {
     testConfig.log(Section(), "to shape");
 
@@ -139,5 +145,5 @@ WithWarnings[ConversionGrammar] convertToShape(
         }
     }
 
-    return <warnings, grammar>;
+    return <warnings, grammar, i>;
 }

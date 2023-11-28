@@ -27,7 +27,7 @@ syntax Stmt = exp: Exp
             // | iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt "else" Stmt
             // | iff: "if" >> ("("|[\n\ ]) Stmt
             // | iff: "if" >> ("("|[\n\ ]) Stmt "else"!>>[a-z0-9] Stmt
-            // | @token="KW" "in" !>> [a-z0-9]
+            // | @categoryTerm="KW" "in" !>> [a-z0-9]
             // | forIn: "for" >> ("("|[\n\ ]) "(" Id "in" !>> [a-z0-9] Exp ")" Stmt
             // | forIter: "for" >> ("("|[\n\ ]) "(" Exp ";" Exp ";" Exp ")" Stmt
             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt

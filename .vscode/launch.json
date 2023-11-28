@@ -1,0 +1,57 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch DocRunner",
+            "request": "launch",
+            "mainClass": "org.rascalmpl.shell.DocRunner",
+            "projectName": "rascal"
+        },
+        {
+            "type": "java",
+            "name": "Launch DoubleRightNullableWithPrefixSharing",
+            "request": "launch",
+            "mainClass": "org.rascalmpl.test.parser.DoubleRightNullableWithPrefixSharing",
+            "projectName": "rascal"
+        },
+        {
+            "type": "java",
+            "name": "Launch Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "Launch RascalShell",
+            "request": "launch",
+            "mainClass": "org.rascalmpl.shell.RascalShell",
+            "projectName": "rascal",
+            "vmArgs": "-Xss80m -Xmx2g"
+        },
+        {
+            "type": "java",
+            "name": "Attach RascalShell",
+            "request": "attach",
+            "projectName": "rascal",
+            "hostName": "localhost",
+            "port": 9001
+        },
+        {
+            "type": "java",
+            "name": "Attach Rascal LSP Terminal",
+            "request": "attach",
+            "projectName": "rascal-lsp",
+            "hostName": "localhost",
+            "port": 9001
+        },
+        {
+            "type": "java",
+            "name": "Attach RascalNotebook",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 8000,
+            "projectName": "rascal-notebook"
+        }
+    ]
+}

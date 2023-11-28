@@ -1,11 +1,14 @@
 module conversion::conversionGrammar::CustomSymbols
 
 import IO;
+import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::util::Alias;
 import conversion::util::equality::ProdEquivalence;
 import regex::PSNFACombinators;
+
+import testing::util::visualizeGrammars;
 
 data Symbol 
     /* L(convSeq(parts)) = L(parts) */
@@ -23,8 +26,10 @@ data Symbol
 }
 Symbol simplify(Symbol sym, ConversionGrammar grammar) {
     // Union
-    if(unionRec({a, *rest}) := sym, isAlias(a, grammar))
-        return simplify(unionRec({followAlias(a, grammar)} + rest), grammar);
+    if(unionRec(options) := sym, a<-options, isAlias(a, grammar)) {
+        rest = options - {a};
+        return simplifyInner(unionRec({followAlias(a, grammar)} + rest), grammar);
+    }
     if(unionRec({unionRec(options), *rest}) := sym)
         return simplify(unionRec(options + rest), grammar);
 

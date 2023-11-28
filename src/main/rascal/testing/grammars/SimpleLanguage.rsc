@@ -25,23 +25,23 @@ syntax Exp = brac: "(" Exp ")"
            | call: Exp "(" {Exp ","}* ")"
            | func: "function" "(" {Parameter ","}* ")" "{" Stmt* "}";
 
-lexical Sep = @token="entity.name.function" ";";
-lexical Parameter = @scope="variable.parameter" Id;
-lexical Variable = @scope="variable" Id;
+lexical Sep = @categoryTerm="entity.name.function" ";";
+lexical Parameter = @category="variable.parameter" Id;
+lexical Variable = @category="variable" Id;
 
 keyword KW = "for"|"in"|"if"|"true"|"false"|"else"|"return"|"function";
 lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-lexical Natural = @scope="constant.numeric" [a-z0-9] !<< [0-9]+ !>> [a-z0-9];
-lexical Bool = @scope="constant.other" [a-z0-9] !<< ("true"|"false") !>> [a-z0-9];
-lexical Str =  @scope="string.template" "\"" Char* "\"";
+lexical Natural = @category="constant.numeric" [a-z0-9] !<< [0-9]+ !>> [a-z0-9];
+lexical Bool = @category="constant.other" [a-z0-9] !<< ("true"|"false") !>> [a-z0-9];
+lexical Str =  @category="string.template" "\"" Char* "\"";
 lexical Char = char: ![\\\"$]
              | dollarChar: "$" !>> "{"
-             | @token="constant.character.escape" escape: "\\"![]
-             | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
+             | @categoryTerm="constant.character.escape" escape: "\\"![]
+             | @category="meta.embedded.line" @categoryTerm="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
 
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "%" ![%]+ "%"
-   | @scope="comment.line" "%%" ![\n]* $
+   | @category="comment.block" "%" ![%]+ "%"
+   | @category="comment.line" "%%" ![\n]* $
    ;

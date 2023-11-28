@@ -25,6 +25,11 @@ import Warning;
 import Logging;
 import Scope;
 
+
+// TODO: remove
+import IO;
+import testing::util::visualizeGrammars;
+
 @doc {
     Converts a conversion grammar to a scope grammar. 
     Assumes that every production in the conversion grammar has the correct format, meaning that every production must have one of the following shapes:

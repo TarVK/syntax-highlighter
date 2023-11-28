@@ -44,10 +44,10 @@ import TestConfig;
 
 // syntax Exp = var: Variable;
 
-// lexical Variable = @scope="variable" Id;
-// lexical Try = @token="keyword" [a-zA-Z0-9] !<< "try" !>> [a-zA-Z0-9];
-// lexical Catch = @token="keyword" [a-zA-Z0-9] !<< "catch" !>> [a-zA-Z0-9];
-// lexical Finally = @token="keyword" [a-zA-Z0-9] !<< "finally" !>> [a-zA-Z0-9];
+// lexical Variable = @category="variable" Id;
+// lexical Try = @categoryTerm="keyword" [a-zA-Z0-9] !<< "try" !>> [a-zA-Z0-9];
+// lexical Catch = @categoryTerm="keyword" [a-zA-Z0-9] !<< "catch" !>> [a-zA-Z0-9];
+// lexical Finally = @categoryTerm="keyword" [a-zA-Z0-9] !<< "finally" !>> [a-zA-Z0-9];
 
 // keyword KW = "for"|"in"|"if"|"true"|"false"|"else"|"return"|"function"|"throw"|"catch"|"finally"|"try";
 // lexical Id = ([a-zA-Z0-9] !<< [a-zA-Z][a-zA-Z0-9]* !>> [a-zA-Z0-9]) \ KW;
@@ -55,8 +55,8 @@ import TestConfig;
 // layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 // lexical WhitespaceAndComment 
 //    = [\ \t\n\r]
-//    | @scope="comment.block" "%" ![%]+ "%"
-//    | @scope="comment.line" "%%" ![\n]* $
+//    | @category="comment.block" "%" ![%]+ "%"
+//    | @category="comment.line" "%%" ![\n]* $
 //    ;
 
 void main() {

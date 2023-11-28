@@ -16,41 +16,41 @@ syntax Stmt = forIn: For "(" Variable In Exp ")" Stmt
             | "{" Stmt* "}"
             | assign: Def "=" Exp ";";
 
-syntax Exp = @token="variable.parameter" brac: "(" Exp ")"
-           | @token="keyword.operator" add: Exp "+" Exp
-           | @token="keyword.operator" mult: Exp "*" Exp
-           | @token="keyword.operator" subt: Exp "-" Exp
-           | @token="keyword.operator" divide: Exp "/" Exp
-           | @token="keyword.operator" equals: Exp "==" Exp
-           | @token="keyword.operator" inn: Exp "in" Exp
+syntax Exp = @categoryTerm="variable.parameter" brac: "(" Exp ")"
+           | @categoryTerm="keyword.operator" add: Exp "+" Exp
+           | @categoryTerm="keyword.operator" mult: Exp "*" Exp
+           | @categoryTerm="keyword.operator" subt: Exp "-" Exp
+           | @categoryTerm="keyword.operator" divide: Exp "/" Exp
+           | @categoryTerm="keyword.operator" equals: Exp "==" Exp
+           | @categoryTerm="keyword.operator" inn: Exp "in" Exp
            | var: Variable
            | string: Str
            | booll: Bool
            | nat: Natural;
 
-lexical If = @token="keyword" "if";
-lexical For = @token="keyword" "for";
-lexical In = @token="keyword.operator" "in";
-lexical Else = @token="keyword" "else";
-lexical Sep = @token="entity.name.function" ";";
-lexical Def = @scope="variable.parameter" Id;
-lexical Variable = @scope="variable" Id;
+lexical If = @categoryTerm="keyword" "if";
+lexical For = @categoryTerm="keyword" "for";
+lexical In = @categoryTerm="keyword.operator" "in";
+lexical Else = @categoryTerm="keyword" "else";
+lexical Sep = @categoryTerm="entity.name.function" ";";
+lexical Def = @category="variable.parameter" Id;
+lexical Variable = @category="variable" Id;
 
 keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-lexical Natural = @scope="constant.numeric" [a-z0-9] !<< [0-9]+ !>> [a-z0-9];
-lexical Bool = @scope="constant.other" [a-z0-9] !<< ("true"|"false") !>> [a-z0-9];
-lexical Str =  @scope="string.template" "\"" Char* "\"";
+lexical Natural = @category="constant.numeric" [a-z0-9] !<< [0-9]+ !>> [a-z0-9];
+lexical Bool = @category="constant.other" [a-z0-9] !<< ("true"|"false") !>> [a-z0-9];
+lexical Str =  @category="string.template" "\"" Char* "\"";
 lexical Char = char: ![\\\"$]
              | dollarChar: "$" !>> "{"
-             | @token="constant.character.escape" escape: "\\"![]
-             | @scope="meta.embedded.line" @token="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
+             | @categoryTerm="constant.character.escape" escape: "\\"![]
+             | @category="meta.embedded.line" @categoryTerm="punctuation.definition.template-expression" embedded: "${" Layout Exp Layout "}";
 
 layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 lexical WhitespaceAndComment 
    = [\ \t\n\r]
-   | @scope="comment.block" "%" ![%]+ "%"
-   | @scope="comment.line" "%%" ![\n]* $
+   | @category="comment.block" "%" ![%]+ "%"
+   | @category="comment.line" "%%" ![\n]* $
    ;
 
 int main() {

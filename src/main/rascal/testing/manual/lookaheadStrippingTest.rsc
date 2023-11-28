@@ -30,11 +30,11 @@ import testing::grammars::SimpleScoped2;
 
 // syntax Program = Stmt*;
 // syntax Stmt = exp: Exp
-//             // | @token="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
+//             // | @categoryTerm="keyword" iff: "if" >> ("("|[\n\ ]) "(" Exp ")" Stmt
 //             // | iff: "if" "(" Exp ")" Stmt "else" !>> [a-z0-9] Stmt
 //             // | iff: "if" >> ("("|[\n\ ]) Stmt
 //             // | iff: "if" Stmt "else" Stmt
-//             // | @token="KW" "in" !>> [a-z0-9]
+//             // | @categoryTerm="KW" "in" !>> [a-z0-9]
 //             | forIn: "for" "(" Id "in" Exp ")" Stmt
 //             | forIter: "for" "(" Exp ";" Exp ";" Exp ")" Stmt
 //             // | forIn: "for" >> ("("|[\n\ ]) "(" Exp "in" !>> [a-z0-9] Id ")" Stmt
@@ -44,7 +44,7 @@ import testing::grammars::SimpleScoped2;
 //             ;
 // syntax Exp = id: Id
 //            | brackets: "(" Exp ")"
-//         //    | @token="keyword.operator" Exp "in" Exp 
+//         //    | @categoryTerm="keyword.operator" Exp "in" Exp 
 //            ;
 
 // lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
@@ -53,8 +53,8 @@ import testing::grammars::SimpleScoped2;
 // layout Layout = WhitespaceAndComment* !>> [\ \t\n\r%];
 // lexical WhitespaceAndComment 
 //    = [\ \t\n\r]
-//    | @scope="comment.block" "%" ![%]+ "%"
-//    | @scope="comment.line" "%%" ![\n]* $
+//    | @category="comment.block" "%" ![%]+ "%"
+//    | @category="comment.line" "%%" ![\n]* $
 //    ;
 
 void main() {

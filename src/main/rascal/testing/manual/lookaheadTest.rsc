@@ -30,7 +30,7 @@ import specTransformations::addWordBorders;
 //            | Natural;
 
 // lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
-// lexical Natural = @scope="constant.numeric" [0-9]+ !>> [a-z0-9];
+// lexical Natural = @category="constant.numeric" [0-9]+ !>> [a-z0-9];
 // keyword KW = "for"|"in"|"if"|"true"|"false"|"else";
 // layout Layout = WhitespaceAndComment* !>> [\ \n];
 // lexical WhitespaceAndComment = [\ \n];
@@ -45,12 +45,12 @@ syntax Exp = bracketss: "(" Exp ")"
 syntax Type = \type: TypeVariable
             | ar: Type "[]"
             | apply: Type "\<" {Type ","}+ "\>"
-            | @token="primitive" number: "number"
-            | @token="primitive" string: "string"
-            | @token="primitive" boolean: "bool";
+            | @categoryTerm="primitive" number: "number"
+            | @categoryTerm="primitive" string: "string"
+            | @categoryTerm="primitive" boolean: "bool";
 
-lexical Variable = @scope="variable" Id;
-lexical TypeVariable = @scope="type" Id;
+lexical Variable = @category="variable" Id;
+lexical TypeVariable = @category="type" Id;
 
 keyword KW = "bool"|"number"|"string";
 lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;

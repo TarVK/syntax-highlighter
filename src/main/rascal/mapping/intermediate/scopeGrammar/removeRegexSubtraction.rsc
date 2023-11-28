@@ -3,8 +3,6 @@ module mapping::intermediate::scopeGrammar::removeRegexSubtraction
 import List;
 import IO;
 
-// TODO: remove
-import testing::util::visualizeGrammars;
 
 import regex::PSNFATools;
 import regex::regexToPSNFA;
@@ -24,6 +22,7 @@ tuple[
     if(/subtract(_, _) !:= regex) return <regex, true>;
 
     <lb, output, la, sub, equivalent> = removeRegexSubtractionRec(regex);
+
     <subtractedOutput, subEqual> = tryLookaround(lb, output, la, sub);
     return <subtractedOutput, equivalent && subEqual>;
 }
@@ -65,6 +64,7 @@ tuple[
     Regex resolveRec(<lbRec, outputRec, laRec, subRec, eqRec>) {
         <outputWithSubtraction, lookaroundSuccess> = tryLookaround(lbRec, outputRec, laRec, subRec);
         if(!lookaroundSuccess || !eqRec) equivalent = false;
+    
         return outputWithSubtraction;
     }
 
@@ -203,20 +203,20 @@ tuple[Regex out, bool equivalent] tryLookaround(
 ) {
     if(sub==never()) return <regex, true>;
 
-    regex = getCachedRegex(regex, false);
+    regex = getCachedRegex(regex);
     
     spec = subtract(regex, sub);
     specNFA = regexToPSNFA(spec, false);
 
     sub = simplifiedConcatenation(lb, simplifiedConcatenation(sub, la));
 
-    laApproach = concatenation(\negative-lookahead(empty(), sub), regex);
-    laApproachNFA = regexToPSNFA(laApproach, false);
+    laApproach = getCachedRegex(concatenation(\negative-lookahead(empty(), sub), regex));
+    laApproachNFA = regexToPSNFA(laApproach);
     if(equals(laApproachNFA, specNFA)) // We do nfa level equality checks, because the cached nfas aren't normalized for performance reasons
         return <laApproach, true>;
     
-    lbApproach = concatenation(regex, \negative-lookbehind(empty(), sub));
-    lbApproachNFA = getToPSNFA(lbApproach, false);
+    lbApproach = getCachedRegex(concatenation(regex, \negative-lookbehind(empty(), sub)));
+    lbApproachNFA = regexToPSNFA(lbApproach);
     if(equals(lbApproachNFA, specNFA))
         return <lbApproach, true>;
 

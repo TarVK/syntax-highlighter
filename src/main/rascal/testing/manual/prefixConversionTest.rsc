@@ -19,7 +19,7 @@ syntax Exp = Id
            | ()>>"c" C
            | "f" F;
 syntax A = Exp "A";
-syntax B = @token="B" "B"
+syntax B = @categoryTerm="B" "B"
          | "b" B;
 syntax C = ()>>"d" D "c"
          | ()>>"d" E "c2"
@@ -28,7 +28,7 @@ syntax D = ()>>"d" C "D"
          | "d" D;
 syntax E = ()>>"e" C "E"
          | "d" E;
-syntax F = @scope="F" B "c"
+syntax F = @category="F" B "c"
          | "f" F;
 
 lexical Id = ([a-z] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;

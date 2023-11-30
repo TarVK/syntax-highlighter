@@ -15,11 +15,13 @@ import testing::automated::setup::calculateInputData;
 @doc {
     Displays the grammar in debug tools
 }
-void viewGrammar(type[Tree] grammarTree, loc inputFolder) {
+void viewGrammar(type[Tree] grammarTree, loc inputFolder)
+    = viewGrammar(grammarTree, inputFolder, autoTestConfig());
+void viewGrammar(type[Tree] grammarTree, loc inputFolder, AutomatedTestConfig autoTestConfig) {
     calculateGrammar(
         grammarTree, 
         inputFolder,
-        autoTestConfig(),
+        autoTestConfig,
         {conversionGrammarOutput()}
     );
     generatePath = getGeneratePath(inputFolder);

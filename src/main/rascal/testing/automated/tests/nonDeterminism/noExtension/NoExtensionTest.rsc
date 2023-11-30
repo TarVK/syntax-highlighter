@@ -12,5 +12,5 @@ layout Layout         = [\ \t\n\r]* !>> [\ \t\n\r];
 
 GrammarSpec spec = <#NoExtension, |project://syntax-highlighter/src/main/rascal/testing/automated/tests/nonDeterminism/noExtension|>;
 
-test bool noExtensionInput() = runTest(spec, "extension", false);
+test bool noExtensionInput() = runTest(spec, "noExtension", false);
 test bool noExtensionError() = [] := getWarnings(spec);

@@ -1,3 +1,0 @@
-something<number[]> variable = value;
-somethingelse variable2 = value;
-bool variable3 = value;

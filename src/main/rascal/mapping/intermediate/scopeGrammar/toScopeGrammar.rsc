@@ -18,6 +18,7 @@ import regex::PSNFA;
 import regex::PSNFATypes;
 import regex::PSNFATools;
 import regex::NFASimplification;
+import regex::PSNFASimplification;
 import regex::PSNFACombinators;
 import regex::RegexStripping;
 import conversion::util::makeLookahead;

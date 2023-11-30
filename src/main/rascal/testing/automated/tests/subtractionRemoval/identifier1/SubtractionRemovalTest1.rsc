@@ -12,3 +12,5 @@ test bool somethingInput1() = runTest(spec, "something", false);
 test bool awordInput1() = runTest(spec, "aword", false);
 test bool wordsInput1() = runTest(spec, "words", false);
 test bool wordInput1() = runTest(spec, "word", false);
+
+test bool identifierErrors() = [] := getWarnings(spec);

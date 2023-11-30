@@ -10,6 +10,8 @@ import regex::RegexCache;
 import regex::Regex;
 import Scope;
 
+import testing::util::visualizeGrammars;
+
 data CaptureGroup = captureGroup(int id);
 
 @doc {
@@ -61,17 +63,26 @@ tuple[
     Regex sub = never();
     bool equivalent = true;
 
-    Regex resolveRec(<lbRec, outputRec, laRec, subRec, eqRec>) {
+    tuple[
+        Regex lookbehind,
+        Regex output, 
+        Regex lookahead,
+        Regex subtraction
+    ] rec(Regex regex) {
+        <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(regex);
+        if(!rEq) equivalent = false;
+        return <rLB, r, rLA, rSub>;
+    }
+    Regex resolveRec(<lbRec, outputRec, laRec, subRec>) {
         <outputWithSubtraction, lookaroundSuccess> = tryLookaround(lbRec, outputRec, laRec, subRec);
-        if(!lookaroundSuccess || !eqRec) equivalent = false;
-    
+        if(!lookaroundSuccess) equivalent = false;    
         return outputWithSubtraction;
     }
 
     switch(regex) {
         case subtract(r, newSub): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
-            newSub = resolveRec(removeRegexSubtractionRec(newSub));
+            <rLB, r, rLA, rSub> = rec(r);
+            newSub = resolveRec(rec(newSub));
 
             lb = rLB;
             output = r;
@@ -84,8 +95,8 @@ tuple[
         case always(): ;
         case character(_): ;
         case lookahead(r, newLA): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
-            newLA = resolveRec(removeRegexSubtractionRec(newLA));
+            <rLB, r, rLA, rSub> = rec(r);
+            newLA = resolveRec(rec(newLA));
 
             lb = rLB;
             output = lookahead(r, newLA);
@@ -93,8 +104,8 @@ tuple[
             sub = simplifiedLookahead(rSub, newLA);
         }
         case lookbehind(r, newLB): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
-            newLB = resolveRec(removeRegexSubtractionRec(newLB));
+            <rLB, r, rLA, rSub> = rec(r);
+            newLB = resolveRec(rec(newLB));
 
             lb = simplifiedConcatenation(lookbehind(empty(), newLB), rLB);
             output = lookbehind(r, newLB);
@@ -102,8 +113,8 @@ tuple[
             sub = simplifiedLookbehind(rSub, newLB);
         }
         case \negative-lookahead(r, newLA): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
-            newLA = resolveRec(removeRegexSubtractionRec(newLA));
+            <rLB, r, rLA, rSub> = rec(r);
+            newLA = resolveRec(rec(newLA));
 
             lb = rLB;
             output = \negative-lookahead(r, newLA);
@@ -111,8 +122,8 @@ tuple[
             sub = simplifiedNegativeLookahead(rSub, newLA);
         }
         case \negative-lookbehind(r, newLB): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
-            newLB = resolveRec(removeRegexSubtractionRec(newLB));
+            <rLB, r, rLA, rSub> = rec(r);
+            newLB = resolveRec(rec(newLB));
 
             lb = simplifiedConcatenation(\negative-lookbehind(empty(), newLB), rLB);
             output = \negative-lookbehind(r, newLB);
@@ -120,8 +131,8 @@ tuple[
             sub = simplifiedNegativeLookbehind(rSub, newLB);
         }
         case concatenation(h, t): {
-            <hLB, h, hLA, hSub, hEq> = removeRegexSubtractionRec(h);
-            <tLB, t, tLA, tSub, tEq> = removeRegexSubtractionRec(t);
+            <hLB, h, hLA, hSub> = rec(h);
+            <tLB, t, tLA, tSub> = rec(t);
 
             lb = isEmpty(h) ? simplifiedConcatenation(hLB, tLB) : hLB;
             output = concatenation(h, t);
@@ -130,16 +141,16 @@ tuple[
         }
         case alternation(o1, o2): {
             // TODO: try to make use of equivalence: (X \ Y) + Z = (X + Z) \ Y   (if L(Z) ∩ L(Y) = {})
-            newO1 = resolveRec(removeRegexSubtractionRec(o1));
-            newO2 = resolveRec(removeRegexSubtractionRec(o2));
+            newO1 = resolveRec(rec(o1));
+            newO2 = resolveRec(rec(o2));
             output = alternation(newO1, newO2);
         }
         case \multi-iteration(r): {
-            newR = resolveRec(removeRegexSubtractionRec(r));
+            newR = resolveRec(rec(r));
             output = \multi-iteration(newR);
         }
         case mark(tags, r): {
-            <rLB, r, rLA, rSub, rEq> = removeRegexSubtractionRec(r);
+            <rLB, r, rLA, rSub> = rec(r);
 
             lb = rLB;
             output = mark(tags, r);

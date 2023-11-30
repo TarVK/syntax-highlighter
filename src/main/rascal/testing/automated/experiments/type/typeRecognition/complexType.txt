@@ -1,0 +1,1 @@
+mytype<number[]> variable = value;

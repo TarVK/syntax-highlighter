@@ -59,6 +59,22 @@ import TestConfig;
 //    | @category="comment.line" "%%" ![\n]* $
 //    ;
 
+syntax Program = Exp1B;
+syntax Exp1B         = group:                     "(" Exp1B ")"
+                     | lambda:                    "(" {Variable ","}* ")" Lambda Exp1B
+                     | @category="string" string: "\"" Char* "\"" 
+                     | var:                       Variable;
+
+lexical Char         = char:                                         ![\\\"$]
+                     | dollarChar:                                   "$" !>> "("
+                     | @category="constant.character.escape" escape: "\\"![]
+                     | @category="meta.embedded.line" embedded:      "$(" Layout Exp1B Layout ")";
+lexical Lambda       = @category="keyword" "=\>";
+lexical Variable     = @category="variable" Id;
+lexical Id           = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]);
+
+layout Layout        = [\ \t\n\r]* !>> [\ \t\n\r];
+
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
     bool recalc = true;
@@ -73,10 +89,10 @@ void main() {
     ConversionGrammar inputGrammar, conversionGrammar;
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);    
-        addGrammarTokens = transformerUnion([
-            addKeywordTokens(exceptKeywordsProductions(allProductions)),
-            addOperatorTokens(exceptKeywordsProductions(allProductions))
-        ]);
+        // addGrammarTokens = transformerUnion([
+        //     addKeywordTokens(exceptKeywordsProductions(allProductions)),
+        //     addOperatorTokens(exceptKeywordsProductions(allProductions))
+        // ]);
         conversionGrammar = addGrammarTokens(conversionGrammar, log);
 
         inputGrammar = conversionGrammar;

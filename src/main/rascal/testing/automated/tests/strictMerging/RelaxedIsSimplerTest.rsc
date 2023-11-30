@@ -1,5 +1,7 @@
 module testing::automated::tests::strictMerging::RelaxedIsSimplerTest
 
+import IO;
+
 import Logging;
 import Warning;
 import TestConfig;
@@ -33,5 +35,6 @@ test bool relaxedIsSimpler() {
     <_, _, iterationsStrict> 
         = convertToShapeWithIterations(conversionGrammar, eof, testConfig(log = log, overlapFinishRegex=true));
 
+    println(<iterationsRelaxed, iterationsStrict>);
     return iterationsRelaxed < iterationsStrict;
 }

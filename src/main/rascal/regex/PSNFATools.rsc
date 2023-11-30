@@ -7,6 +7,7 @@ module regex::PSNFATools
 
 import IO;
 import util::Maybe;
+import ParseTree;
 
 import regex::util::charClass;
 import regex::Regex;
@@ -145,4 +146,17 @@ bool overlaps(NFA[State] a, NFA[State] b, bool directional, bool extension) {
     if(!isEmpty(overlapA)) return true;
 
     return false;
+}
+
+@doc {
+    Uses the regular expression's PSNFA to check if the given regular expression can match any text that includes a newline
+}
+bool containsInternalNewline(Regex regex) {
+    n = regexToPSNFA(regex);
+    <_, mainStates, _> = getPSNFApartition(n);
+    transitions = n.transitions[mainStates]<0>;
+
+    newline = [range(10, 10)];
+    hasNewline = TransSymbol:character(cc, _) <- transitions && size(fIntersection(cc, newline))>0;
+    return hasNewline;
 }

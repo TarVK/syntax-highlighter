@@ -39,7 +39,8 @@ data AutomatedTestConfig(
     // GrammarTransformer addCategories = transformerIdentity,
     GrammarTransformer addLookaheads = defaultAddLookaheads,
     Grammar(Grammar) transformSpec = Grammar (Grammar grammar) { return grammar; },
-    TestConfig testConfig = testConfig()
+    TestConfig testConfig = testConfig(),
+    set[OutputType] outputs = {}
 ) = autoTestConfig();
 
 public GrammarTransformer defaultAddLookaheads = ConversionGrammar (ConversionGrammar conversionGrammar, Logger log) {
@@ -115,6 +116,7 @@ Grammar getGrammar(type[Tree] grammarTree,  AutomatedTestConfig autoTestConfig) 
 list[Warning] calculateGrammar(type[Tree] grammarTree, loc inputFolder, AutomatedTestConfig autoTestConfig)
     = calculateGrammar(grammarTree, inputFolder, autoTestConfig, {textmateGrammarOutput()});
 list[Warning] calculateGrammar(type[Tree] grammarTree, loc inputFolder, AutomatedTestConfig autoTestConfig, set[OutputType] outputs) {
+    outputs += autoTestConfig.outputs;
     generatePath = getGeneratePath(inputFolder);
     grammar = getGrammar(grammarTree, autoTestConfig);
 

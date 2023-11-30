@@ -28,7 +28,7 @@ Symbol simplify(Symbol sym, ConversionGrammar grammar) {
     // Union
     if(unionRec(options) := sym, a<-options, isAlias(a, grammar)) {
         rest = options - {a};
-        return simplifyInner(unionRec({followAlias(a, grammar)} + rest), grammar);
+        return simplify(unionRec({followAlias(a, grammar)} + rest), grammar);
     }
     if(unionRec({unionRec(options), *rest}) := sym)
         return simplify(unionRec(options + rest), grammar);

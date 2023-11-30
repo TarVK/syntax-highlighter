@@ -64,7 +64,7 @@ rel[ConvProd, ConvProd] addGrammarLookaheads(Symbol startSym, rel[ConvProd, Conv
             for(i <- [0..size(parts)]) {
                 part = parts[i];
                 if(regexp(r) := part) {
-                    if(!containsNewline(r)) {
+                    if(!containsInternalNewline(r)) {
                         log(ProgressDetailed(), "calculating next expressions for regex of <sym>");
                         nextExpressions = getFirstExpressions(lookaheadParts[i+1..], firstExpressions, true)<1>;
                         log(ProgressDetailed(), "calculating nextRegex for regex of <sym>");

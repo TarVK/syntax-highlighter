@@ -1,15 +1,5 @@
-try {
-    something(45);
-} catch(error) {
-    println(error);
-}
-
-try {
-    something(45);
-} finally {
-    println("done");
-}
-
+try { something(45); } catch(error) { println(error); }
+try { something(45); } finally { println("done"); }
 try {
     something(45);
 } catch(error) {

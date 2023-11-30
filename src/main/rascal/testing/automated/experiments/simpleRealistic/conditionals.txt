@@ -1,0 +1,5 @@
+if(something==true)
+    %% Some comment
+    something = 45*3;
+else
+    stuff = (45 + 5) * true;

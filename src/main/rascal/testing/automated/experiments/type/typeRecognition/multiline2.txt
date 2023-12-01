@@ -1,0 +1,6 @@
+mytype
+ variable
+ = value;
+mytype
+ variable
+ = value;

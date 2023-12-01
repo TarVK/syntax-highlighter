@@ -34,12 +34,13 @@ import conversion::conversionGrammar::fromConversionGrammar;
 }
 IndexedRegexesMap getFollowExpressions(ConversionGrammar grammar)
     = getFollowExpressions(grammar, true);
-IndexedRegexesMap getFollowExpressions(ConversionGrammar grammar, bool stopOnNewline) 
-    = getFollowExpressions(grammar, getFirstExpressions(grammar, stopOnNewline), EOF, stopOnNewline);
+IndexedRegexesMap getFollowExpressions(ConversionGrammar grammar, int steps, bool stopOnNewline) 
+    = getFollowExpressions(grammar, getFirstExpressions(grammar, stopOnNewline), EOF, steps, stopOnNewline);
 IndexedRegexesMap getFollowExpressions(
     ConversionGrammar grammar, 
     IndexedRegexesMap firstExpressions, 
     Regex eof,
+    int steps,
     bool stopOnNewline
 ) {
     // Define the output object, and a function to insert into it
@@ -60,7 +61,9 @@ IndexedRegexesMap getFollowExpressions(
         <def, p:convProd(_, parts)> <- grammar.productions, 
         [*_, ref(sym, _, _), *rest] := parts
     ) {
-        symFirstExpressions = getFirstExpressions(rest, firstExpressions, stopOnNewline);
+        symFirstExpressions = steps == 1
+            ? getFirstExpressions(rest, firstExpressions, stopOnNewline)
+            : getFirstNExpressions(grammar, rest, steps, stopOnNewline);
         
         nonEmptyOptions = {n | n <- symFirstExpressions, !acceptsEmpty(n)};
         followAcceptsEmpty = nonEmptyOptions != symFirstExpressions<0>;
@@ -98,14 +101,22 @@ alias IndexedRegexes = map[NFA[State], Regex];
 @doc {
     Retrieves possible first regular expressions, including empty if an empty sequence can be obtained
 }
-IndexedRegexesMap getFirstExpressions(ConversionGrammar grammar, bool stopOnNewline) {
+IndexedRegexesMap getFirstExpressions(ConversionGrammar grammar, bool stopOnNewline)
+    = getFirstExpressions(grammar, 1, stopOnNewline);
+IndexedRegexesMap getFirstExpressions(ConversionGrammar grammar, int steps, bool stopOnNewline) {
     IndexedRegexesMap firstExpressions = (sym: () | sym <- grammar.productions<0>);
 
-    solve(firstExpressions) {
-        for(<sym, convProd(_, parts)> <- grammar.productions) {
-            firstExpressions[sym] += getFirstExpressions(parts, firstExpressions, stopOnNewline);
+    if(steps==1) {
+        solve(firstExpressions) {
+            for(<sym, convProd(_, parts)> <- grammar.productions) {
+                firstExpressions[sym] += getFirstExpressions(parts, firstExpressions, stopOnNewline);
+            }
         }
-    }
+    } else {
+        for(<sym, convProd(_, parts)> <- grammar.productions) {
+            firstExpressions[sym] += getFirstNExpressions(grammar, parts, steps, stopOnNewline);
+        }
+    }    
 
     return firstExpressions;
 }
@@ -168,7 +179,7 @@ IndexedRegexes getFirstExpressions(
             IndexedRegexes combinedFollowExpressions = ();
             for(followNFA <- followExpressions) {
                 followRegex = followExpressions[followNFA];
-                combinedFollowRegex = simplifiedConcatenation(emptyFollowPrefix, followRegex);
+                combinedFollowRegex = getCachedRegex(simplifiedConcatenation(emptyFollowPrefix, followRegex));
                 combinedFollowNFA = regexToPSNFA(combinedFollowRegex);
                 
                 // Save the simpler regex in the output, to prevent infinite unproductive loops
@@ -196,3 +207,85 @@ IndexedRegexes getFirstExpressions(
 }
 
 Regex emptyRegex = getCachedRegex(empty());
+
+@doc {
+    Retrieves possible first regular expressions, including empty if an empty sequence can be obtained
+}
+IndexedRegexes getFirstNExpressions(
+    ConversionGrammar grammar, 
+    list[ConvSymbol] parts, 
+    int numberOfExpressions,
+    bool stopOnNewline
+) 
+    = getFirstNExpressions(grammar, parts, numberOfExpressions, {}, stopOnNewline);
+IndexedRegexes getFirstNExpressions(
+    ConversionGrammar grammar, 
+    list[ConvSymbol] parts, 
+    int numberOfExpressions,
+    set[Symbol] encountered,
+    bool stopOnNewline
+) {
+    if([first, *rest] := parts && numberOfExpressions>0) {
+        IndexedRegexes out = ();
+        if(regexp(regex) := first) {
+            Regex firstRegex = never();
+            Regex emptyFollowPrefix = never();
+
+            if(!acceptsEmpty(regex)) firstRegex = regex;
+            else {
+                <rNonEmpty, rEmpty, rEmptyRestr> = factorOutEmpty(regex); 
+                if(rNonEmpty != never()) firstRegex = rNonEmpty;
+
+                if(rEmpty != never())    emptyFollowPrefix = rEmpty;
+                else                     emptyFollowPrefix = rEmptyRestr;
+            }
+
+            void addOutputs(Regex first, IndexedRegexes follows) {
+                for(nfa <- follows) {
+                    if(nfa == regexToPSNFA(emptyRegex)) {
+                        out[regexToPSNFA(first)] = first;
+                    } else {
+                        combined = getCachedRegex(simplifiedConcatenation(first, follows[nfa]));
+                        if(!isEmpty(regexToPSNFA(combined))) {
+                            if(regexToPSNFA(combined) != nfa) 
+                                out[regexToPSNFA(combined)] = combined;
+                            else 
+                                out[nfa] = follows[nfa];
+                        }
+                    }
+                }
+            }
+
+            if(firstRegex != never()) {
+                if(stopOnNewline && containsInternalNewline(firstRegex)) 
+                    out[regexToPSNFA(firstRegex)] = firstRegex;
+                else {
+                    follows = getFirstNExpressions(grammar, rest, numberOfExpressions-1, {}, stopOnNewline);
+                    addOutputs(firstRegex, follows);
+                }
+            }
+
+            if(emptyFollowPrefix != never()) {
+                if(stopOnNewline && containsInternalNewline(emptyFollowPrefix)) 
+                    out[regexToPSNFA(emptyFollowPrefix)] = emptyFollowPrefix;
+                else {
+                    follows = getFirstNExpressions(grammar, rest, numberOfExpressions, encountered, stopOnNewline);
+                    addOutputs(emptyFollowPrefix, follows);
+                }
+            }
+        } else if(ref(s, _, _) := first) {
+            if(s in encountered) return ();
+            encountered += s;
+            
+            for(convProd(_, newParts) <- grammar.productions[getWithoutLabel(s)]) 
+                out += getFirstNExpressions(grammar, newParts + rest, numberOfExpressions, encountered, stopOnNewline);
+        }
+
+        // More fidelity is useules here
+        if(regexToPSNFA(emptyRegex) in out) return (regexToPSNFA(emptyRegex): emptyRegex);
+
+        return out;
+    } else {
+        return (regexToPSNFA(emptyRegex): emptyRegex);
+    }
+}

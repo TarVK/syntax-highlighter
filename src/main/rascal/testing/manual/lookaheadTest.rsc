@@ -35,7 +35,6 @@ import specTransformations::addWordBorders;
 // layout Layout = WhitespaceAndComment* !>> [\ \n];
 // lexical WhitespaceAndComment = [\ \n];
 
-
 syntax Program = Stmt*;
 syntax Stmt = Type Variable "=" Exp ";";
 
@@ -55,7 +54,8 @@ lexical TypeVariable = @category="type" Id;
 keyword KW = "bool"|"number"|"string";
 lexical Id = ([a-z0-9] !<< [a-z][a-z0-9]* !>> [a-z0-9]) \ KW;
 
-layout Layout = [\ \t\n\r]* !>> [\ \t\n\r%];
+layout Layout        = [\ \t]* !>> [\ \t\n\r]
+                     | [\ \t]*[\n\r][\ \t\n\r]* !>> [\ \t\n\r];
 
 void main() {
     loc pos = |project://syntax-highlighter/outputs/shapeConversionGrammar.bin|;
@@ -82,20 +82,20 @@ void main() {
     }
 
     // conversionGrammar = addGrammarLookaheads(conversionGrammar, 2, log);
+    conversionGrammar = addGrammarLookaheads(conversionGrammar, 1, 1, log);
     // rla = getCachedRegex(parseRegexReduced("!\>[a-zA-Z0-9]"));
     // conversionGrammar = addCustomGrammarLookaheads(conversionGrammar, bool(Regex r){return <rla, false>;}, log);
     // conversionGrammar = addNegativeCharacterGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
-    conversionGrammar = addDynamicGrammarLookaheads(conversionGrammar, {
-        parseRegexReduced("[a-zA-Z0-9]"),
-        parseRegexReduced("[=+\\-\<\>]")
-    }, log);
+    // conversionGrammar = addDynamicGrammarLookaheads(conversionGrammar, {
+    //     parseRegexReduced("[a-zA-Z0-9]"),
+    //     parseRegexReduced("[=+\\-\<\>]")
+    // }, log);
 
     warnings = cWarnings + rWarnings;
     visualizeGrammars(<
         fromConversionGrammar(inputGrammar),
         fromConversionGrammar(conversionGrammar),
         warnings,
-        getFollowExpressions(inputGrammar, true),
         regexToPSNFA(\multi-iteration(parseRegexReduced("[a-zA-Z0-9]")))
     >);
 }

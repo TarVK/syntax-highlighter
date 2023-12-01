@@ -16,7 +16,7 @@ syntax Exp = bracketss: "(" Exp ")"
 
 syntax Type = \type: TypeVariable
             | ar: Type "[]"
-            // | apply: Type "\<" {Type ","}+ "\>"
+            | apply: Type "\<" {Type ","}+ "\>"
             | @categoryTerm="primitive" number: "number"
             | @categoryTerm="primitive" string: "string"
             | @categoryTerm="primitive" boolean: "bool";
@@ -34,9 +34,9 @@ layout Layout        = [\ \t]* !>> [\ \t\n\r]
 void main() {
     path = |project://syntax-highlighter/src/main/rascal/testing/automated/experiments/type/typeRecognition|;
     conf = autoTestConfig(addLookaheads=ConversionGrammar (ConversionGrammar conversionGrammar, Logger log) {
-        return addGrammarLookaheads(conversionGrammar, 2, log);
+        return addGrammarLookaheads(conversionGrammar, 1, 2, log);
     });
 
-    // runExperiment(#Program, path, conf);
-    viewGrammar(#Program, path, conf);
+    runExperiment(#Program, path, conf);
+    // viewGrammar(#Program, path, conf);
 }

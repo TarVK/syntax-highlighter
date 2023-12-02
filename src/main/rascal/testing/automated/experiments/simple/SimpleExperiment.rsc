@@ -1,6 +1,7 @@
 module testing::automated::experiments::simple::SimpleExperiment
 
 import testing::automated::setup::runExperiment;
+import testing::automated::setup::viewGrammar;
 
 
 syntax Program = Stmt*;
@@ -57,5 +58,7 @@ lexical WhitespaceAndComment
 
    
 void main() {
-    runExperiment(#Program, |project://syntax-highlighter/src/main/rascal/testing/automated/experiments/simple|);
+    path = |project://syntax-highlighter/src/main/rascal/testing/automated/experiments/simple|;
+    viewGrammar(#Program, path);
+    // runExperiment(#Program, path);
 }

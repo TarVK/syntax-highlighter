@@ -88,7 +88,7 @@ ConversionGrammar addCustomAndStandardGrammarLookaheads(ConversionGrammar gramma
     log(Progress(), "calculating follow expressions");
     scopelessGrammar = getGrammar(grammar.\start, productionMap);
     firstExpressions = getFirstExpressions(scopelessGrammar, true);
-    followExpressions = getFollowExpressions(scopelessGrammar, firstExpressions, EOF, true);
+    followExpressions = getFollowExpressions(scopelessGrammar, firstExpressions, EOF, 1, true);
 
     log(Progress(), "calculating possibly overlapping expressions");
     overlap = getPositiveOverlappingExpressions(productionMap);

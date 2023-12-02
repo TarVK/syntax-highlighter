@@ -80,7 +80,7 @@ ConversionGrammar addCustomGrammarLookaheads(ConversionGrammar grammar, SuffixGe
     log(Progress(), "calculating follow expressions");
     scopelessGrammar = getGrammar(grammar.\start, productionMap);
     firstExpressions = getFirstExpressions(scopelessGrammar, true);
-    followExpressions = getFollowExpressions(scopelessGrammar, firstExpressions, EOF, true);
+    followExpressions = getFollowExpressions(scopelessGrammar, firstExpressions, EOF, 1, true);
 
     rel[Symbol, ConvProd] outProds = {};
     for(sym <- prods) {

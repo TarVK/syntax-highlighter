@@ -69,6 +69,7 @@ void main() {
                   mWarnings = [],
                   dWarnings = [];
     ConversionGrammar inputGrammar, conversionGrammar;
+    c = testConfig(log = log);
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         inputGrammar = conversionGrammar;
@@ -76,14 +77,14 @@ void main() {
         // conversionGrammar              = addGrammarLookaheads(conversionGrammar, 1, log);
         // conversionGrammar              = addNegativeCharacterGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
         conversionGrammar              = addDynamicGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
         conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
         inputGrammar = conversionGrammar;
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
 
     conversionGrammar = removeUnreachable(conversionGrammar);
     conversionGrammar = removeAliases(conversionGrammar);

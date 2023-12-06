@@ -87,6 +87,7 @@ void main() {
                   mWarnings = [],
                   dWarnings = [];
     ConversionGrammar inputGrammar, conversionGrammar;
+    c = testConfig(log = log);
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);    
         // addGrammarTokens = transformerUnion([
@@ -103,7 +104,7 @@ void main() {
                 parseRegexReduced("[a-zA-Z0-9]"),
                 parseRegexReduced("[=]")
             }, log);
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
 
         // writeBinaryValueFile(pos, conversionGrammar);
     } else {
@@ -111,7 +112,7 @@ void main() {
         inputGrammar = conversionGrammar;
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
     // writeBinaryValueFile(pos, conversionGrammar);
 
     conversionGrammar = removeUnreachable(conversionGrammar);

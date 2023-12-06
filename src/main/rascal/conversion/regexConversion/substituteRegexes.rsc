@@ -100,7 +100,7 @@ tuple[set[Symbol], ProdMap] substituteRegexes(ProdMap productions, Symbol target
                         }
                         
                         if(just(<l, sources>) := scopes) 
-                            newPart = [sub(regex, l, sources), regexp(regex) <- subParts];
+                            newPart = [sub(regex, l, sources) | regexp(regex) <- subParts];
 
                         newParts += newPart;
                     }

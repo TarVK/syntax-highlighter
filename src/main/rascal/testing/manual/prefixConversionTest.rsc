@@ -41,7 +41,8 @@ void main() {
     <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
     <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
     inputGrammar = fromConversionGrammar(conversionGrammar);
-    <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+    c = testConfig(log = log);
+    <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
 
     stdGrammar = fromConversionGrammar(conversionGrammar);
 

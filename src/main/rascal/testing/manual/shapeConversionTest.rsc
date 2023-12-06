@@ -55,18 +55,19 @@ void main() {
     log = standardLogger();
     list[Warning] cWarnings, rWarnings, pWarnings, sWarnings;
     ConversionGrammar inputGrammar, conversionGrammar;
+    c = testConfig(log = log);
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
         inputGrammar = conversionGrammar;
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
         inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);
         cWarnings = rWarnings = pWarnings = [];
     }
 
-    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
+    <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
 
     // Simplify for readability
     conversionGrammar = replaceNfaByRegex(conversionGrammar);

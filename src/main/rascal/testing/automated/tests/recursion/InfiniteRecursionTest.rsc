@@ -23,25 +23,22 @@ layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
 test bool recursesInfinitely() {
     log = standardLogger();
 
+    c = testConfig(
+        log = log, 
+        detectRecursion=false, 
+        overlapFinishRegex=true,
+        lastPhase=shapeConversion(maxIterations=cap)
+    );
     <_, conversionGrammar> = toConversionGrammar(#Merge2, log);
     <_, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
-    <_, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+    <_, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
 
     // Decide on an arbitrarily high constant cap
     int cap = 16;
 
     eof = getCachedRegex(makeLookahead(never()));
     <_, _, iterations> 
-        = convertToShapeWithIterations(
-            conversionGrammar, 
-            eof, 
-            testConfig(
-                log = log, 
-                detectRecursion=false, 
-                overlapFinishRegex=true,
-                lastPhase=shapeConversion(maxIterations=cap)
-            )
-        );
+        = convertToShapeWithIterations(conversionGrammar, eof, c);
 
     return iterations>=cap;
 }

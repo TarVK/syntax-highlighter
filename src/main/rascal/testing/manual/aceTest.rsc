@@ -109,10 +109,11 @@ void main() {
         conversionGrammar              = addDynamicGrammarLookaheads(conversionGrammar, {parseRegexReduced("[a-zA-Z0-9]")}, log);
         writeBinaryValueFile(pos, conversionGrammar);
 
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        c = testConfig(log = log);
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
         writeBinaryValueFile(pos, conversionGrammar);
 
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
 
         conversionGrammar = removeUnreachable(conversionGrammar);
         conversionGrammar = removeAliases(conversionGrammar);

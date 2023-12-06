@@ -20,6 +20,7 @@ import regex::RegexTransformations;
 import Logging;
 import Warning;
 import Scope;
+import TestConfig;
 
 @doc {
     Makes sure every production starts with a regular expression
@@ -33,7 +34,8 @@ import Scope;
         - Every symbol has an empty production
         - There are no non-productive loops in the grammar where you can recurse without consuming any characters
 }
-WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Logger log) {
+WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, TestConfig testConfig) {
+    log = testConfig.log;
     log(Section(), "to prefixed");
     list[Warning] warnings = [];
 
@@ -43,6 +45,8 @@ WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Log
     ProdMap oldProds;
     int i = 0;
     do {
+
+
         log(Progress(), "----- starting iteration <i+1> -----");
         oldProds = prods;
         for(sym <- prods) {
@@ -54,6 +58,11 @@ WithWarnings[ConversionGrammar] convertToPrefixed(ConversionGrammar grammar, Log
         }     
         
         i += 1;
+        // For debugging:
+        if(prefixConversion() := testConfig.lastPhase && i==testConfig.lastPhase.maxIterations) {
+            println("Force quite");
+            break;
+        }
     } while(oldProds!=prods);
 
     log(Progress(), "finished left-symbol substitution");

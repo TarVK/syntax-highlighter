@@ -44,6 +44,10 @@ WithWarnings[ConversionGrammar] convertToRegularExpressions(ConversionGrammar gr
         <_, productions> = substituteRegexes(productions, sym);
     }
 
+    // Perform concatenation immediately whenever possible
+    for(sym <- productions<0>)
+        productions[sym] = concatenateRegexes(productions[sym]);
+
     void applyRegexConversions() {
         bool changed = true;
         bool first = true;

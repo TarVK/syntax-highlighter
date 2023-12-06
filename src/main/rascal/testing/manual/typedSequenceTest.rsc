@@ -68,9 +68,10 @@ void main() {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
         conversionGrammar = addGrammarLookaheads(conversionGrammar, 1, log);
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+        c = testConfig(log = log, lastPhase=shapeConversion(maxIterations=10));
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
         inputGrammar = conversionGrammar;
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log, lastPhase=shapeConversion(maxIterations=10)));
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
         inputGrammar = conversionGrammar = readBinaryValueFile(#ConversionGrammar,  pos);

@@ -69,9 +69,10 @@ void main() {
     if(recalc) {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);
         inputGrammar = conversionGrammar;
+        c = testConfig(log = log);
         <rWarnings, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
-        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
-        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig(log = log));
+        <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
+        <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, c);
         writeBinaryValueFile(pos, conversionGrammar);
     } else {
         <cWarnings, conversionGrammar> = toConversionGrammar(#Program, log);

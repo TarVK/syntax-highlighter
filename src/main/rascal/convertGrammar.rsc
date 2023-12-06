@@ -56,10 +56,12 @@ data ConversionConfig(
 list[Warning] convertGrammar(ConversionConfig config) {
     TestConfig testConfig = config.testConfig;
     log = testConfig.log;
+    location = config.location;
     list[Warning] warnings = [];
-    void outputConv() {
+    list[Warning] outputConv() {
         writeBinaryValueFile(location+"conversionGrammar.bin", conversionGrammar);
         writeTextValueFile(location+"warnings.txt", warnings);
+        return warnings;
     }
 
     // Create the conversion grammar
@@ -74,7 +76,7 @@ list[Warning] convertGrammar(ConversionConfig config) {
     if(regexConversion() := testConfig.lastPhase) return outputConv();
     conversionGrammar = config.addLookaheads(conversionGrammar, log);
     if(lookaheadAdding() := testConfig.lastPhase) return outputConv();
-    <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+    <pWarnings, conversionGrammar> = convertToPrefixed(conversionGrammar, testConfig);
     if(prefixConversion() := testConfig.lastPhase) return outputConv();
     <sWarnings, conversionGrammar> = convertToShape(conversionGrammar, testConfig);
     if(shapeConversion() := testConfig.lastPhase) return outputConv();
@@ -87,7 +89,6 @@ list[Warning] convertGrammar(ConversionConfig config) {
     if(cleanup() := testConfig.lastPhase) return outputConv();
 
     // Grammar mapping
-    location = config.location;
     <mWarnings, scopeGrammar> = toScopeGrammar(conversionGrammar, log);
     warnings = cWarnings + rWarnings + pWarnings + sWarnings + dWarnings + mWarnings;
     if(textmateGrammarOutput() <- config.target) {

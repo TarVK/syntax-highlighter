@@ -27,7 +27,7 @@ data Warning
     | inapplicableScope(ConvSymbol sym, ConvProd forProd)
     // =========== Shape conversion ===========
     /* A scope was provided for a non-terminal, but the symbol had to merged with another symbol with different scopes */
-    | incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], ConvProd production)
+    | incompatibleScopesForUnion(set[tuple[Symbol, ScopeList]], set[ConvProd] productions)
     /* We ararived at a cyclic path where no symbol has to be consumed, but can't safely solve such paths */
     | unresolvableLeftRecursiveLoop(set[EmptyPath] paths, ConvProd production)
     /* =========== Determinism checking ========== */

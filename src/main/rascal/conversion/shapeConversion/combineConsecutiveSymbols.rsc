@@ -85,10 +85,10 @@ tuple[
         if(ref(refSym, scopes, sources) := part) {
             if (just(<prevRefSym, prevScopes, prevSources>) := prevSymbol) {
                 if(prevScopes != scopes) {
-                    warnings += incompatibleScopesForUnion({<refSym, scopes>, <prevRefSym, prevScopes>}, prod);
+                    warnings += incompatibleScopesForUnion({<refSym, scopes>, <prevRefSym, prevScopes>}, {prod});
                     scopes = [];
                 } else if(scopes != [] && just(_) := spacerRegex) {
-                    warnings += incompatibleScopesForUnion({<refSym, scopes>}, prod);
+                    warnings += incompatibleScopesForUnion({<refSym, scopes>}, {prod});
                     scopes = [];
                 }
 

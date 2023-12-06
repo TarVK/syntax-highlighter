@@ -4,6 +4,7 @@ import Set;
 
 import conversion::conversionGrammar::ConversionGrammar;
 import conversion::conversionGrammar::CustomSymbols;
+import conversion::util::meta::LabelTools;
 
 
 @doc {
@@ -36,13 +37,13 @@ set[Symbol] getReachableSymbols(ConversionGrammar grammar, bool includeSources) 
         set[Symbol] newAdded = {};
         for(
             convProd(_, parts) <- grammar.productions[added],
-            ref(refSym, _, _) <- parts,
+            ref(lRefSym, _, _) <- parts,
+            refSym := getWithoutLabel(lRefSym),
             refSym notin reachable
         ) {
             reachable += refSym;
             newAdded += refSym;
         }
-
         for(sym <- added) {
             if(includeSources){
                 set[Symbol] sourceReachable = {};

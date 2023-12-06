@@ -25,13 +25,14 @@ layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
 test bool relaxedIsSimpler() {
     log = standardLogger();
 
+    c = testConfig(log = log);
     <_, conversionGrammar> = toConversionGrammar(#Merge2, log);
     <_, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
-    <_, conversionGrammar> = convertToPrefixed(conversionGrammar, log);
+    <_, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
 
     eof = getCachedRegex(makeLookahead(never()));
     <_, _, iterationsRelaxed> 
-        = convertToShapeWithIterations(conversionGrammar, eof, testConfig(log = log));
+        = convertToShapeWithIterations(conversionGrammar, eof, c);
     <_, _, iterationsStrict> 
         = convertToShapeWithIterations(conversionGrammar, eof, testConfig(log = log, overlapFinishRegex=true));
 

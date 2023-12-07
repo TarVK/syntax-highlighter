@@ -23,6 +23,9 @@ layout Layout = [\ \t\n\r]* !>> [\ \t\n\r];
 test bool recursesInfinitely() {
     log = standardLogger();
 
+    // Decide on an arbitrarily high constant cap
+    int cap = 16;
+
     c = testConfig(
         log = log, 
         detectRecursion=false, 
@@ -32,9 +35,6 @@ test bool recursesInfinitely() {
     <_, conversionGrammar> = toConversionGrammar(#Merge2, log);
     <_, conversionGrammar> = convertToRegularExpressions(conversionGrammar, log);
     <_, conversionGrammar> = convertToPrefixed(conversionGrammar, c);
-
-    // Decide on an arbitrarily high constant cap
-    int cap = 16;
 
     eof = getCachedRegex(makeLookahead(never()));
     <_, _, iterations> 

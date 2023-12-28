@@ -59,6 +59,6 @@ lexical WhitespaceAndComment
    
 void main() {
     path = |project://syntax-highlighter/src/main/rascal/testing/automated/experiments/simple|;
-    viewGrammar(#Program, path);
-    // runExperiment(#Program, path);
+    // viewGrammar(#Program, path);
+    runExperiment(#Program, path);
 }

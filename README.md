@@ -62,7 +62,7 @@ lexical WhitespaceAndComment
 
 The generated TextMate grammar, which tokenizes exactly according to specification, looks as follows:
 <details>
-  <summary>Spoiler warning</summary>
+  <summary>Show large json file</summary>
 
 ```json
 {
